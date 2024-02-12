@@ -30,6 +30,12 @@
     ;; include more details for debugging NPEs (Java 14+)
     "-XX:+ShowCodeDetailsInExceptionMessages"]}
 
+  ;; clojure -M:check
+  :check
+  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
+                                 :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
+   :main-opts  ["-m" "clj-check.check"]}
+
   ;; clj -T:whitespace-linter
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "e35bc252ccf5cc74f7d543ef95ad8a3e5131f25b"}}
