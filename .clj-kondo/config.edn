@@ -1,0 +1,61 @@
+{:linters
+ {:refer-all
+  {:exclude [clojure.test]}
+
+  :consistent-alias
+  {:aliases
+   {;; clojure.data         data
+    }}
+
+  :discouraged-var
+  {clojure.core/pr       {:message "Use clojure.tools.logging instead."}
+   clojure.core/printf   {:message "Use clojure.tools.logging instead."}
+   clojure.core/println  {:message "Use clojure.tools.logging instead."}
+   clojure.core/prn      {:message "Use clojure.tools.logging instead."}
+   clojure.pprint/pprint {:message "Use clojure.tools.logging instead."}}
+
+  :refer
+  {:level   :warning
+   :exclude [clojure.test]}
+
+  :docstring-leading-trailing-whitespace {:level :warning}
+  :keyword-binding                       {:level :warning}
+  :misplaced-docstring                   {:level :warning}
+  :missing-body-in-when                  {:level :warning}
+  :missing-docstring                     {:level :warning}
+  :missing-else-branch                   {:level :warning}
+  :namespace-name-mismatch               {:level :warning}
+  :non-arg-vec-return-type-hint          {:level :warning}
+  :reduce-without-init                   {:level :warning}
+  :redundant-fn-wrapper                  {:level :warning}
+  :shadowed-var                          {:level :warning}
+  :single-key-in                         {:level :warning}
+  :unsorted-required-namespaces          {:level :warning}
+  :use                                   {:level :warning}
+  :used-underscored-binding              {:level :warning}
+  :warn-on-reflection                    {:level :warning}
+
+  :second-date/validate-deftest {:level :warning}}
+
+ :lint-as
+ {}
+
+ :hooks
+ {:analyze-call
+  {clojure.test/deftest hooks.clojure.test/deftest}
+
+  :macroexpand
+  {}}
+
+ :config-in-comment
+ {:linters {:unresolved-symbol {:level :off}}}
+
+ :ns-groups
+ ;; tests are anything that ends in `-test`
+ [{:pattern ".*-test$"
+   :name    tests}]
+
+ :config-in-ns
+ {tests
+  {:linters
+   {:missing-docstring {:level :off}}}}}
