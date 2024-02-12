@@ -1,4 +1,4 @@
-(ns guacamaya.core
+(ns macaw.core
   (:import
    (net.sf.jsqlparser.parser
     CCJSqlParserUtil)

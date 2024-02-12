@@ -1,9 +1,9 @@
-(ns guacamaya.core-test
+(ns macaw.core-test
   (:require
    [clojure.test :refer :all]
-   [guacamaya.core :as g]))
+   [macaw.core :as m]))
 
-(def tables (comp g/query->tables g/parsed-query))
+(def tables (comp m/query->tables m/parsed-query))
 
 (deftest query->tables-test
   (testing "Simple queries"
@@ -22,4 +22,4 @@
   (let [cols ["name" "id" "email"]]
     (is (= {"core_user"   cols
             "report_card" cols}
-           (g/resolve-columns ["core_user" "report_card"] cols)))))
+           (m/resolve-columns ["core_user" "report_card"] cols)))))
