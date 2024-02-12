@@ -1,0 +1,51 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {com.github.jsqlparser/jsqlparser {:mvn/version "4.8"}} ; The actual SQL Parser to wrap!
+
+
+ :aliases
+ {:dev
+  {:extra-deps
+   {io.github.metabase/hawk {:sha "539eefaa31a43d52d7c9b5731f471bb6742e7131"}}
+
+   :extra-paths
+   ["test"]
+
+   :jvm-opts
+   ["-Duser.timezone=UTC"
+    "-Duser.language=en"
+    "-Duser.country=US"
+    ;; if compilation on launch fails or whatever print to console instead of a temp file.
+    "-Dclojure.main.report=stderr"
+    ;; [LEVEL logger-name] message stacktrace
+    "-Djava.util.logging.SimpleFormatter.format=%n[%4$s %3$s] %5$s%n%6$s%n"
+    ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance optimization in newer Java
+    ;; versions. This makes debugging pretty hard when working on stuff locally -- prefer debuggability over performance
+    ;; for local dev work.
+    "-XX:-OmitStackTraceInFastThrow"
+    ;; ignore options that aren't present in older versions of Java, like the one below:
+    "-XX:+IgnoreUnrecognizedVMOptions"
+    ;; include more details for debugging NPEs (Java 14+)
+    "-XX:+ShowCodeDetailsInExceptionMessages"]}
+
+  ;; clj -T:whitespace-linter
+  :whitespace-linter
+  {:deps       {com.github.camsaul/whitespace-linter {:sha "e35bc252ccf5cc74f7d543ef95ad8a3e5131f25b"}}
+   :ns-default whitespace-linter
+   :exec-fn    whitespace-linter/lint
+   :exec-args  {:paths            ["deps.edn" "src" "test" ".github"]
+                :include-patterns ["\\.clj[cs]?$" "\\.edn$" "\\.yaml$" "\\.md$"]}}
+
+  ;; Run tests
+  ;;
+  ;; clojure -X:dev:test
+  :test
+  {:exec-fn mb.hawk.core/find-and-run-tests-cli}
+
+  ;; clojure -T:build
+  :build
+  {:deps       {io.github.clojure/tools.build {:mvn/version "0.9.6"}
+                slipset/deps-deploy           {:mvn/version "0.2.1"}}
+   :ns-default build}}}
