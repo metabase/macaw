@@ -5,7 +5,7 @@
 
 (def tables (comp m/query->tables m/parsed-query))
 
-(deftest query->tables-test
+(deftest ^:parallel query->tables-test
   (testing "Simple queries"
     (is (= ["core_user"]
            (tables "select * from core_user;")))
@@ -18,7 +18,7 @@
     (is (= ["core_user"]
            (tables "select * from (select distinct email from core_user) q;")))))
 
-(deftest resolve-columns-test
+(deftest ^:parallel resolve-columns-test
   (let [cols ["name" "id" "email"]]
     (is (= {"core_user"   cols
             "report_card" cols}
