@@ -7,5 +7,7 @@
 
 # Guacamaya
 
-Guacamaya is a limited Clojure wrapper for [JSqlParser](https://github.com/JSQLParser/JSqlParser). Similar to its parrot
-namesake, it's intelligent, can be taught to speak SQL, and has many colors (supports many dialects).
+Guacamaya is a limited Clojure wrapper for
+[JSqlParser](https://github.com/JSQLParser/JSqlParser). Similar to its parrot
+namesake, it's intelligent, can be taught to speak SQL, and has many colors
+(supports many dialects).
