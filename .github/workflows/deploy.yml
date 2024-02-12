@@ -33,11 +33,11 @@
 #         restore-keys: |
 #           v1-${{ hashFiles('./deps.edn') }}-
 #           v1-
-#     - name: Build Guacamaya
+#     - name: Build Macaw
 #       run: clojure -T:build build
 #       env:
 #         GITHUB_SHA: ${{ env.GITHUB_SHA }}
-#     - name: Deploy Guacamaya
+#     - name: Deploy Macaw
 #       run: clojure -T:build deploy
 #       env:
 #         CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
