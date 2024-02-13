@@ -1,5 +1,8 @@
 (ns macaw.core
   (:import
+   (com.metabase.macaw
+    ASTWalker
+    SqlVisitor)
    (net.sf.jsqlparser
     Model)
    (net.sf.jsqlparser.parser
@@ -38,27 +41,18 @@
     (println "CONJing!")
     (swap! known-column-names conj (.getColumnName column))))
 
+
 (defn query->columns
   "TODO: implement!"
   [^Statement parsed-query]
-  (println "query->columns")
   (let [column-names  (atom [])
-        column-finder (proxy
-                          [TablesNamesFinder]
-                          []
-                          (visit [visitable]
-                            (println "visiting")
-                            (println {:visitable visitable
-                                      :column-names @column-names})
-                            (let [^TablesNamesFinder this this]
-                              (conj-column! visitable column-names)
-                              (proxy-super visit visitable))))]
-#_    (.init column-finder false)
-#_    (.accept parsed-query column-finder)
-
-    (.getTables column-finder parsed-query)
-    #_    @column-names)
-)
+        column-finder (reify
+                        SqlVisitor
+                        (visitColumn (_this ^Column column)
+                          (swap! column-names conj (.getColumnName column)))
+                        (visitTable (_this _table)))]
+    (.walk (ASTWalker. column-finder) parsed-query)
+    @column-names))
 
 
 (defn parsed-query

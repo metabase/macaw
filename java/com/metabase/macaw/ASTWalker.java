@@ -2,6 +2,8 @@ package com.metabase.macaw;
 
 // Borrows substantially from JSqlParser's TablesNamesFinder
 
+import com.metabase.macaw.SqlVisitor;
+
 import java.util.List;
 import java.util.Map;
 
@@ -176,27 +178,19 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
        SelectItemVisitor, StatementVisitor {
 
     private static final String NOT_SUPPORTED_YET = "Not supported yet.";
+    private SqlVisitor sqlVisitor;
 
-    public ASTWalker() {
+    public ASTWalker(SqlVisitor sqlVisitor) {
+        this.sqlVisitor = sqlVisitor;
     }
 
     /**
-     * Main entry point. Walk the given `expression`, calling the appropriate `visit____()` method for each element encountered.
+     * Main entry point. Walk the given `expression`, calling the appropriate
+     * `visit____()` method from the [[SqlVisitor]] for each element
+     * encountered.
      */
     public void walk(Expression expression) {
         expression.accept(this);
-    }
-
-    /**
-     * Called for every `Column` encountered, presumably for side effects.
-     */
-    public void visitColumn(Column column) {
-    }
-
-    /**
-     * Called for every `Table` encountered, presumably for side effects.
-     */
-    public void visitTable(Table table) {
     }
 
     @Override
@@ -281,7 +275,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Table table) {
-        visitTable(table);
+        this.sqlVisitor.visitTable(table);
     }
 
     @Override
@@ -309,7 +303,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Column tableColumn) {
-        visitColumn(tableColumn);
+        this.sqlVisitor.visitColumn(tableColumn);
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
