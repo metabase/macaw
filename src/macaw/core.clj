@@ -3,8 +3,6 @@
    (com.metabase.macaw
     ASTWalker
     SqlVisitor)
-   (net.sf.jsqlparser
-    Model)
    (net.sf.jsqlparser.parser
     CCJSqlParserUtil)
    (net.sf.jsqlparser.schema
@@ -14,7 +12,7 @@
    (net.sf.jsqlparser.util
     TablesNamesFinder)))
 
-#_(set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 
 (defn query->tables
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a list of fully-qualified table names found within it.
