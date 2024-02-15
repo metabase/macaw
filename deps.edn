@@ -1,5 +1,5 @@
 {:paths
- ["src" "java" "resources"]
+ ["src" "java" "resources" "target/classes"]
 
  :deps
  {com.github.jsqlparser/jsqlparser {:mvn/version "4.8"}} ; The actual SQL Parser to wrap!

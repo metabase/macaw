@@ -23,11 +23,17 @@ clj -T:build jar
 
 This will create a JAR in the `target` directory.
 
-The build process is slightly complicated since Macaw mixes Clojure and Java
-files. If you're working on Macaw itself and make changes to a Java file, you
-must:
+## Working with the Java files
 
-1. Rebuild
+To compile the Java files, use
+
+```
+clj -T:build compile
+```
+
+If you're working on Macaw and make changes to a Java file, you must:
+
+1. Recompile
 2. Restart your Clojure REPL
 
 for the changes to take effect.

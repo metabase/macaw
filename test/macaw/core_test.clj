@@ -18,6 +18,13 @@
     (is (= ["core_user"]
            (tables "select * from (select distinct email from core_user) q;")))))
 
+(def columns (comp set m/query->columns m/parsed-query))
+
+(deftest ^:parallel query->columns-test
+  (testing "Simple queries"
+    (is (= #{"foo" "bar" "id" "quux_id"}
+           (columns "select foo, bar from baz inner join quux on quux.id = baz.quux_id")))))
+
 (deftest ^:parallel resolve-columns-test
   (let [cols ["name" "id" "email"]]
     (is (= {"core_user"   cols

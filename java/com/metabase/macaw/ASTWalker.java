@@ -170,9 +170,8 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
 /**
- * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method
- * additionally calls a `visit____()` method (e.g., `visitColumn()`) that can be
- * overriden by client classes.
+ * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls a `visit____()` method
+ * (e.g., `visitColumn()`) as defined in the [[SqlVisitor]] interface that can be overriden by client classes.
  */
 public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
        SelectItemVisitor, StatementVisitor {
