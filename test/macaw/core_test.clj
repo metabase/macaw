@@ -3,22 +3,22 @@
    [clojure.test :refer :all]
    [macaw.core :as m]))
 
-(def tables (comp m/query->tables m/parsed-query))
+(def tables (comp :tables m/query->components m/parsed-query))
 
 (deftest ^:parallel query->tables-test
   (testing "Simple queries"
-    (is (= ["core_user"]
+    (is (= #{"core_user"}
            (tables "select * from core_user;")))
-    (is (= ["core_user"]
+    (is (= #{"core_user"}
            (tables "select id, email from core_user;"))))
   (testing "With a schema (Postgres)" ;; TODO: only run this against supported DBs
-    (is (= ["the_schema_name.core_user"]
+    (is (= #{"the_schema_name.core_user"}
            (tables "select * from the_schema_name.core_user;"))))
   (testing "Sub-selects"
-    (is (= ["core_user"]
+    (is (= #{"core_user"}
            (tables "select * from (select distinct email from core_user) q;")))))
 
-(def columns (comp set m/query->columns m/parsed-query))
+(def columns (comp :columns m/query->components m/parsed-query))
 
 (deftest ^:parallel query->columns-test
   (testing "Simple queries"

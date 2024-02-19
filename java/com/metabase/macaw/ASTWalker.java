@@ -2,8 +2,10 @@ package com.metabase.macaw;
 
 // Borrows substantially from JSqlParser's TablesNamesFinder
 
-import com.metabase.macaw.SqlVisitor;
+import clojure.lang.IFn;
+import clojure.lang.Keyword;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -170,23 +172,69 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
 /**
- * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls a `visit____()` method
- * (e.g., `visitColumn()`) as defined in the [[SqlVisitor]] interface that can be overriden by client classes.
+ * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback method provided in the `callbacks` map.
+ * Supported callbacks have a corresponding key string (see below).
+ *
+ * Why this class? Why the callbacks?
+ *
+ * Clojure is not good at working with Java Visitors. They require over<em>riding</em> various over<em>loaded</em>
+ * methods and, in the case of walking a tree (exactly what we want to do here) we of course need to call `visit()`
+ * recursively.
+ *
+ * Clojure's two main ways of dealing with this are `reify`, which does not permit type-based overloading, and `proxy`,
+ * which does.  However, creating a proxy object creates a completely new object that does not inherit behavior defined
+ * in the parent class. Therefore, if you have code like this:
+ *
+ * <code>
+     (proxy
+       [TablesNamesFinder]
+       []
+       (visit [visitable]
+         (if (instance? Column visitable)
+           (swap! columns conj (.getColumnName ^Column visitable))
+           (let [^StatementVisitor this this]
+             (proxy-super visit visitable)))))
+   </code>
+
+ * the call to `proxy-super` does <em>not</em> call the original `TablesNamesFinder.visit()`; it calls `visit()` on our
+ * proxied instance. Since the tree-walking semantics are defined in the original method, this behavior does not work
+ * for us.
+ *
+ * <hr>
+ *
+ * Therefore, this class provides a more convenient escape hatch for Clojure. It removes the overloading requirement for
+ * the conventional visitor pattern, instead providing the `callbacks` map This lets Clojure code use a normal Clojure
+ * map and functions to implement the necessary behavior; no `reify` necesary.
  */
 public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
        SelectItemVisitor, StatementVisitor {
 
-    private static final String NOT_SUPPORTED_YET = "Not supported yet.";
-    private SqlVisitor sqlVisitor;
+    public static final String COLUMN_STR = "column";
+    public static final String TABLE_STR = "table";
+    public static final String[] SUPPORTED_CALLBACK_KEYS = new String[] { COLUMN_STR, TABLE_STR };
 
-    public ASTWalker(SqlVisitor sqlVisitor) {
-        this.sqlVisitor = sqlVisitor;
+    private static final String NOT_SUPPORTED_YET = "Not supported yet.";
+    private Map<String, IFn> callbacks;
+
+    /**
+     * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map like so:
+     *
+     * <pre><code>
+     *   (ASTWalker. {:column (fn [col] (do-something-with-the-found col))
+     *                :table  (fn [table] (...))})
+     * </code></pre>
+     *
+     * The appropriate callback fn will be invoked for every matching element found. The list of supported keys can be found in [[SUPPORTED_CALLBACK_KEYS]].
+     */
+    public ASTWalker(Map<Keyword, IFn> callbacksWithKeywordKeys) {
+        this.callbacks = new HashMap<String, IFn>(SUPPORTED_CALLBACK_KEYS.length);
+        for(Map.Entry<Keyword, IFn> entry : callbacksWithKeywordKeys.entrySet()) {
+            this.callbacks.put(entry.getKey().getName(), entry.getValue());
+        }
     }
 
     /**
-     * Main entry point. Walk the given `expression`, calling the appropriate
-     * `visit____()` method from the [[SqlVisitor]] for each element
-     * encountered.
+     * Main entry point. Walk the given `expression`, invoking the callbacks as appropriate.
      */
     public void walk(Expression expression) {
         expression.accept(this);
@@ -274,7 +322,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Table table) {
-        this.sqlVisitor.visitTable(table);
+        this.callbacks.get(TABLE_STR).invoke(table);
     }
 
     @Override
@@ -302,7 +350,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Column tableColumn) {
-        this.sqlVisitor.visitColumn(tableColumn);
+        this.callbacks.get(COLUMN_STR).invoke(tableColumn);
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
