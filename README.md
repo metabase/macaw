@@ -18,7 +18,7 @@ namesake, it's intelligent, can be taught to speak SQL, and has many colors
 To build a local JAR, use
 
 ```
-clj -T:build jar
+./bin/build-jar
 ```
 
 This will create a JAR in the `target` directory.
@@ -28,7 +28,7 @@ This will create a JAR in the `target` directory.
 To compile the Java files, use
 
 ```
-clj -T:build compile
+./bin/compile-java
 ```
 
 If you're working on Macaw and make changes to a Java file, you must:
