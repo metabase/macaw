@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o nounset
+set -o pipefail
+if [[ -n "${TRACE-}" ]]; then
+    set -o xtrace
+fi
+
+if [ $# -ge 1 ] && [[ "$1" =~ ^-*h(elp)?$ ]]; then
+    echo 'Usage: ./bin/java-compile
+
+    Compiles all the Java files used in the project so that they can be used in local Clojure development. To build a JAR, use ./build-jar instead.
+
+'
+    exit
+fi
+
+# Ensure we're in the project root
+cd "$(dirname "$0")"/..
+
+main() {
+  clj -T:build compile
+}
+
+main "$@"
