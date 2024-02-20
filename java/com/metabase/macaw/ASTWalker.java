@@ -8,6 +8,7 @@ import clojure.lang.Keyword;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.AllValue;
@@ -184,8 +185,8 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
  * Clojure's two main ways of dealing with this are `reify`, which does not permit type-based overloading, and `proxy`,
  * which does.  However, creating a proxy object creates a completely new object that does not inherit behavior defined
  * in the parent class. Therefore, if you have code like this:
- *
- * <code>
+
+   <code>
      (proxy
        [TablesNamesFinder]
        []
@@ -211,7 +212,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     public static final String COLUMN_STR = "column";
     public static final String TABLE_STR = "table";
-    public static final String[] SUPPORTED_CALLBACK_KEYS = new String[] { COLUMN_STR, TABLE_STR };
+    public static final Set<String> SUPPORTED_CALLBACK_KEYS = Set.of(COLUMN_STR, TABLE_STR);
 
     private static final String NOT_SUPPORTED_YET = "Not supported yet.";
     private Map<String, IFn> callbacks;
@@ -225,11 +226,26 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
      * </code></pre>
      *
      * The appropriate callback fn will be invoked for every matching element found. The list of supported keys can be found in [[SUPPORTED_CALLBACK_KEYS]].
+     *
+     * Silently rejects invalid keys.
      */
     public ASTWalker(Map<Keyword, IFn> callbacksWithKeywordKeys) {
-        this.callbacks = new HashMap<String, IFn>(SUPPORTED_CALLBACK_KEYS.length);
+        this.callbacks = new HashMap<String, IFn>(SUPPORTED_CALLBACK_KEYS.size());
         for(Map.Entry<Keyword, IFn> entry : callbacksWithKeywordKeys.entrySet()) {
-            this.callbacks.put(entry.getKey().getName(), entry.getValue());
+            String keyName = entry.getKey().getName();
+            if (SUPPORTED_CALLBACK_KEYS.contains(keyName)) {
+                this.callbacks.put(keyName, entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Safely invoke the given callback by name.
+     */
+    public void invokeCallback(String callbackName, Object visitedItem) {
+        IFn callback = this.callbacks.get(callbackName);
+        if (callback != null) {
+            callback.invoke(visitedItem);
         }
     }
 
@@ -322,7 +338,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Table table) {
-        this.callbacks.get(TABLE_STR).invoke(table);
+        invokeCallback(TABLE_STR, table);
     }
 
     @Override
@@ -350,7 +366,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Column tableColumn) {
-        this.callbacks.get(COLUMN_STR).invoke(tableColumn);
+        invokeCallback(COLUMN_STR, tableColumn);
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
