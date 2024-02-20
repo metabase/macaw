@@ -15,17 +15,17 @@
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the `:tables` and `:columns` found within it.
 
-  (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as found in the query'.)"
+  (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
-  (let [column-names (transient #{})
-        table-names  (transient #{})
+  (let [column-names (atom #{})
+        table-names  (atom #{})
         ast-walker (ASTWalker. {:column (fn [^Column column]
-                                          (conj! column-names (.getColumnName column)))
+                                          (swap! column-names conj (.getColumnName column)))
                                 :table  (fn [^Table table]
-                                          (conj! table-names (.getFullyQualifiedName table)))})]
+                                          (swap! table-names conj (.getFullyQualifiedName table)))})]
     (.walk ast-walker parsed-query)
-    {:columns (persistent! column-names)
-     :tables  (persistent! table-names)}))
+    {:columns @column-names
+     :tables  @table-names}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."

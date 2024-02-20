@@ -173,12 +173,12 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
 /**
- * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback method provided in the `callbacks` map.
- * Supported callbacks have a corresponding key string (see below).
+ * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
+ * method provided in the `callbacks` map. Supported callbacks have a corresponding key string (see below).
  *
  * Why this class? Why the callbacks?
  *
- * Clojure is not good at working with Java Visitors. They require over<em>riding</em> various over<em>loaded</em>
+ * Clojure is not good at working with Java visitors. They require over<em>riding</em> various over<em>loaded</em>
  * methods and, in the case of walking a tree (exactly what we want to do here) we of course need to call `visit()`
  * recursively.
  *
