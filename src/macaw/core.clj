@@ -17,15 +17,15 @@
 
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as found in the query'.)"
   [^Statement parsed-query]
-  (let [column-names (atom #{})
-        table-names  (atom #{})
+  (let [column-names (transient #{})
+        table-names  (transient #{})
         ast-walker (ASTWalker. {:column (fn [^Column column]
-                                          (swap! column-names conj (.getColumnName column)))
+                                          (conj! column-names (.getColumnName column)))
                                 :table  (fn [^Table table]
-                                          (swap! table-names conj (.getFullyQualifiedName table)))})]
+                                          (conj! table-names (.getFullyQualifiedName table)))})]
     (.walk ast-walker parsed-query)
-    {:columns @column-names
-     :tables  @table-names}))
+    {:columns (persistent! column-names)
+     :tables  (persistent! table-names)}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
