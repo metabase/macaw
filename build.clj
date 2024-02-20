@@ -4,9 +4,12 @@
   (:require
    [clojure.java.shell :as sh]
    [clojure.string :as str]
-   [clojure.tools.build.api :as b]))
+   [clojure.tools.build.api :as b]
+   [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'metabase/macaw)
+(def github-url "https://github.com/metabase/macaw")
+(def scm-url    "git@github.com:metabase/macaw.git")
 
 (def major-minor-version "0.1")
 
@@ -16,6 +19,12 @@
           str/trim
           parse-long)
       "9999-SNAPSHOT"))
+
+(def sha
+  (or (not-empty (System/getenv "GITHUB_SHA"))
+      (not-empty (-> (sh/sh "git" "rev-parse" "HEAD")
+                     :out
+                     str/trim))))
 
 (def version (str major-minor-version \. (commit-number)))
 (def target "target")
@@ -29,19 +38,59 @@
   (b/delete {:path target}))
 
 (defn compile [_]
+  (println "\nCompiling Java files...")
   (b/javac {:src-dirs   ["java"]
             :class-dir  class-dir
             :basis      @basis
             :javac-opts ["--release" "11"]}))
 
 (defn jar [_]
+  (println "\nStarting to build a JAR...")
   (compile nil)
+  (println "\tWriting pom.xml...")
   (b/write-pom {:class-dir class-dir
                 :lib       lib
                 :version   version
                 :basis     @basis
                 :src-dirs  ["src"]})
+  (println "\tCopying source...")
   (b/copy-dir {:src-dirs   ["src" "resources"]
                :target-dir class-dir})
+  (printf "\tBuilding %s...\n" jar-file)
   (b/jar {:class-dir class-dir
-          :jar-file  jar-file}))
+          :jar-file  jar-file})
+  (println "Done! 🦜"))
+
+(def pom-template
+  [[:description "A Clojure wrapper for JSqlParser"]
+   [:url github-url]
+   [:licenses
+    [:license
+     [:name "Eclipse Public License"]
+     [:url "http://www.eclipse.org/legal/epl-v10.html"]]]
+   [:developers
+    [:developer
+     [:name "Tim Macdonald"]]]
+   [:scm
+    [:url github-url]
+    [:connection (str "scm:git:" scm-url)]
+    [:developerConnection (str "scm:git:" scm-url)]
+    [:tag sha]]])
+
+(def default-options
+  {:lib       lib
+   :version   version
+   :jar-file  jar-file
+   :basis     (b/create-basis {})
+   :class-dir class-dir
+   :target    target
+   :src-dirs  ["src" "java"]
+   :pom-data  pom-template})
+
+(defn deploy [opts]
+  (let [opts (merge default-options opts)]
+    (printf "Deploying %s...\n" jar-file)
+    (dd/deploy {:installer :remote
+                :artifact  (b/resolve-path jar-file)
+                :pom-file  (b/pom-path (select-keys opts [:lib :class-dir]))})
+    (println "Deployed! 🦜")))
