@@ -7,7 +7,7 @@
    [clojure.tools.build.api :as b]
    [deps-deploy.deps-deploy :as dd]))
 
-(def lib 'metabase/macaw)
+(def lib 'io.github.metabase/macaw)
 (def github-url "https://github.com/metabase/macaw")
 (def scm-url    "git@github.com:metabase/macaw.git")
 
@@ -34,33 +34,6 @@
 
 (def basis (delay (b/create-basis {:project "deps.edn"})))
 
-(defn clean [_]
-  (b/delete {:path target}))
-
-(defn compile [_]
-  (println "\nCompiling Java files...")
-  (b/javac {:src-dirs   ["java"]
-            :class-dir  class-dir
-            :basis      @basis
-            :javac-opts ["--release" "11"]}))
-
-(defn jar [_]
-  (println "\nStarting to build a JAR...")
-  (compile nil)
-  (println "\tWriting pom.xml...")
-  (b/write-pom {:class-dir class-dir
-                :lib       lib
-                :version   version
-                :basis     @basis
-                :src-dirs  ["src"]})
-  (println "\tCopying source...")
-  (b/copy-dir {:src-dirs   ["src" "resources"]
-               :target-dir class-dir})
-  (printf "\tBuilding %s...\n" jar-file)
-  (b/jar {:class-dir class-dir
-          :jar-file  jar-file})
-  (println "Done! 🦜"))
-
 (def pom-template
   [[:description "A Clojure wrapper for JSqlParser"]
    [:url github-url]
@@ -81,11 +54,35 @@
   {:lib       lib
    :version   version
    :jar-file  jar-file
-   :basis     (b/create-basis {})
+   :basis     @basis
    :class-dir class-dir
    :target    target
    :src-dirs  ["src" "java"]
    :pom-data  pom-template})
+
+(defn clean [_]
+  (b/delete {:path target}))
+
+(defn compile [opts]
+  (println "\nCompiling Java files...")
+  (b/javac (merge default-options
+                  opts
+                  {:src-dirs   ["java"]
+                   :javac-opts ["--release" "11"]})))
+
+(defn jar [opts]
+  (println "\nStarting to build a JAR...")
+  (compile nil)
+  (println "\tWriting pom.xml...")
+  (b/write-pom (merge default-options opts))
+  (println "\tCopying source...")
+  (b/copy-dir {:src-dirs   ["src" "resources"]
+               :target-dir class-dir})
+  (printf "\tBuilding %s...\n" jar-file)
+  (b/jar {:class-dir class-dir
+          :jar-file  jar-file})
+  (println "Done! 🦜"))
+
 
 (defn deploy [opts]
   (let [opts (merge default-options opts)]
