@@ -46,6 +46,8 @@ jobs:
         restore-keys: |
           v1-${{ hashFiles('./deps.edn') }}-
           v1-
+    - run: clojure -T:build compile
+      name: Compile Java files
     - run: clojure -X:dev:test
       name: Run tests
       env:
@@ -102,6 +104,8 @@ jobs:
         restore-keys: |
           v1-${{ hashFiles('./deps.edn') }}-
           v1-
+    - run: clojure -T:build compile
+      name: Compile Java files
     - run: clojure -M:check
       name: Check namespaces
 

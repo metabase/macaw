@@ -1,5 +1,5 @@
 {:paths
- ["src" "resources"]
+ ["src" "java" "resources" "target/classes"]
 
  :deps
  {com.github.jsqlparser/jsqlparser {:mvn/version "4.8"}} ; The actual SQL Parser to wrap!
@@ -41,8 +41,8 @@
   {:deps       {com.github.camsaul/whitespace-linter {:sha "e35bc252ccf5cc74f7d543ef95ad8a3e5131f25b"}}
    :ns-default whitespace-linter
    :exec-fn    whitespace-linter/lint
-   :exec-args  {:paths            ["deps.edn" "src" "test" ".github"]
-                :include-patterns ["\\.clj[cs]?$" "\\.edn$" "\\.yaml$" "\\.md$"]}}
+   :exec-args  {:paths            ["deps.edn" "src" "java" "test" ".github"]
+                :include-patterns ["\\.clj[cs]?$" "\\.edn$" "\\.java$" "\\.yaml$" "\\.md$"]}}
 
   ;; Run tests
   ;;

@@ -1,26 +1,31 @@
 (ns macaw.core
   (:import
+   (com.metabase.macaw
+    ASTWalker)
    (net.sf.jsqlparser.parser
     CCJSqlParserUtil)
+   (net.sf.jsqlparser.schema
+    Column
+    Table)
    (net.sf.jsqlparser.statement
-    Statement)
-   (net.sf.jsqlparser.util
-    TablesNamesFinder)))
+    Statement)))
 
 (set! *warn-on-reflection* true)
 
-(defn query->tables
-  "Given a parsed query (i.e., a subclass of `Statement`) return a list of fully-qualified table names found within it.
+(defn query->components
+  "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the `:tables` and `:columns` found within it.
 
-  Note: 'fully-qualified'  means 'as found in the query'; it doesn't extrapolate schema names from other data sources."
+  (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
-  (let [table-finder (TablesNamesFinder.)]
-    (.getTableList table-finder parsed-query)))
-
-(defn query->columns
-  "TODO: implement!"
-  [^Statement _parsed-query]
-  ["oh no" "TODO"])
+  (let [column-names (atom #{})
+        table-names  (atom #{})
+        ast-walker (ASTWalker. {:column (fn [^Column column]
+                                          (swap! column-names conj (.getColumnName column)))
+                                :table  (fn [^Table table]
+                                          (swap! table-names conj (.getFullyQualifiedName table)))})]
+    (.walk ast-walker parsed-query)
+    {:columns @column-names
+     :tables  @table-names}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
@@ -34,7 +39,7 @@
   [tables columns]
   (let [cartesian-product (for [table tables
                                 column columns]
-                            {:table table
+                            {:table  table
                              :column column})]
     (update-vals (group-by :table cartesian-product)
                  #(merge-with concat (map :column %)))))
@@ -42,7 +47,6 @@
 (defn lineage
   "Returns a sequence of the columns used in / referenced by the query"
   [query]
-  (let [parsed (parsed-query query)
-        tables (query->tables parsed)
-        columns (query->columns parsed)]
+  (let [parsed                   (parsed-query query)
+        {:keys [columns tables]} (query->components parsed)]
     (resolve-columns tables columns)))

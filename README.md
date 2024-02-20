@@ -11,3 +11,29 @@ Macaw is a limited Clojure wrapper for
 [JSqlParser](https://github.com/JSQLParser/JSqlParser). Similar to its parrot
 namesake, it's intelligent, can be taught to speak SQL, and has many colors
 (supports many dialects).
+
+
+## Building
+
+To build a local JAR, use
+
+```
+./bin/build-jar
+```
+
+This will create a JAR in the `target` directory.
+
+## Working with the Java files
+
+To compile the Java files, use
+
+```
+./bin/compile-java
+```
+
+If you're working on Macaw and make changes to a Java file, you must:
+
+1. Recompile
+2. Restart your Clojure REPL
+
+for the changes to take effect.
