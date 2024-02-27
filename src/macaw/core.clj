@@ -22,7 +22,7 @@
         ast-walker (ASTWalker. {:column (fn [^Column column]
                                           (swap! column-names conj (.getColumnName column)))
                                 :table  (fn [^Table table]
-                                          (swap! table-names conj (.getFullyQualifiedName table)))})]
+                                          (swap! table-names conj (.getName table)))})]
     (.walk ast-walker parsed-query)
     {:columns @column-names
      :tables  @table-names}))
