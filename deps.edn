@@ -1,5 +1,10 @@
 {:paths
- ["src" "java" "resources" "target/classes"]
+ ["src" "resources" "target/classes"]
+
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
 
  :deps
  {com.github.jsqlparser/jsqlparser {:mvn/version "4.8"}} ; The actual SQL Parser to wrap!

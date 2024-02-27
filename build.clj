@@ -1,6 +1,7 @@
 ;; Further info: https://clojure.org/guides/tools_build#_mixed_java_clojure_build
 
 (ns build
+  (:refer-clojure :exclude [compile])
   (:require
    [clojure.java.shell :as sh]
    [clojure.string :as str]
