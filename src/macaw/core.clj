@@ -23,7 +23,7 @@
   [^Statement parsed-query]
   (walk-query parsed-query
               {:column #(update %1 :columns conj (.getColumnName ^Column %2))
-               :table  #(update %1 :tables conj (.getFullyQualifiedName ^Table %2))}
+               :table  #(update %1 :tables conj (.getName ^Table %2))}
               {:columns #{}
                :tables  #{}}))
 
