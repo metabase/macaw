@@ -28,7 +28,7 @@ This will create a JAR in the `target` directory.
 To compile the Java files, use
 
 ```
-./bin/compile-java
+./bin/java-compile
 ```
 
 If you're working on Macaw and make changes to a Java file, you must:
