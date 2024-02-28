@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.AllValue;
 import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.AnyComparisonExpression;
@@ -104,7 +103,6 @@ import net.sf.jsqlparser.expression.operators.relational.RegExpMatchOperator;
 import net.sf.jsqlparser.expression.operators.relational.SimilarToExpression;
 import net.sf.jsqlparser.expression.operators.relational.TSQLLeftJoin;
 import net.sf.jsqlparser.expression.operators.relational.TSQLRightJoin;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Block;
@@ -122,7 +120,6 @@ import net.sf.jsqlparser.statement.SavepointStatement;
 import net.sf.jsqlparser.statement.SetStatement;
 import net.sf.jsqlparser.statement.ShowColumnsStatement;
 import net.sf.jsqlparser.statement.ShowStatement;
-import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.StatementVisitor;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.UnsupportedStatement;
@@ -175,13 +172,13 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
  * method provided in the `callbacks` map. Supported callbacks have a corresponding key string (see below).
- *
+ * <p>
  * Why this class? Why the callbacks?
- *
+ * <p>
  * Clojure is not good at working with Java visitors. They require over<em>riding</em> various over<em>loaded</em>
  * methods and, in the case of walking a tree (exactly what we want to do here) we of course need to call `visit()`
  * recursively.
- *
+ * <p>
  * Clojure's two main ways of dealing with this are `reify`, which does not permit type-based overloading, and `proxy`,
  * which does.  However, creating a proxy object creates a completely new object that does not inherit behavior defined
  * in the parent class. Therefore, if you have code like this:
@@ -207,7 +204,7 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
  * the conventional visitor pattern, instead providing the `callbacks` map This lets Clojure code use a normal Clojure
  * map and functions to implement the necessary behavior; no `reify` necesary.
  */
-public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
+public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
        SelectItemVisitor, StatementVisitor {
 
     public static final String COLUMN_STR = "column";
@@ -215,7 +212,9 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
     public static final Set<String> SUPPORTED_CALLBACK_KEYS = Set.of(COLUMN_STR, TABLE_STR);
 
     private static final String NOT_SUPPORTED_YET = "Not supported yet.";
-    private Map<String, IFn> callbacks;
+
+    private Acc acc;
+    private final Map<String, IFn> callbacks;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map like so:
@@ -226,11 +225,12 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
      * </code></pre>
      *
      * The appropriate callback fn will be invoked for every matching element found. The list of supported keys can be found in [[SUPPORTED_CALLBACK_KEYS]].
-     *
+     * <p>
      * Silently rejects invalid keys.
      */
-    public ASTWalker(Map<Keyword, IFn> callbacksWithKeywordKeys) {
-        this.callbacks = new HashMap<String, IFn>(SUPPORTED_CALLBACK_KEYS.size());
+    public AstWalker(Map<Keyword, IFn> callbacksWithKeywordKeys, Acc val) {
+        this.acc = val;
+        this.callbacks = new HashMap<>(SUPPORTED_CALLBACK_KEYS.size());
         for(Map.Entry<Keyword, IFn> entry : callbacksWithKeywordKeys.entrySet()) {
             String keyName = entry.getKey().getName();
             if (SUPPORTED_CALLBACK_KEYS.contains(keyName)) {
@@ -245,15 +245,17 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
     public void invokeCallback(String callbackName, Object visitedItem) {
         IFn callback = this.callbacks.get(callbackName);
         if (callback != null) {
-            callback.invoke(visitedItem);
+            //noinspection unchecked
+            acc = (Acc) callback.invoke(acc, visitedItem);
         }
     }
 
     /**
      * Main entry point. Walk the given `expression`, invoking the callbacks as appropriate.
      */
-    public void walk(Expression expression) {
+    public Acc walk(Expression expression) {
         expression.accept(this);
+        return acc;
     }
 
     @Override
@@ -395,7 +397,7 @@ public class ASTWalker implements SelectVisitor, FromItemVisitor, ExpressionVisi
 
     @Override
     public void visit(Function function) {
-        ExpressionList exprList = function.getParameters();
+        ExpressionList<?> exprList = function.getParameters();
         if (exprList != null) {
             visit(exprList);
         }
