@@ -253,11 +253,19 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     /**
-     * Main entry point. Walk the given `expression`, invoking the callbacks as appropriate.
+     * Fold the given `expression`, using the callbacks to update the accumulator as appropriate.
      */
-    public Acc walk(Expression expression) {
+    public Acc fold(Expression expression) {
         expression.accept(this);
         return acc;
+    }
+
+    /**
+     * Walk the given `expression`, invoking the callbacks for side effects as appropriate.
+     */
+    public Expression walk(Expression expression) {
+        expression.accept(this);
+        return expression;
     }
 
     @Override
