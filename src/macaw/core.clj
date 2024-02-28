@@ -1,7 +1,8 @@
 (ns macaw.core
   (:import
    (com.metabase.macaw
-    AstWalker)
+    AstWalker
+    AstWalker$CallbackKey)
    (net.sf.jsqlparser.parser
     CCJSqlParserUtil)
    (net.sf.jsqlparser.schema
@@ -11,6 +12,12 @@
     Statement)))
 
 (set! *warn-on-reflection* true)
+
+(def callback-keys
+  "keyword->key map for the AST-folding callbacks."
+  ;; TODO: Move this to a Malli schema to simplify the indirection
+  {:column AstWalker$CallbackKey/COLUMN
+   :table  AstWalker$CallbackKey/TABLE})
 
 (defn- walk-query [parsed-query callbacks init-val]
   (.walk (AstWalker. callbacks init-val) parsed-query))
@@ -22,8 +29,8 @@
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
   (walk-query parsed-query
-              {:column #(update %1 :columns conj (.getColumnName ^Column %2))
-               :table  #(update %1 :tables conj (.getName ^Table %2))}
+              {(:column callback-keys) #(update %1 :columns conj (.getColumnName ^Column %2))
+               (:table callback-keys)  #(update %1 :tables conj (.getName ^Table %2))}
               {:columns #{}
                :tables  #{}}))
 
