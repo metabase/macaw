@@ -12,7 +12,8 @@
     (is (= #{"core_user"}
            (tables "select id, email from core_user;"))))
   (testing "With a schema (Postgres)" ;; TODO: only run this against supported DBs
-    (is (= #{"the_schema_name.core_user"}
+    ;; It strips the schema
+    (is (= #{"core_user"}
            (tables "select * from the_schema_name.core_user;"))))
   (testing "Sub-selects"
     (is (= #{"core_user"}
