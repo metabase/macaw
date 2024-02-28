@@ -1,7 +1,7 @@
 (ns macaw.core
   (:import
    (com.metabase.macaw
-    ASTWalker)
+    AstWalker)
    (net.sf.jsqlparser.parser
     CCJSqlParserUtil)
    (net.sf.jsqlparser.schema
@@ -12,20 +12,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- walk-query [parsed-query callbacks init-val]
+  (.walk (AstWalker. callbacks init-val) parsed-query))
+
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the `:tables` and `:columns` found within it.
 
-  (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in the query'; this function doesn't do additional inference work to find out a table's schema.)"
+  (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
+  the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
-  (let [column-names (atom #{})
-        table-names  (atom #{})
-        ast-walker (ASTWalker. {:column (fn [^Column column]
-                                          (swap! column-names conj (.getColumnName column)))
-                                :table  (fn [^Table table]
-                                          (swap! table-names conj (.getFullyQualifiedName table)))})]
-    (.walk ast-walker parsed-query)
-    {:columns @column-names
-     :tables  @table-names}))
+  (walk-query parsed-query
+              {:column #(update %1 :columns conj (.getColumnName ^Column %2))
+               :table  #(update %1 :tables conj (.getFullyQualifiedName ^Table %2))}
+              {:columns #{}
+               :tables  #{}}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
