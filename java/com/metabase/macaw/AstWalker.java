@@ -227,21 +227,18 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map like so:
      *
      * <pre><code>
-     *   (ASTWalker. {:column (fn [col] (do-something-with-the-found col))
-     *                :table  (fn [table] (...))})
+     *   (ASTWalker. {AstWalker$CallbackKey/COLUMN (fn [acc col] (do-something-with-the-found-column acc col))
+     *                AstWalker$CallbackKey/TABLE  (fn [acc table] (...))})
      * </code></pre>
      *
-     * The appropriate callback fn will be invoked for every matching element found. The list of supported keys can be found in [[SUPPORTED_CALLBACK_KEYS]].
+     * The appropriate callback fn will be invoked for every matching element found. Valid keys are of course defined by
+     * the nested [[CallbackKey]] enum.
      * <p>
      * Silently rejects invalid keys.
      */
-    public AstWalker(Map<Keyword, IFn> callbacksWithKeywordKeys, Acc val) {
+    public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
-        this.callbacks = new EnumMap<>(CallbackKey.class);
-        for(Map.Entry<Keyword, IFn> entry : callbacksWithKeywordKeys.entrySet()) {
-            CallbackKey keyName = CallbackKey.valueOf(entry.getKey().getName().toUpperCase());
-            this.callbacks.put(keyName, entry.getValue());
-        }
+        this.callbacks = new EnumMap<>(rawCallbacks);
     }
 
     /**
