@@ -20,46 +20,54 @@
           :else (recur (dec n) (inc next-id)))))))
 
 (defn- ->idx [^String sql line col]
-  (+ col 1 (index-of-nth sql "\n" (dec line))))
+  (+ col (index-of-nth sql "\n" (dec line))))
 
-(defn- splice-token [seen before [^String during offset] ^SimpleNode node ^String value]
-  (if (nil? node)
-    [during offset]
-    ;; work around ast visitor processing (inexplicably and incorrectly) duplicating expressions visits
-    (if (contains? @seen node)
-      [during offset]
-      (let [_           (vswap! seen conj node)
-            first-token (.jjtGetFirstToken node)
-            last-token  (.jjtGetLastToken node)
-            first-idx   (->idx before
-                               (.-beginLine first-token)
-                               (.-beginColumn first-token))
-            last-idx    (->idx before
-                               (.-endLine last-token)
-                               (.-endColumn last-token))
-            before      (.substring during 0 (+ offset (dec first-idx)))
-            after       (.substring during (+ offset last-idx))
-            offset'     (+ offset (- (.length value) (inc (- last-idx first-idx))))]
-        ;; Optimization: rather than incrementally building strings, we accumulate range-replacement pairs and then
-        ;;               reduce over a string builder
-        [(str before value after)
-         offset']))))
+(defn- node->idx-range
+  "Find the start and end index of the underlying tokens for a given AST node from a given SQL string."
+  [^SimpleNode node sql]
+  (let [first-token (.jjtGetFirstToken node)
+        last-token  (.jjtGetLastToken node)
+        first-idx   (->idx sql
+                           (.-beginLine first-token)
+                           (.-beginColumn first-token))
+        last-idx    (->idx sql
+                           (.-endLine last-token)
+                           (.-endColumn last-token))]
+    [first-idx last-idx]))
+
+(defn- splice-replacements [^String sql replacements]
+  (let [sb     (StringBuilder.)
+        append #(.append sb %)]
+    (loop [start 0
+           [[[first-idx last-idx] value] & rst] replacements]
+      (if (nil? last-idx)
+        (when (< start (count sql))
+          (append (.substring sql start)))
+        (do (append (.substring sql start first-idx))
+            (append value)
+            (recur (inc ^long last-idx) rst))))
+    (str sb)))
 
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
   [updated-ast sql]
-  ;; work around ast visitor processing (inexplicably and incorrectly) duplicating expressions visits
   (let [seen         (volatile! #{})
-        replace-name (fn [->s] (fn [acc visitable]
-                                 (splice-token seen sql acc
-                                               (.getASTNode ^ASTNodeAccess visitable)
-                                               (->s visitable))))]
-    (first
+        replace-name (fn [->s]
+                       (fn [acc ^ASTNodeAccess visitable]
+                         (let [node (.getASTNode visitable)]
+                           ;; work around ast walker repeatedly visiting the same expressions (bug ?!)
+                           ;; also not sure why sometimes we get a phantom visitable without an underlying node
+                           (if (or (nil? node) (contains? @seen visitable))
+                             acc
+                             (do (vswap! seen conj visitable)
+                                 (conj acc [(node->idx-range node sql) (->s visitable)]))))))]
+    (splice-replacements
+     sql
      (mw/fold-query
       updated-ast
-      {:table  (replace-name (fn [^Table table] (.getFullyQualifiedName table)))
-       :column (replace-name (fn [^Column column] (.getFullyQualifiedName column)))}
-      [sql 0]))))
+      {:table  (replace-name #(.getFullyQualifiedName ^Table %))
+       :column (replace-name #(.getFullyQualifiedName ^Column %))}
+      []))))
 
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
