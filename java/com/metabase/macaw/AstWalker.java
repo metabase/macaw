@@ -5,10 +5,9 @@ package com.metabase.macaw;
 import clojure.lang.IFn;
 import clojure.lang.Keyword;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import net.sf.jsqlparser.expression.AllValue;
 import net.sf.jsqlparser.expression.AnalyticExpression;
@@ -169,6 +168,9 @@ import net.sf.jsqlparser.statement.truncate.Truncate;
 import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
+import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
+import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
+
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
  * method provided in the `callbacks` map. Supported callbacks have a corresponding key string (see below).
@@ -207,14 +209,19 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
        SelectItemVisitor, StatementVisitor {
 
-    public static final String COLUMN_STR = "column";
-    public static final String TABLE_STR = "table";
-    public static final Set<String> SUPPORTED_CALLBACK_KEYS = Set.of(COLUMN_STR, TABLE_STR);
+    public enum CallbackKey {
+        COLUMN,
+        TABLE;
+
+        public String toString() {
+            return name().toLowerCase();
+        }
+    }
 
     private static final String NOT_SUPPORTED_YET = "Not supported yet.";
 
     private Acc acc;
-    private final Map<String, IFn> callbacks;
+    private final EnumMap<CallbackKey, IFn> callbacks;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map like so:
@@ -230,20 +237,18 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      */
     public AstWalker(Map<Keyword, IFn> callbacksWithKeywordKeys, Acc val) {
         this.acc = val;
-        this.callbacks = new HashMap<>(SUPPORTED_CALLBACK_KEYS.size());
+        this.callbacks = new EnumMap<>(CallbackKey.class);
         for(Map.Entry<Keyword, IFn> entry : callbacksWithKeywordKeys.entrySet()) {
-            String keyName = entry.getKey().getName();
-            if (SUPPORTED_CALLBACK_KEYS.contains(keyName)) {
-                this.callbacks.put(keyName, entry.getValue());
-            }
+            CallbackKey keyName = CallbackKey.valueOf(entry.getKey().getName().toUpperCase());
+            this.callbacks.put(keyName, entry.getValue());
         }
     }
 
     /**
      * Safely invoke the given callback by name.
      */
-    public void invokeCallback(String callbackName, Object visitedItem) {
-        IFn callback = this.callbacks.get(callbackName);
+    public void invokeCallback(CallbackKey key, Object visitedItem) {
+        IFn callback = this.callbacks.get(key);
         if (callback != null) {
             //noinspection unchecked
             acc = (Acc) callback.invoke(acc, visitedItem);
@@ -340,7 +345,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Table table) {
-        invokeCallback(TABLE_STR, table);
+        invokeCallback(TABLE, table);
     }
 
     @Override
@@ -368,7 +373,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Column tableColumn) {
-        invokeCallback(COLUMN_STR, tableColumn);
+        invokeCallback(COLUMN, tableColumn);
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
