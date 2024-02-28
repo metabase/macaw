@@ -51,16 +51,13 @@
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
   [updated-ast sql]
-  (let [seen         (volatile! #{})
-        replace-name (fn [->s]
+  (let [replace-name (fn [->s]
                        (fn [acc ^ASTNodeAccess visitable]
                          (let [node (.getASTNode visitable)]
-                           ;; work around ast walker repeatedly visiting the same expressions (bug ?!)
-                           ;; also not sure why sometimes we get a phantom visitable without an underlying node
-                           (if (or (nil? node) (contains? @seen visitable))
+                           ;; not sure why sometimes we get a phantom visitable without an underlying node
+                           (if (nil? node)
                              acc
-                             (do (vswap! seen conj visitable)
-                                 (conj acc [(node->idx-range node sql) (->s visitable)]))))))]
+                             (conj acc [(node->idx-range node sql) (->s visitable)])))))]
     (splice-replacements
      sql
      (mw/fold-query

@@ -17,17 +17,26 @@
     (f v)
     acc))
 
+;; work around ast walker repeatedly visiting the same expressions (bug ?!)
+(defn- deduplicate-visits [f]
+  (let [seen (volatile! #{})]
+    (fn [acc visitable]
+      (if (contains? @seen visitable)
+        acc
+        (do (vswap! seen conj visitable)
+            (f acc visitable))))))
+
 (defn- update-keys-vals [m key-f val-f]
   (into {} (map (fn [[k v]] [(key-f k) (val-f v)])) m))
 
 (defn walk-query
   "Walk over the query's AST, using the callbacks for their side-effects, for example to mutate the AST itself."
   [parsed-query callbacks]
-  (let [callbacks (update-keys-vals callbacks ->callback-key preserve)]
+  (let [callbacks (update-keys-vals callbacks ->callback-key (comp deduplicate-visits preserve))]
     (.walk (AstWalker. callbacks ::ignored) parsed-query)))
 
 (defn fold-query
   "Fold over the query's AST, using the callbacks to update the accumulator."
   [parsed-query callbacks init-val]
-  (let [callbacks (update-keys callbacks ->callback-key)]
+  (let [callbacks (update-keys-vals callbacks ->callback-key deduplicate-visits)]
     (.fold (AstWalker. callbacks init-val) parsed-query)))
