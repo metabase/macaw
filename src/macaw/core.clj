@@ -1,26 +1,13 @@
 (ns macaw.core
+  (:require
+   [macaw.rewrite :as rewrite]
+   [macaw.walk :as mw])
   (:import
-   (com.metabase.macaw
-    AstWalker
-    AstWalker$CallbackKey)
-   (net.sf.jsqlparser.parser
-    CCJSqlParserUtil)
-   (net.sf.jsqlparser.schema
-    Column
-    Table)
-   (net.sf.jsqlparser.statement
-    Statement)))
+   (net.sf.jsqlparser.parser CCJSqlParserUtil)
+   (net.sf.jsqlparser.schema Column Table)
+   (net.sf.jsqlparser.statement Statement)))
 
 (set! *warn-on-reflection* true)
-
-(def callback-keys
-  "keyword->key map for the AST-folding callbacks."
-  ;; TODO: Move this to a Malli schema to simplify the indirection
-  {:column AstWalker$CallbackKey/COLUMN
-   :table  AstWalker$CallbackKey/TABLE})
-
-(defn- walk-query [parsed-query callbacks init-val]
-  (.walk (AstWalker. callbacks init-val) parsed-query))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the `:tables` and `:columns` found within it.
@@ -28,11 +15,11 @@
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
-  (walk-query parsed-query
-              {(:column callback-keys) #(update %1 :columns conj (.getColumnName ^Column %2))
-               (:table callback-keys)  #(update %1 :tables conj (.getName ^Table %2))}
-              {:columns #{}
-               :tables  #{}}))
+  (mw/fold-query parsed-query
+                 {:column #(update %1 :columns conj (.getColumnName ^Column %2))
+                  :table  #(update %1 :tables conj (.getName ^Table %2))}
+                 {:columns #{}
+                  :tables  #{}}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
@@ -57,3 +44,8 @@
   (let [parsed                   (parsed-query query)
         {:keys [columns tables]} (query->components parsed)]
     (resolve-columns tables columns)))
+
+(defn replace-names
+  "Given a SQL query, apply the given table and column renames."
+  [sql renames]
+  (rewrite/replace-names sql (parsed-query sql) renames))
