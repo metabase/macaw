@@ -19,15 +19,15 @@
 (defn- query->raw-components
   [^Statement parsed-query]
   (mw/fold-query parsed-query
-                 {:column     (conj-to :columns)
-                  :star       (fn [results _all-columns]
-                                (assoc results :select-star? true))
-                  :table      (conj-to :tables)
-                  :table-star (conj-to :table-stars)}
+                 {:column         (conj-to :columns)
+                  :wildcard       (fn [results _all-columns]
+                                    (assoc results :has-wildcard? true))
+                  :table          (conj-to :tables)
+                  :table-wildcard (conj-to :table-wildcards)}
                  {:columns      #{}
-                  :select-star? false
+                  :has-wildcard? false
                   :tables       #{}
-                  :table-stars  #{}}))
+                  :table-wildcards  #{}}))
 
 (defn- alias-mapping
   [^Table table]
@@ -37,7 +37,7 @@
 (defn- resolve-table-name
   "JSQLParser can't tell whether the `f` in `select f.*` refers to a real table or an alias. Therefore, we have to
   disambiguate them based on our own map of aliases->table names. So this function will return the real name of the table
-  referenced in a table-star (as far as can be determined from the query)."
+  referenced in a table-wildcard (as far as can be determined from the query)."
   [alias->name ^AllTableColumns atc]
   (let [table-name (-> atc .getTable .getName)]
     (or (alias->name table-name)
@@ -54,12 +54,13 @@
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [^Statement parsed-query]
-  (let [{:keys [columns select-star? tables table-stars]} (query->raw-components parsed-query)
-        aliases                                           (into {} (map alias-mapping tables))]
-    {:columns      (into #{} (map #(.getColumnName ^Column %) columns))
-     :select-star? select-star?
-     :tables       (into #{} (remove-aliases aliases (map #(.getName ^Table %) tables)))
-     :table-stars  (into #{} (map (partial resolve-table-name aliases) table-stars))}))
+  (let [{:keys [columns has-wildcard?
+                tables table-wildcards]} (query->raw-components parsed-query)
+        aliases                          (into {} (map alias-mapping tables))]
+    {:columns         (into #{} (map #(.getColumnName ^Column %) columns))
+     :has-wildcard?   has-wildcard?
+     :tables          (into #{} (remove-aliases aliases (map #(.getName ^Table %) tables)))
+     :table-wildcards (into #{} (map (partial resolve-table-name aliases) table-wildcards))}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
@@ -68,7 +69,6 @@
 
 (defn resolve-columns
   "TODO: Make this use metadata we know about.
-  TODO: If nil is a column (from a select *) then no need for the rest of the entries
   TODO: might want to live in another ns"
   [tables columns]
   (let [cartesian-product (for [table  tables

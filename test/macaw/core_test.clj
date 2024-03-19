@@ -3,11 +3,11 @@
    [clojure.test :refer [deftest testing is]]
    [macaw.core :as m]))
 
-(def components   (comp m/query->components m/parsed-query))
-(def columns      (comp :columns components))
-(def select-star? (comp :select-star? components))
-(def tables       (comp :tables components))
-(def table-stars  (comp :table-stars components))
+(def components    (comp m/query->components m/parsed-query))
+(def columns       (comp :columns components))
+(def has-wildcard? (comp :has-wildcard? components))
+(def tables        (comp :tables components))
+(def table-wcs     (comp :table-wildcards components))
 
 (deftest query->tables-test
   (testing "Simple queries"
@@ -22,6 +22,16 @@
   (testing "Sub-selects"
     (is (= #{"core_user"}
            (tables "select * from (select distinct email from core_user) q;")))))
+
+(deftest issue-14-tables-with-complex-aliases-test
+  (testing "With an alias that is also a table name"
+    #_(is (= #{"user" "user2_final"}
+           (tables
+            "SELECT legacy_user.id AS old_id,
+                    user.id AS new_id
+             FROM user AS legacy_user
+             OUTER JOIN user2_final AS user
+             ON legacy_user.email = user2_final.email;")))))
 
 (deftest query->columns-test
   (testing "Simple queries"
@@ -40,20 +50,20 @@
            (m/resolve-columns ["core_user" "report_card"] cols)))))
 
 (deftest select-*-test
-  (is (true? (select-star? "select * from orders")))
-  (is (true? (select-star? "select id, * from orders join foo on orders.id = foo.order_id"))))
+  (is (true? (has-wildcard? "select * from orders")))
+  (is (true? (has-wildcard? "select id, * from orders join foo on orders.id = foo.order_id"))))
 
-(deftest table-star-test-without-aliases
+(deftest table-wildcard-test-without-aliases
   (is (= #{"orders"}
-         (table-stars "select orders.* from orders join foo on orders.id = foo.order_id")))
+         (table-wcs "select orders.* from orders join foo on orders.id = foo.order_id")))
     (is (= #{"foo"}
-         (table-stars "select foo.* from orders join foo on orders.id = foo.order_id"))))
+         (table-wcs "select foo.* from orders join foo on orders.id = foo.order_id"))))
 
 (deftest table-star-test-with-aliases
   (is (= #{"orders"}
-         (table-stars "select o.* from orders o join foo on orders.id = foo.order_id")))
+         (table-wcs "select o.* from orders o join foo on orders.id = foo.order_id")))
     (is (= #{"foo"}
-         (table-stars "select f.* from orders o join foo f on orders.id = foo.order_id"))))
+         (table-wcs "select f.* from orders o join foo f on orders.id = foo.order_id"))))
 
 (defn test-replacement [before replacements after]
   (is (= after (m/replace-names before replacements))))
