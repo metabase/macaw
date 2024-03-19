@@ -768,15 +768,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(AllColumns allColumns) {
-        // This should only exist in to visit(AllTableColumns ...) once we're on JSQLP 4.9, but due to a bug in 4.8 it's
-        // necessary here since AllTableColumns.visit() isn't implemented by mistake.
-        // c.f. https://github.com/JSQLParser/JSqlParser/pull/1942
-        if(allColumns instanceof AllTableColumns) {
-            invokeCallback(ALL_TABLE_COLUMNS, allColumns);
-        }
-        else {
-            invokeCallback(ALL_COLUMNS, allColumns);
-        }
+        invokeCallback(ALL_COLUMNS, allColumns);
     }
 
     @Override
