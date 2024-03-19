@@ -21,7 +21,7 @@
   (mw/fold-query parsed-query
                  {:column     (conj-to :columns)
                   :star       (fn [results _all-columns]
-                                (update results :select-star? (constantly true)))
+                                (assoc results :select-star? true))
                   :table      (conj-to :tables)
                   :table-star (conj-to :table-stars)}
                  {:columns      #{}

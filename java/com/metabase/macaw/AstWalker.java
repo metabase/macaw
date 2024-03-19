@@ -228,8 +228,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     private final EnumMap<CallbackKey, IFn> callbacks;
 
     /**
-     * Construct a new walker with the given `callbacks`. The `callbacks`
-     * should be a (Clojure) map of CallbackKeys to reducing functions.
+     * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
+     * reducing functions.
      *
      * c.f. the Clojure wrapper in <code>macaw.walk</code>
      */
@@ -393,7 +393,6 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
         }
-
     }
 
     @Override
