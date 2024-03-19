@@ -15,7 +15,7 @@
                             #_(= (last (str sexpr)) \!))
                     (hooks/reg-finding! (assoc (meta form)
                                                :message (format "%s is not allowed inside a ^:parallel test" sexpr)
-                                               :type :toucan2/validate-deftest)))))))
+                                               :type :macaw/validate-deftest)))))))
           (walk [form]
             (f form)
             (doseq [child (:children form)]
@@ -38,11 +38,11 @@
     (when-not (or parallel? synchronized?)
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should be marked either ^:parallel or ^:synchronized"
-                                 :type :second-date/validate-deftest)))
+                                 :type :macaw/validate-deftest)))
     (when (and parallel? synchronized?)
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
-                                 :type :second-date/validate-deftest)))
+                                 :type :macaw/validate-deftest)))
     (when parallel?
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form))))

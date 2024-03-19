@@ -1,4 +1,4 @@
-(ns macaw.core-test
+(ns ^:parallel macaw.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
    [macaw.core :as m]))
@@ -9,9 +9,7 @@
 (def tables       (comp :tables components))
 (def table-stars  (comp :table-stars components))
 
-
-
-(deftest ^:parallel query->tables-test
+(deftest query->tables-test
   (testing "Simple queries"
     (is (= #{"core_user"}
            (tables "select * from core_user;")))
@@ -25,33 +23,33 @@
     (is (= #{"core_user"}
            (tables "select * from (select distinct email from core_user) q;")))))
 
-(deftest ^:parallel query->columns-test
+(deftest query->columns-test
   (testing "Simple queries"
     (is (= #{"foo" "bar" "id" "quux_id"}
            (columns "select foo, bar from baz inner join quux on quux.id = baz.quux_id")))))
 
-(deftest ^:parallel alias-inclusion-test
+(deftest alias-inclusion-test
   (testing "Aliases are not included"
     (is (= #{"orders" "foo"}
            (tables "select id, o.id from orders o join foo on orders.id = foo.order_id")))))
 
-(deftest ^:parallel resolve-columns-test
+(deftest resolve-columns-test
   (let [cols ["name" "id" "email"]]
     (is (= {"core_user"   cols
             "report_card" cols}
            (m/resolve-columns ["core_user" "report_card"] cols)))))
 
-(deftest ^:parallel select-*-test
+(deftest select-*-test
   (is (true? (select-star? "select * from orders")))
   (is (true? (select-star? "select id, * from orders join foo on orders.id = foo.order_id"))))
 
-(deftest ^:parallel table-star-test-without-aliases
+(deftest table-star-test-without-aliases
   (is (= #{"orders"}
          (table-stars "select orders.* from orders join foo on orders.id = foo.order_id")))
     (is (= #{"foo"}
          (table-stars "select foo.* from orders join foo on orders.id = foo.order_id"))))
 
-(deftest ^:parallel table-star-test-with-aliases
+(deftest table-star-test-with-aliases
   (is (= #{"orders"}
          (table-stars "select o.* from orders o join foo on orders.id = foo.order_id")))
     (is (= #{"foo"}
@@ -60,7 +58,7 @@
 (defn test-replacement [before replacements after]
   (is (= after (m/replace-names before replacements))))
 
-(deftest ^:parallel replace-names-test
+(deftest replace-names-test
   (test-replacement "select a.x, b.y from a, b;"
                     {:tables {"a" "aa"}
                      :columns  {"x" "xx"}}
