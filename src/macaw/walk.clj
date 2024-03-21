@@ -7,8 +7,10 @@
 (def ->callback-key
   "keyword->key map for the AST-folding callbacks."
   ;; TODO: Move this to a Malli schema to simplify the indirection
-  {:column AstWalker$CallbackKey/COLUMN
-   :table  AstWalker$CallbackKey/TABLE})
+  {:column         AstWalker$CallbackKey/COLUMN
+   :table          AstWalker$CallbackKey/TABLE
+   :table-wildcard AstWalker$CallbackKey/ALL_TABLE_COLUMNS
+   :wildcard       AstWalker$CallbackKey/ALL_COLUMNS})
 
 (defn- preserve
   "Lift a side effecting callback so that it preserves the accumulator."

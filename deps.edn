@@ -7,7 +7,7 @@
   :ensure "target/classes"}
 
  :deps
- {com.github.jsqlparser/jsqlparser {:mvn/version "4.8"}} ; The actual SQL Parser to wrap!
+ {com.github.jsqlparser/jsqlparser {:mvn/version "4.9"}} ; The actual SQL Parser to wrap!
 
 
  :aliases

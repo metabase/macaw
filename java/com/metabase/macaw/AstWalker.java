@@ -168,6 +168,8 @@ import net.sf.jsqlparser.statement.truncate.Truncate;
 import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
+import static com.metabase.macaw.AstWalker.CallbackKey.ALL_COLUMNS;
+import static com.metabase.macaw.AstWalker.CallbackKey.ALL_TABLE_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
 import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
 
@@ -210,6 +212,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
        SelectItemVisitor, StatementVisitor {
 
     public enum CallbackKey {
+        ALL_COLUMNS,
+        ALL_TABLE_COLUMNS,
         COLUMN,
         TABLE;
 
@@ -224,17 +228,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     private final EnumMap<CallbackKey, IFn> callbacks;
 
     /**
-     * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map like so:
+     * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
+     * reducing functions.
      *
-     * <pre><code>
-     *   (ASTWalker. {AstWalker$CallbackKey/COLUMN (fn [acc col] (do-something-with-the-found-column acc col))
-     *                AstWalker$CallbackKey/TABLE  (fn [acc table] (...))})
-     * </code></pre>
-     *
-     * The appropriate callback fn will be invoked for every matching element found. Valid keys are of course defined by
-     * the nested [[CallbackKey]] enum.
-     * <p>
-     * Silently rejects invalid keys.
+     * c.f. the Clojure wrapper in <code>macaw.walk</code>
      */
     public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
@@ -379,6 +376,19 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     @Override
     public void visit(Column tableColumn) {
         invokeCallback(COLUMN, tableColumn);
+
+        // The below is frustrating: it's counterproductive for table-finding, since at best it's not needed and at
+        // worst it visits aliased tables, causing bugs we've chosen to fix on the Clojure side. e.g.
+        //
+        // select o.id from orders o;
+        //
+        // will incorrectly list `o` as a table (from the `o.id` term).
+        //
+        // However, it's necessary for table name rewriting: if you try to rename `orders` to `purchases` in this:
+        //
+        // select orders.id from orders;
+        //
+        // you need to visit the `orders` in `orders.id`. That table is distinct from the one in `from orders`.
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
             visit(tableColumn.getTable());
@@ -758,12 +768,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(AllColumns allColumns) {
-
+        invokeCallback(ALL_COLUMNS, allColumns);
     }
 
     @Override
     public void visit(AllTableColumns allTableColumns) {
-
+        invokeCallback(ALL_TABLE_COLUMNS, allTableColumns);
     }
 
     @Override
