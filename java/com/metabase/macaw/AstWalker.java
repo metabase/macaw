@@ -146,6 +146,8 @@ import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.refresh.RefreshMaterializedViewStatement;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
+import net.sf.jsqlparser.statement.select.GroupByElement;
+import net.sf.jsqlparser.statement.select.GroupByVisitor;
 import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
@@ -209,7 +211,7 @@ import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
  * map and functions to implement the necessary behavior; no `reify` necesary.
  */
 public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
-       SelectItemVisitor, StatementVisitor {
+       SelectItemVisitor, StatementVisitor, GroupByVisitor {
 
     public enum CallbackKey {
         ALL_COLUMNS,
@@ -342,6 +344,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
         if (plainSelect.getOracleHierarchical() != null) {
             plainSelect.getOracleHierarchical().accept(this);
+        }
+
+        if (plainSelect.getGroupBy() != null) {
+            plainSelect.getGroupBy().accept(this);
         }
     }
 
@@ -799,7 +805,6 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     @Override
     public void visit(NumericBind bind) {
 
-
     }
 
     @Override
@@ -967,7 +972,6 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     @Override
     public void visit(HexValue hexValue) {
 
-
     }
 
     @Override
@@ -1012,12 +1016,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     @Override
     public void visit(DateTimeLiteralExpression literal) {
 
-
     }
 
     @Override
     public void visit(Commit commit) {
-
 
     }
 
@@ -1042,6 +1044,14 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         parenthesis.getFromItem().accept(this);
         // support join keyword in fromItem
         visitJoins(parenthesis.getJoins());
+    }
+
+    @Override
+    public void visit(GroupByElement element) {
+        element.getGroupByExpressionList().accept(this);
+        for (ExpressionList exprList : element.getGroupingSets()) {
+            exprList.accept(this);
+        }
     }
 
     /**

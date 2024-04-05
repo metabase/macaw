@@ -36,7 +36,10 @@
 (deftest query->columns-test
   (testing "Simple queries"
     (is (= #{"foo" "bar" "id" "quux_id"}
-           (columns "select foo, bar from baz inner join quux on quux.id = baz.quux_id")))))
+           (columns "select foo, bar from baz inner join quux on quux.id = baz.quux_id"))))
+  (testing "'group by' columns present"
+    (is (= #{"id" "user_id"}
+           (columns "select id from orders group by user_id")))))
 
 (deftest alias-inclusion-test
   (testing "Aliases are not included"

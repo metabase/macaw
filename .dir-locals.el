@@ -1,11 +1,15 @@
 ((nil . ((indent-tabs-mode . nil)       ; always use spaces for tabs
          (require-final-newline . t)))  ; add final newline on save
  (clojure-mode . ((cider-preferred-build-tool . clojure-cli)
-                  (cider-clojure-cli-aliases . "dev")
+                  (cider-clojure-cli-aliases . "dev:user")
                   (cljr-favor-prefix-notation . nil)
-                  (fill-column . 120)
-                  (column-enforce-column . 120)
-                  (clojure-docstring-fill-column . 120)
+                  ;; prefer keeping source width about ~118, GitHub seems to cut
+                  ;; off stuff at either 119 or 120 and it's nicer to look at
+                  ;; code in GH when you don't have to scroll back and forth
+                  (fill-column . 118)
+                  (whitespace-line-column . 118)
+                  (column-enforce-column . 118)
+                  (clojure-docstring-fill-column . 118)
                   (eval . (put-clojure-indent 'with-meta '(:form)))
                   (eval . (put-clojure-indent 'with-bindings* '(:form)))))
  (markdown-mode . ((fill-column . 80)
