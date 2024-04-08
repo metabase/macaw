@@ -89,6 +89,24 @@
   (is (= #{"update"}
          (mutations "UPDATE people SET name = 'Robert Fergusson' WHERE id = 23"))))
 
+(deftest complicated-mutations-test
+  ;; https://github.com/metabase/macaw/issues/18
+  #_  (is (= #{"delete" "insert"}
+             (mutations "WITH outdated_orders AS (
+                       DELETE FROM orders
+                       WHERE
+                         date <= '2018-01-01'
+                       RETURNING *
+                     )
+                     INSERT INTO order_log
+                     SELECT * from outdated_orders;")))
+    (is (= #{ "insert"}
+         (mutations "WITH outdated_orders AS (
+                       SELECT * from orders
+                     )
+                     INSERT INTO order_log
+                     SELECT * from outdated_orders;"))))
+
 (deftest alias-inclusion-test
   (testing "Aliases are not included"
     (is (= #{"orders" "foo"}
