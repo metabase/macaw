@@ -120,6 +120,7 @@ import net.sf.jsqlparser.statement.SetStatement;
 import net.sf.jsqlparser.statement.ShowColumnsStatement;
 import net.sf.jsqlparser.statement.ShowStatement;
 import net.sf.jsqlparser.statement.StatementVisitor;
+import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.Statements;
 import net.sf.jsqlparser.statement.UnsupportedStatement;
 import net.sf.jsqlparser.statement.UseStatement;
@@ -173,6 +174,7 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 import static com.metabase.macaw.AstWalker.CallbackKey.ALL_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.ALL_TABLE_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
+import static com.metabase.macaw.AstWalker.CallbackKey.MUTATION_COMMAND;
 import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
 
 /**
@@ -217,6 +219,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         ALL_COLUMNS,
         ALL_TABLE_COLUMNS,
         COLUMN,
+        MUTATION_COMMAND,
         TABLE;
 
         public String toString() {
@@ -247,16 +250,24 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         IFn callback = this.callbacks.get(key);
         if (callback != null) {
             //noinspection unchecked
-            acc = (Acc) callback.invoke(acc, visitedItem);
+            this.acc = (Acc) callback.invoke(acc, visitedItem);
         }
     }
 
     /**
-     * Fold the given `expression`, using the callbacks to update the accumulator as appropriate.
+     * Fold the given `expressionOrStatement`, using the callbacks to update the accumulator as appropriate.
      */
-    public Acc fold(Expression expression) {
-        expression.accept(this);
-        return acc;
+    public Acc fold(Object expressionOrStatement) {
+        if (expressionOrStatement instanceof Expression) {
+            ((Expression)expressionOrStatement).accept(this);
+        }
+        else if (expressionOrStatement instanceof Statement) {
+            ((Statement)expressionOrStatement).accept(this);
+        }
+        else {
+            throw new IllegalArgumentException("`expressionOrStatement` is neither an Expression nor a Statement");
+        }
+        return this.acc;
     }
 
     /**
@@ -819,6 +830,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Delete delete) {
+        invokeCallback(MUTATION_COMMAND, "delete");
         visit(delete.getTable());
 
         if (delete.getUsingList() != null) {
@@ -836,6 +848,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Update update) {
+        invokeCallback(MUTATION_COMMAND, "update");
         visit(update.getTable());
         if (update.getWithItemsList() != null) {
             for (WithItem withItem : update.getWithItemsList()) {
@@ -874,6 +887,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Insert insert) {
+        invokeCallback(MUTATION_COMMAND, "insert");
         visit(insert.getTable());
         if (insert.getWithItemsList() != null) {
             for (WithItem withItem : insert.getWithItemsList()) {
@@ -891,26 +905,29 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Drop drop) {
+        invokeCallback(MUTATION_COMMAND, "drop");
         visit(drop.getName());
     }
 
     @Override
     public void visit(Truncate truncate) {
+        invokeCallback(MUTATION_COMMAND, "truncate");
         visit(truncate.getTable());
     }
 
     @Override
     public void visit(CreateIndex createIndex) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        invokeCallback(MUTATION_COMMAND, "create-index");
     }
 
     @Override
     public void visit(CreateSchema aThis) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        invokeCallback(MUTATION_COMMAND, "create-schema");
     }
 
     @Override
     public void visit(CreateTable create) {
+        invokeCallback(MUTATION_COMMAND, "create-table");
         visit(create.getTable());
         if (create.getSelect() != null) {
             create.getSelect().accept((SelectVisitor) this);
@@ -919,12 +936,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(CreateView createView) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        invokeCallback(MUTATION_COMMAND, "create-view");
     }
 
     @Override
     public void visit(Alter alter) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        invokeCallback(MUTATION_COMMAND, "alter-table");
     }
 
     @Override
@@ -1000,7 +1017,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(AlterView alterView) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        invokeCallback(MUTATION_COMMAND, "alter-view");
     }
 
     @Override
@@ -1136,8 +1153,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Grant grant) {
-
-
+        invokeCallback(MUTATION_COMMAND, "grant");
     }
 
     @Override
@@ -1163,20 +1179,17 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(CreateSequence createSequence) {
-        throw new UnsupportedOperationException(
-                "Reading from a CreateSequence is not supported");
+        invokeCallback(MUTATION_COMMAND, "create-sequence");
     }
 
     @Override
     public void visit(AlterSequence alterSequence) {
-        throw new UnsupportedOperationException(
-                "Reading from an AlterSequence is not supported");
+        invokeCallback(MUTATION_COMMAND, "alter-sequence");
     }
 
     @Override
     public void visit(CreateFunctionalStatement createFunctionalStatement) {
-        throw new UnsupportedOperationException(
-                "Reading from a CreateFunctionalStatement is not supported");
+        invokeCallback(MUTATION_COMMAND, "create-function");
     }
 
     @Override
@@ -1208,8 +1221,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(CreateSynonym createSynonym) {
-        throw new UnsupportedOperationException(
-                "Reading from a CreateSynonym is not supported");
+        invokeCallback(MUTATION_COMMAND, "create-synonym");
     }
 
     @Override
@@ -1227,7 +1239,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(AlterSession alterSession) {
-
+        invokeCallback(MUTATION_COMMAND, "alter-session");
     }
 
     @Override
@@ -1268,6 +1280,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(RenameTableStatement renameTableStatement) {
+        invokeCallback(MUTATION_COMMAND, "rename-table");
         for (Map.Entry<Table, Table> e : renameTableStatement.getTableNames()) {
             e.getKey().accept(this);
             e.getValue().accept(this);
@@ -1276,6 +1289,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(PurgeStatement purgeStatement) {
+        invokeCallback(MUTATION_COMMAND, "purge");
         if (purgeStatement.getPurgeObjectType() == PurgeObjectType.TABLE) {
             ((Table) purgeStatement.getObject()).accept(this);
         }
@@ -1283,6 +1297,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(AlterSystemStatement alterSystemStatement) {
+        invokeCallback(MUTATION_COMMAND, "alter-system");
     }
 
     @Override
