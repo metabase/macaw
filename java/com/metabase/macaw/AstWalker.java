@@ -255,18 +255,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     /**
-     * Fold the given `expressionOrStatement`, using the callbacks to update the accumulator as appropriate.
+     * Fold the given `statement`, using the callbacks to update the accumulator as appropriate.
      */
-    public Acc fold(Object expressionOrStatement) {
-        if (expressionOrStatement instanceof Expression) {
-            ((Expression)expressionOrStatement).accept(this);
-        }
-        else if (expressionOrStatement instanceof Statement) {
-            ((Statement)expressionOrStatement).accept(this);
-        }
-        else {
-            throw new IllegalArgumentException("`expressionOrStatement` is neither an Expression nor a Statement");
-        }
+    public Acc fold(Statement statement) {
+        statement.accept(this);
         return this.acc;
     }
 
