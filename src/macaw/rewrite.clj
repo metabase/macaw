@@ -52,7 +52,7 @@
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
   [updated-ast sql]
   (let [replace-name (fn [->s]
-                       (fn [acc ^ASTNodeAccess visitable]
+                       (fn [acc ^ASTNodeAccess visitable _ctx]
                          (let [node (.getASTNode visitable)]
                            ;; not sure why sometimes we get a phantom visitable without an underlying node
                            (if (nil? node)
@@ -67,7 +67,7 @@
       []))))
 
 (defn- rename-table
-  [table-renames ^Table table]
+  [table-renames ^Table table _ctx]
   (when-let [name' (get table-renames (.getName table))]
     (.setName table name')))
 
@@ -78,6 +78,6 @@
       (mw/walk-query
        {:table            (partial rename-table table-renames)
         :column-qualifier (partial rename-table table-renames)
-        :column           (fn [^Column column] (when-let [name' (get column-renames (.getColumnName column))]
-                                                 (.setColumnName column name')))})
+        :column           (fn [^Column column _ctx] (when-let [name' (get column-renames (.getColumnName column))]
+                                                      (.setColumnName column name')))})
       (update-query sql)))

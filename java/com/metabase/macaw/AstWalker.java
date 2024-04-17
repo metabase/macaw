@@ -5,6 +5,8 @@ package com.metabase.macaw;
 import clojure.lang.IFn;
 import clojure.lang.Keyword;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -171,12 +173,9 @@ import net.sf.jsqlparser.statement.truncate.Truncate;
 import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
-import static com.metabase.macaw.AstWalker.CallbackKey.ALL_COLUMNS;
-import static com.metabase.macaw.AstWalker.CallbackKey.ALL_TABLE_COLUMNS;
-import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
-import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN_QUALIFIER;
-import static com.metabase.macaw.AstWalker.CallbackKey.MUTATION_COMMAND;
-import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
+import static com.metabase.macaw.AstWalker.CallbackKey.*;
+
+import static com.metabase.macaw.AstWalker.QueryContext.*;
 
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
@@ -229,10 +228,30 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
     }
 
+    public enum QueryContext {
+        DELETE,
+        ELSE,
+        FROM,
+        GROUP_BY,
+        HAVING,
+        IF,
+        INSERT,
+        JOIN,
+        SELECT,
+        SUB_SELECT,
+        UPDATE,
+        WHERE;
+
+        public String toString() {
+            return name().toUpperCase();
+        }
+    }
+
     private static final String NOT_SUPPORTED_YET = "Not supported yet.";
 
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
+    private final Deque<String> contextStack;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
@@ -243,6 +262,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
         this.callbacks = new EnumMap<>(rawCallbacks);
+        this.contextStack = new ArrayDeque<String>();
     }
 
     /**
@@ -252,8 +272,17 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         IFn callback = this.callbacks.get(key);
         if (callback != null) {
             //noinspection unchecked
-            this.acc = (Acc) callback.invoke(acc, visitedItem);
+            this.acc = (Acc) callback.invoke(acc, visitedItem, this.contextStack.toArray());
         }
+    }
+
+    private void pushContext(QueryContext c) {
+        this.contextStack.push(c.toString());
+    }
+
+    // This is pure sugar, but it's nice to be symmetrical with pushContext
+    private void popContext() {
+        this.contextStack.pop();
     }
 
     /**
@@ -274,6 +303,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Select select) {
+        // No pushContext(SELECT) since it's handled by the ParenthesedSelect and PlainSelect methods
         List<WithItem> withItemsList = select.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
@@ -294,7 +324,9 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             trimFunction.getExpression().accept(this);
         }
         if (trimFunction.getFromExpression() != null) {
+            pushContext(FROM);
             trimFunction.getFromExpression().accept(this);
+            popContext(); // FROM
         }
     }
 
@@ -311,6 +343,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(ParenthesedSelect selectBody) {
+        pushContext(SUB_SELECT);
         List<WithItem> withItemsList = selectBody.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
@@ -318,10 +351,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             }
         }
         selectBody.getSelect().accept((SelectVisitor) this);
+        popContext(); // SUB_SELECT
     }
 
     @Override
     public void visit(PlainSelect plainSelect) {
+        pushContext(SELECT);
         List<WithItem> withItemsList = plainSelect.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
@@ -335,16 +370,22 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
 
         if (plainSelect.getFromItem() != null) {
+            pushContext(FROM);
             plainSelect.getFromItem().accept(this);
+            popContext(); // FROM
         }
 
         visitJoins(plainSelect.getJoins());
         if (plainSelect.getWhere() != null) {
+            pushContext(WHERE);
             plainSelect.getWhere().accept(this);
+            popContext(); // WHERE
         }
 
         if (plainSelect.getHaving() != null) {
+            pushContext(HAVING);
             plainSelect.getHaving().accept(this);
+            popContext(); // HAVING
         }
 
         if (plainSelect.getOracleHierarchical() != null) {
@@ -352,8 +393,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
 
         if (plainSelect.getGroupBy() != null) {
+            // contextStack handled in visit()
             plainSelect.getGroupBy().accept(this);
         }
+        popContext(); // SELECT
     }
 
     @Override
@@ -819,6 +862,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Delete delete) {
+        pushContext(DELETE);
         invokeCallback(MUTATION_COMMAND, "delete");
         visit(delete.getTable());
 
@@ -831,12 +875,16 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         visitJoins(delete.getJoins());
 
         if (delete.getWhere() != null) {
+            pushContext(WHERE);
             delete.getWhere().accept(this);
+            popContext(); // WHERE
         }
+        popContext(); // DELETE
     }
 
     @Override
     public void visit(Update update) {
+        pushContext(UPDATE);
         invokeCallback(MUTATION_COMMAND, "update");
         visit(update.getTable());
         if (update.getWithItemsList() != null) {
@@ -857,7 +905,9 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
 
         if (update.getFromItem() != null) {
+            pushContext(FROM);
             update.getFromItem().accept(this);
+            popContext(); // FROM
         }
 
         if (update.getJoins() != null) {
@@ -870,12 +920,16 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
 
         if (update.getWhere() != null) {
+            pushContext(WHERE);
             update.getWhere().accept(this);
+            popContext(); // WHERE
         }
+        popContext(); // UPDATE
     }
 
     @Override
     public void visit(Insert insert) {
+        pushContext(INSERT);
         invokeCallback(MUTATION_COMMAND, "insert");
         visit(insert.getTable());
         if (insert.getWithItemsList() != null) {
@@ -886,6 +940,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (insert.getSelect() != null) {
             visit(insert.getSelect());
         }
+        popContext(); // INSERT
     }
 
     public void visit(Analyze analyze) {
@@ -990,7 +1045,9 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
 
         if (merge.getFromItem() != null) {
+            pushContext(FROM);
             merge.getFromItem().accept(this);
+            popContext(); // FROM
         }
     }
 
@@ -1054,10 +1111,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(GroupByElement element) {
+        pushContext(GROUP_BY);
         element.getGroupByExpressionList().accept(this);
         for (ExpressionList exprList : element.getGroupingSets()) {
             exprList.accept(this);
         }
+        popContext(); // GROUP_BY
     }
 
     /**
@@ -1066,16 +1125,20 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      * @param parenthesis join sql block
      */
     private void visitJoins(List<Join> parenthesis) {
+        pushContext(JOIN);
         if (parenthesis == null) {
             return;
         }
         for (Join join : parenthesis) {
+            pushContext(FROM);
             join.getFromItem().accept(this);
+            popContext(); // FROM
             join.getRightItem().accept(this);
             for (Expression expression : join.getOnExpressions()) {
                 expression.accept(this);
             }
         }
+        popContext(); // JOIN
     }
 
     @Override
@@ -1257,9 +1320,13 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     public void visit(IfElseStatement ifElseStatement) {
+        pushContext(IF);
         ifElseStatement.getIfStatement().accept(this);
+        popContext(); // IF
         if (ifElseStatement.getElseStatement() != null) {
+            pushContext(ELSE);
             ifElseStatement.getElseStatement().accept(this);
+            popContext(); // ELSE
         }
     }
 
