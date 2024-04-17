@@ -45,11 +45,6 @@
     (or (alias->name table-name)
         table-name)))
 
-(defn- remove-aliases
-  [aliases table-names]
-  (let [alias? (into #{} (keys aliases))]
-    (filter (complement alias?) table-names)))
-
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
 
@@ -63,7 +58,7 @@
     {:columns           (into #{} (map #(.getColumnName ^Column %) columns))
      :has-wildcard?     has-wildcard?
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (remove-aliases aliases (map #(.getName ^Table %) tables)))
+     :tables            (into #{} (map #(.getName ^Table %) tables))
      :table-wildcards   (into #{} (map (partial resolve-table-name aliases) table-wildcards))}))
 
 (defn parsed-query

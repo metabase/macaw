@@ -176,6 +176,7 @@ import static com.metabase.macaw.AstWalker.CallbackKey.ALL_TABLE_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
 import static com.metabase.macaw.AstWalker.CallbackKey.MUTATION_COMMAND;
 import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
+import static com.metabase.macaw.AstWalker.CallbackKey.TABLE_ALIAS;
 
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
@@ -220,7 +221,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         ALL_TABLE_COLUMNS,
         COLUMN,
         MUTATION_COMMAND,
-        TABLE;
+        TABLE,
+        TABLE_ALIAS;
 
         public String toString() {
             return name().toLowerCase();
@@ -359,6 +361,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         invokeCallback(TABLE, table);
     }
 
+    public void visitAlias(Table table) {
+        invokeCallback(TABLE_ALIAS, table);
+    }
+
     @Override
     public void visit(Addition addition) {
         visitBinaryExpression(addition);
@@ -386,21 +392,11 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public void visit(Column tableColumn) {
         invokeCallback(COLUMN, tableColumn);
 
-        // The below is frustrating: it's counterproductive for table-finding, since at best it's not needed and at
-        // worst it visits aliased tables, causing bugs we've chosen to fix on the Clojure side. e.g.
-        //
-        // select o.id from orders o;
-        //
-        // will incorrectly list `o` as a table (from the `o.id` term).
-        //
-        // However, it's necessary for table name rewriting: if you try to rename `orders` to `purchases` in this:
-        //
-        // select orders.id from orders;
-        //
-        // you need to visit the `orders` in `orders.id`. That table is distinct from the one in `from orders`.
         if (tableColumn.getTable() != null
                 && tableColumn.getTable().getName() != null) {
-            visit(tableColumn.getTable());
+            // visiting aliases (e.g., the `o` in `o.id` in `select o.id from orders o`) is unhelpful if we're trying
+            // to get the set of actual table names used. However, for query rewriting it's necessary
+            visitAlias(tableColumn.getTable());
         }
     }
 

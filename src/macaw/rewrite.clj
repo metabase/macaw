@@ -66,13 +66,18 @@
        :column (replace-name #(.getFullyQualifiedName ^Column %))}
       []))))
 
+(defn- rename-table
+  [table-renames ^Table table]
+  (when-let [name' (get table-renames (.getName table))]
+    (.setName table name')))
+
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
   [sql parsed-ast {table-renames :tables, column-renames :columns}]
   (-> parsed-ast
       (mw/walk-query
-       {:table  (fn [^Table table] (when-let [name' (get table-renames (.getName table))]
-                                     (.setName table name')))
-        :column (fn [^Column column] (when-let [name' (get column-renames (.getColumnName column))]
-                                       (.setColumnName column name')))})
+       {:table       (partial rename-table table-renames)
+        :table-alias (partial rename-table table-renames)
+        :column      (fn [^Column column] (when-let [name' (get column-renames (.getColumnName column))]
+                                            (.setColumnName column name')))})
       (update-query sql)))

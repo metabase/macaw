@@ -10,6 +10,7 @@
   {:column         AstWalker$CallbackKey/COLUMN
    :mutation       AstWalker$CallbackKey/MUTATION_COMMAND
    :table          AstWalker$CallbackKey/TABLE
+   :table-alias    AstWalker$CallbackKey/TABLE_ALIAS
    :table-wildcard AstWalker$CallbackKey/ALL_TABLE_COLUMNS
    :wildcard       AstWalker$CallbackKey/ALL_COLUMNS})
 

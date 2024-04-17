@@ -26,7 +26,7 @@
 
 (deftest tables-with-complex-aliases-issue-14-test
   (testing "With an alias that is also a table name"
-    #_(is (= #{"user" "user2_final"}
+    (is (= #{"user" "user2_final"}
            (tables
             "SELECT legacy_user.id AS old_id,
                     user.id AS new_id
