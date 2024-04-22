@@ -1,7 +1,12 @@
 (ns ^:parallel macaw.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [macaw.core :as m]))
+   [macaw.core :as m]
+   [macaw.walk :as mw])
+  (:import
+   (net.sf.jsqlparser.schema Table)))
+
+(set! *warn-on-reflection* true)
 
 (def components    (comp m/query->components m/parsed-query))
 (def columns       (comp :columns components))
@@ -9,6 +14,12 @@
 (def mutations     (comp :mutation-commands components))
 (def tables        (comp :tables components))
 (def table-wcs     (comp :table-wildcards components))
+
+(defn column-qualifiers
+  [query]
+  (mw/fold-query (m/parsed-query query)
+                 {:column-qualifier #(conj %1 (.getName ^Table %2))}
+                 #{}))
 
 (deftest query->tables-test
   (testing "Simple queries"
@@ -33,6 +44,17 @@
              FROM user AS legacy_user
              OUTER JOIN user2_final AS user
              ON legacy_user.email = user2_final.email;")))))
+
+(deftest column-qualifier-test
+  (testing "column-qualifiers works with tables and aliases"
+    (is (= #{"user" "legacy_user"}
+           (column-qualifiers "SELECT
+                                 user.id AS user_id,
+                                 legacy_user.id AS old_id
+                               FROM user
+                               OUTER JOIN user as legacy_user
+                               ON user.email = user.electronic_mail_address
+                               JOIN unrelated_table on foo = user.unrelated_id;")))))
 
 (deftest query->columns-test
   (testing "Simple queries"

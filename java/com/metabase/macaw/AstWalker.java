@@ -174,9 +174,9 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 import static com.metabase.macaw.AstWalker.CallbackKey.ALL_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.ALL_TABLE_COLUMNS;
 import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN;
+import static com.metabase.macaw.AstWalker.CallbackKey.COLUMN_QUALIFIER;
 import static com.metabase.macaw.AstWalker.CallbackKey.MUTATION_COMMAND;
 import static com.metabase.macaw.AstWalker.CallbackKey.TABLE;
-import static com.metabase.macaw.AstWalker.CallbackKey.TABLE_ALIAS;
 
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
@@ -220,9 +220,9 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         ALL_COLUMNS,
         ALL_TABLE_COLUMNS,
         COLUMN,
+        COLUMN_QUALIFIER,
         MUTATION_COMMAND,
-        TABLE,
-        TABLE_ALIAS;
+        TABLE;
 
         public String toString() {
             return name().toLowerCase();
@@ -361,8 +361,9 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         invokeCallback(TABLE, table);
     }
 
-    public void visitAlias(Table table) {
-        invokeCallback(TABLE_ALIAS, table);
+    // Could be an alias, could be a real table
+    public void visitColumnQualifier(Table table) {
+        invokeCallback(COLUMN_QUALIFIER, table);
     }
 
     @Override
@@ -396,7 +397,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
                 && tableColumn.getTable().getName() != null) {
             // visiting aliases (e.g., the `o` in `o.id` in `select o.id from orders o`) is unhelpful if we're trying
             // to get the set of actual table names used. However, for query rewriting it's necessary
-            visitAlias(tableColumn.getTable());
+            visitColumnQualifier(tableColumn.getTable());
         }
     }
 

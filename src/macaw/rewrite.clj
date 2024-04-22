@@ -76,8 +76,8 @@
   [sql parsed-ast {table-renames :tables, column-renames :columns}]
   (-> parsed-ast
       (mw/walk-query
-       {:table       (partial rename-table table-renames)
-        :table-alias (partial rename-table table-renames)
-        :column      (fn [^Column column] (when-let [name' (get column-renames (.getColumnName column))]
-                                            (.setColumnName column name')))})
+       {:table            (partial rename-table table-renames)
+        :column-qualifier (partial rename-table table-renames)
+        :column           (fn [^Column column] (when-let [name' (get column-renames (.getColumnName column))]
+                                                 (.setColumnName column name')))})
       (update-query sql)))
