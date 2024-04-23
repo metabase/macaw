@@ -17,21 +17,23 @@
 (defn- preserve
   "Lift a side effecting callback so that it preserves the accumulator."
   [f]
-  (fn [acc v]
-    (f v)
+  (fn [acc & args]
+    (apply f args)
     acc))
 
 ;; work around ast walker repeatedly visiting the same expressions (bug ?!)
 (defn- deduplicate-visits [f]
   (let [seen (volatile! #{})]
-    (fn [acc visitable]
+    (fn [& [acc visitable & _ :as args]]
       (if (contains? @seen visitable)
         acc
         (do (vswap! seen conj visitable)
-            (f acc visitable))))))
+            (apply f args))))))
 
 (defn- update-keys-vals [m key-f val-f]
-  (into {} (map (fn [[k v]] [(key-f k) (val-f v)])) m))
+  (into {} (map (fn [[k v]]
+                  [(key-f k) (val-f v)]))
+        m))
 
 (defn walk-query
   "Walk over the query's AST, using the callbacks for their side-effects, for example to mutate the AST itself."

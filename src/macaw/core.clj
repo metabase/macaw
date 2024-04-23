@@ -12,21 +12,23 @@
 (set! *warn-on-reflection* true)
 
 (defn- conj-to
-  [key-name]
-  (fn item-conjer [results item]
-    (update results key-name conj item)))
+  ([key-name]
+   (conj-to key-name identity))
+  ([key-name xf]
+   (fn item-conjer [results component context]
+     (update results key-name conj {:component (xf component)
+                                    :context   (vec context)}))))
 
 (defn- query->raw-components
   [^Statement parsed-query]
   (mw/fold-query parsed-query
                  {:column         (conj-to :columns)
                   :mutation       (conj-to :mutation-commands)
-                  :wildcard       (fn [results _all-columns]
-                                    (assoc results :has-wildcard? true))
+                  :wildcard       (conj-to :has-wildcard? (constantly true))
                   :table          (conj-to :tables)
                   :table-wildcard (conj-to :table-wildcards)}
                  {:columns           #{}
-                  :has-wildcard?     false
+                  :has-wildcard?     #{}
                   :mutation-commands #{}
                   :tables            #{}
                   :table-wildcards   #{}}))
@@ -45,6 +47,10 @@
     (or (alias->name table-name)
         table-name)))
 
+(defn- update-components
+  [f components]
+  (map #(update % :component f) components))
+
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
 
@@ -54,12 +60,12 @@
   (let [{:keys [columns has-wildcard?
                 mutation-commands
                 tables table-wildcards]} (query->raw-components parsed-query)
-        aliases                   (into {} (map alias-mapping tables))]
-    {:columns           (into #{} (map #(.getColumnName ^Column %) columns))
-     :has-wildcard?     has-wildcard?
+        aliases                   (into {} (map (comp alias-mapping :component) tables))]
+    {:columns           (into #{} (update-components #(.getColumnName ^Column %) columns))
+     :has-wildcard?     (into #{} has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (map #(.getName ^Table %) tables))
-     :table-wildcards   (into #{} (map (partial resolve-table-name aliases) table-wildcards))}))
+     :tables            (into #{} (update-components #(.getName ^Table %) tables))
+     :table-wildcards   (into #{} (update-components (partial resolve-table-name aliases) table-wildcards))}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."

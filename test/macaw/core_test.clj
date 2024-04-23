@@ -8,17 +8,22 @@
 
 (set! *warn-on-reflection* true)
 
-(def components    (comp m/query->components m/parsed-query))
-(def columns       (comp :columns components))
-(def has-wildcard? (comp :has-wildcard? components))
-(def mutations     (comp :mutation-commands components))
-(def tables        (comp :tables components))
-(def table-wcs     (comp :table-wildcards components))
+(defn- and*
+  [x y]
+  (and x y))
+
+(def components     (comp m/query->components m/parsed-query))
+(def raw-components (comp (partial into #{}) (partial map :component)))
+(def columns        (comp raw-components :columns components))
+(def has-wildcard?  (comp (partial reduce and*) raw-components :has-wildcard? components))
+(def mutations      (comp raw-components :mutation-commands components))
+(def tables         (comp raw-components :tables components))
+(def table-wcs      (comp raw-components :table-wildcards components))
 
 (defn column-qualifiers
   [query]
   (mw/fold-query (m/parsed-query query)
-                 {:column-qualifier #(conj %1 (.getName ^Table %2))}
+                 {:column-qualifier (fn [acc tbl _ctx] (conj acc (.getName ^Table tbl)))}
                  #{}))
 
 (deftest query->tables-test
@@ -155,6 +160,45 @@
          (table-wcs "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))
     (is (= #{"foo"}
          (table-wcs "SELECT f.* FROM orders o JOIN foo f ON orders.id = foo.order_id"))))
+
+(deftest context-test
+  (testing "Sub-select with outer wildcard"
+    (is (= {:columns
+            #{{:component "total", :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component "id",    :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            :has-wildcard?     #{{:component true, :context ["SELECT"]}},
+            :mutation-commands #{},
+            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :table-wildcards   #{}}
+           (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"))))
+  (testing "Sub-select with inner wildcard"
+    (is (= {:columns
+            #{{:component "id",    :context ["SELECT"]}
+              {:component "total", :context ["SELECT"]}
+              {:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            :has-wildcard?     #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :mutation-commands #{},
+            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :table-wildcards   #{}}
+           (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10"))))
+  (testing "Sub-select with dual wildcards"
+    (is (= {:columns           #{{:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            :has-wildcard?
+            #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component true, :context ["SELECT"]}},
+            :mutation-commands #{},
+            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :table-wildcards   #{}}
+           (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10"))))
+  (testing "Join; table wildcard"
+    (is (= {:columns           #{{:component "order_id", :context ["JOIN" "SELECT"]}
+                                 {:component "id", :context ["JOIN" "SELECT"]}},
+            :has-wildcard?     #{},
+            :mutation-commands #{},
+            :tables            #{{:component "foo", :context ["FROM" "JOIN" "SELECT"]} {:component "orders", :context ["FROM" "SELECT"]}},
+            :table-wildcards   #{{:component "orders", :context ["SELECT"]}}}
+         (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
 (defn test-replacement [before replacements after]
   (is (= after (m/replace-names before replacements))))
