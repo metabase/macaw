@@ -1,4 +1,4 @@
-# 0.1.27
+# 0.1.28
 
 * Context is now added to each returned component in `query->components`. E.g., instead of `#{"foo" "bar"}`, it will
   return its elements as `#{{:component "foo" :context ["SELECT"]}, {:component "bar" :context ["WHERE" "SELECT"]}}`
@@ -19,6 +19,6 @@
   least-specific. For most cases you probably only want to look at the first element and/or make assertions about the
   relative order of multiple elements.
 
-# 0.0.1 through 0.1.26
+# 0.0.1 through 0.1.27
 
 * (The project was young enough not to merit a changelog. Refer to other documentation)
