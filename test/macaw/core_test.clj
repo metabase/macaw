@@ -23,7 +23,7 @@
 (defn column-qualifiers
   [query]
   (mw/fold-query (m/parsed-query query)
-                 {:column-qualifier #(conj %1 (.getName ^Table %2))}
+                 {:column-qualifier (fn [acc tbl _ctx] (conj acc (.getName ^Table tbl)))}
                  #{}))
 
 (deftest query->tables-test
