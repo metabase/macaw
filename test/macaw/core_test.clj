@@ -28,21 +28,21 @@
 
 (deftest query->tables-test
   (testing "Simple queries"
-    (is (= #{"core_user"}
+    (is (= #{{:table "core_user"}}
            (tables "SELECT * FROM core_user;")))
-    (is (= #{"core_user"}
+    (is (= #{{:table "core_user"}}
            (tables "SELECT id, email FROM core_user;"))))
   (testing "With a schema (Postgres)" ;; TODO: only run this against supported DBs
-    ;; It strips the schema
-    (is (= #{"core_user"}
+    (is (= #{{:table "core_user" :schema "the_schema_name"}}
            (tables "SELECT * FROM the_schema_name.core_user;"))))
   (testing "Sub-selects"
-    (is (= #{"core_user"}
+    (is (= #{{:table "core_user"}}
            (tables "SELECT * FROM (SELECT DISTINCT email FROM core_user) q;")))))
 
 (deftest tables-with-complex-aliases-issue-14-test
   (testing "With an alias that is also a table name"
-    (is (= #{"user" "user2_final"}
+    (is (= #{{:table "user"}
+             {:table "user2_final"}}
            (tables
             "SELECT legacy_user.id AS old_id,
                     user.id AS new_id
@@ -63,11 +63,18 @@
 
 (deftest query->columns-test
   (testing "Simple queries"
-    (is (= #{"foo" "bar" "id" "quux_id"}
+    (is (= #{{:column "foo"}
+             {:column "bar"}
+             {:column "id" :table "quux"}
+             {:column "quux_id" :table "baz"}}
            (columns "SELECT foo, bar FROM baz INNER JOIN quux ON quux.id = baz.quux_id"))))
   (testing "'group by' columns present"
-    (is (= #{"id" "user_id"}
-           (columns "SELECT id FROM orders GROUP BY user_id")))))
+    (is (= #{{:column "id"}
+             {:column "user_id"}}
+           (columns "SELECT id FROM orders GROUP BY user_id"))))
+  (testing "table alias present"
+    (is (= #{{:column "id" :table "orders" :schema "public"}}
+           (columns "SELECT o.id FROM public.orders o")))))
 
 (deftest mutation-test
   (is (= #{"alter-sequence"}
@@ -136,7 +143,7 @@
 
 (deftest alias-inclusion-test
   (testing "Aliases are not included"
-    (is (= #{"orders" "foo"}
+    (is (= #{{:table "orders"} {:table "foo"}}
            (tables "SELECT id, o.id FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
 (deftest resolve-columns-test
@@ -150,54 +157,55 @@
   (is (true? (has-wildcard? "SELECT id, * FROM orders JOIN foo ON orders.id = foo.order_id"))))
 
 (deftest table-wildcard-test-without-aliases
-  (is (= #{"orders"}
+  (is (= #{{:component {:table "orders"} :context ["FROM" "SELECT"]}}
          (table-wcs "SELECT orders.* FROM orders JOIN foo ON orders.id = foo.order_id")))
-    (is (= #{"foo"}
-         (table-wcs "SELECT foo.* FROM orders JOIN foo ON orders.id = foo.order_id"))))
+  (is (= #{{:component {:table "foo" :schema "public"} :context ["FROM" "JOIN" "SELECT"]}}
+         (table-wcs "SELECT foo.* FROM orders JOIN public.foo f ON orders.id = foo.order_id"))))
 
 (deftest table-star-test-with-aliases
-  (is (= #{"orders"}
+  (is (= #{{:table "orders"}}
          (table-wcs "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))
-    (is (= #{"foo"}
+  (is (= #{{:table "foo"}}
          (table-wcs "SELECT f.* FROM orders o JOIN foo f ON orders.id = foo.order_id"))))
 
 (deftest context-test
   (testing "Sub-select with outer wildcard"
     (is (= {:columns
-            #{{:component "total", :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component "id",    :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            #{{:component {:column "total"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component {:column "id"},    :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?     #{{:component true, :context ["SELECT"]}},
             :mutation-commands #{},
-            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
            (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"))))
   (testing "Sub-select with inner wildcard"
     (is (= {:columns
-            #{{:component "id",    :context ["SELECT"]}
-              {:component "total", :context ["SELECT"]}
-              {:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            #{{:component {:column "id"},    :context ["SELECT"]}
+              {:component {:column "total"}, :context ["SELECT"]}
+              {:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?     #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :mutation-commands #{},
-            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
            (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10"))))
   (testing "Sub-select with dual wildcards"
-    (is (= {:columns           #{{:component "total", :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+    (is (= {:columns           #{{:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?
             #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
               {:component true, :context ["SELECT"]}},
             :mutation-commands #{},
-            :tables            #{{:component "orders", :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
            (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10"))))
   (testing "Join; table wildcard"
-    (is (= {:columns           #{{:component "order_id", :context ["JOIN" "SELECT"]}
-                                 {:component "id", :context ["JOIN" "SELECT"]}},
+    (is (= {:columns           #{{:component {:column "order_id" :table "foo"}, :context ["JOIN" "SELECT"]}
+                                 {:component {:column "id" :table "orders"}, :context ["JOIN" "SELECT"]}},
             :has-wildcard?     #{},
             :mutation-commands #{},
-            :tables            #{{:component "foo", :context ["FROM" "JOIN" "SELECT"]} {:component "orders", :context ["FROM" "SELECT"]}},
-            :table-wildcards   #{{:component "orders", :context ["SELECT"]}}}
+            :tables            #{{:component {:table "foo"}, :context ["FROM" "JOIN" "SELECT"]}
+                                 {:component {:table "orders"}, :context ["FROM" "SELECT"]}},
+            :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
          (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
 (defn test-replacement [before replacements after]
