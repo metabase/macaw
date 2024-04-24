@@ -1,7 +1,7 @@
 (ns macaw.util)
 
 (defn group-with
-  "Generalized `group-by`, where you can supply your own returning function (instead of usual `conj`).
+  "Generalized `group-by`, where you can supply your own reducing function (instead of usual `conj`).
 
   https://ask.clojure.org/index.php/12319/can-group-by-be-generalized"
   [kf rf coll]
