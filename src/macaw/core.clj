@@ -40,13 +40,13 @@
     (when-let [s (.getSchemaName t)]
       {:schema s})))
 
-(defn- make-column [aliases ^Column c]
+(defn- make-column [alias-map table-map ^Column c]
   (merge
     {:column (.getColumnName c)}
     (when-let [t (.getTable c)]
       (or
-        (get aliases (.getName t))
-        (make-table t)))))
+        (get alias-map (.getName t))
+        (:component (get table-map (.getName t)))))))
 
 (defn- alias-mapping
   [^Table table]
@@ -75,15 +75,15 @@
   (let [{:keys [columns has-wildcard?
                 mutation-commands
                 tables table-wildcards]} (query->raw-components parsed-query)
-        aliases                          (into {} (map #(-> % :component alias-mapping) tables))
-        tables                           (->> (update-components make-table tables)
-                                              (u/group-with #(-> % :component :table)
-                                                            (fn [a b] (if (:schema a) a b))))]
-    {:columns           (into #{} (update-components (partial make-column aliases) columns))
+        alias-map                        (into {} (map #(-> % :component alias-mapping) tables))
+        table-map                        (->> (update-components make-table tables)
+                                                 (u/group-with #(-> % :component :table)
+                                                   (fn [a b] (if (:schema a) a b))))]
+    {:columns           (into #{} (update-components (partial make-column alias-map table-map) columns))
      :has-wildcard?     (into #{} has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (vals tables))
-     :table-wildcards   (into #{} (update-components (partial resolve-table-name aliases tables) table-wildcards))}))
+     :tables            (into #{} (vals table-map))
+     :table-wildcards   (into #{} (update-components (partial resolve-table-name alias-map table-map) table-wildcards))}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
