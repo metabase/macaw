@@ -1,6 +1,7 @@
 (ns macaw.core
   (:require
    [macaw.rewrite :as rewrite]
+   [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
    (net.sf.jsqlparser.expression Alias)
@@ -33,19 +34,33 @@
                   :tables            #{}
                   :table-wildcards   #{}}))
 
+(defn- make-table [^Table t]
+  (merge
+    {:table (.getName t)}
+    (when-let [s (.getSchemaName t)]
+      {:schema s})))
+
+(defn- make-column [alias-map table-map ^Column c]
+  (merge
+    {:column (.getColumnName c)}
+    (when-let [t (.getTable c)]
+      (or
+        (get alias-map (.getName t))
+        (:component (get table-map (.getName t)))))))
+
 (defn- alias-mapping
   [^Table table]
   (when-let [^Alias table-alias (.getAlias table)]
-    [(.getName table-alias) (.getName table)]))
+    [(.getName table-alias) (make-table table)]))
 
 (defn- resolve-table-name
   "JSQLParser can't tell whether the `f` in `select f.*` refers to a real table or an alias. Therefore, we have to
   disambiguate them based on our own map of aliases->table names. So this function will return the real name of the table
   referenced in a table-wildcard (as far as can be determined from the query)."
-  [alias->name ^AllTableColumns atc]
+  [alias->table name->table ^AllTableColumns atc]
   (let [table-name (-> atc .getTable .getName)]
-    (or (alias->name table-name)
-        table-name)))
+    (or (alias->table table-name)
+        (name->table table-name))))
 
 (defn- update-components
   [f components]
@@ -60,12 +75,15 @@
   (let [{:keys [columns has-wildcard?
                 mutation-commands
                 tables table-wildcards]} (query->raw-components parsed-query)
-        aliases                   (into {} (map (comp alias-mapping :component) tables))]
-    {:columns           (into #{} (update-components #(.getColumnName ^Column %) columns))
+        alias-map                        (into {} (map #(-> % :component alias-mapping) tables))
+        table-map                        (->> (update-components make-table tables)
+                                                 (u/group-with #(-> % :component :table)
+                                                   (fn [a b] (if (:schema a) a b))))]
+    {:columns           (into #{} (update-components (partial make-column alias-map table-map) columns))
      :has-wildcard?     (into #{} has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (update-components #(.getName ^Table %) tables))
-     :table-wildcards   (into #{} (update-components (partial resolve-table-name aliases) table-wildcards))}))
+     :tables            (into #{} (vals table-map))
+     :table-wildcards   (into #{} (update-components (partial resolve-table-name alias-map table-map) table-wildcards))}))
 
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
