@@ -10,6 +10,16 @@
 Macaw is a limited Clojure wrapper for [JSqlParser](https://github.com/JSQLParser/JSqlParser). Similar to its parrot
 namesake, it's intelligent, can be taught to speak SQL, and has many colors (supports many dialects).
 
+## Rationale
+
+JSqlParser does great work actually parsing SQL, but its use of the visitor pattern makes Clojure inter-op very
+awkward. Macaw exists to make working with JSqlParser from within Clojure feel more idiomatic and pleasant, letting you
+walk over a query with custom callbacks and returning persistent data structures.
+
+Currently it's especially useful for extracting the columns, tables, and side-effecting commands from a SQL string (see
+[Query Parsing](#query-parsing)) and also intelligently renaming the columns and tables used in it (see [Query
+Rewriting](#query-rewriting)).
+
 # Preliminaries
 
 ## Building
@@ -59,7 +69,8 @@ into something useful. For example:
 ```
 
 The returned map will always have that general shape as of Macaw 0.1.30. Each of the main keys will always refer to a
-set, and each set will always consist of maps with a `:component` key and a `:context` key.
+set, and each set will always consist of maps with a `:component` key (described below) and a `:context` key (described
+[farther below](#context)).
 
 ### Column and table `:component`s
 
@@ -71,9 +82,9 @@ key if available.
     parsed-query
     query->components
     :columns)
-;; => #{{:component {:column "tax", :table "orders", :schema "public"}, :context ["SELECT"]}
+;; => #{{:component {:column "id"},                                       :context ["SELECT"]}
 ;;      {:component {:column "total", :table "orders", :schema "public"}, :context ["SELECT"]}
-;;      {:component {:column "id"}, :context ["SELECT"]}}
+;;      {:component {:column "tax",   :table "orders", :schema "public"}, :context ["SELECT"]}}
 ```
 Note that the schema for `total` was inferred, but neither the table nor the schema for `id` was inferred since there
 are similar queries where it could be ambiguous (e.g., with a JOIN).
@@ -86,10 +97,10 @@ Macaw will also resolve aliases sensibly:
     query->components
     (select-keys [:columns :tables]))
 ;; => {:columns
-;;     #{{:component {:column "id", :table "users"}, :context ["JOIN" "SELECT"]}
-;;       {:component {:column "name", :table "users"}, :context ["SELECT"]}
+;;     #{{:component {:column "id", :table "orders", :schema "public"}, :context ["SELECT"]}
 ;;       {:component {:column "total", :table "orders", :schema "public"}, :context ["SELECT"]}
-;;       {:component {:column "id", :table "orders", :schema "public"}, :context ["SELECT"]}
+;;       {:component {:column "name", :table "users"}, :context ["SELECT"]}
+;;       {:component {:column "id", :table "users"}, :context ["JOIN" "SELECT"]}
 ;;       {:component {:column "user_id", :table "orders", :schema "public"}, :context ["JOIN" "SELECT"]}},
 ;;     :tables
 ;;     #{{:component {:table "orders", :schema "public"}, :context ["FROM" "SELECT"]}
@@ -189,9 +200,33 @@ example:
 
 ```clojure
 (replace-names "SELECT p.id, orders.total FROM people p, orders;"
-               {:tables {"people" "users"}
+               {:tables   {"people" "users"}
                 :columns  {"total" "amount"}})
 ;; => "SELECT p.id, orders.amount FROM users p, orders;"
 ```
 
-Note that alias and schema renames are currently (0.1.30) unsupported, but that's likely to change soon.
+Note that alias and schema renames are currently (0.1.30) unsupported, but that's likely to change soon:
+
+- [ ] https://github.com/metabase/macaw/issues/25
+- [ ] https://github.com/metabase/macaw/issues/26
+
+## Error Handling
+
+Macaw makes no effort to recover from errors. Malformed SQL strings will probably raise a
+[JSqlParserException](https://javadoc.io/static/com.github.jsqlparser/jsqlparser/4.9/net/sf/jsqlparser/JSQLParserException.html),
+which Macaw will forward on to your code.
+
+# Contributing
+
+External contributions are welcome! We require all third-party contributors to sign [our license
+agreement](https://docs.google.com/a/metabase.com/forms/d/e/1FAIpQLSfc9GWyJ3F9U_4NzHLeTblgtog1FKtG3CjLshE4FAAKSdvNoQ/viewform).
+Macaw's philosophy towards third-party contributions is largely similar to [that of
+Metabase's](https://github.com/metabase/metabase/blob/master/docs/developers-guide/contributing.md). We'd especially
+like to call out that document's YOLO method of PR submission:
+
+> If you come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through
+> the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via
+> code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase.
+
+Since Macaw is a *much* simpler project than Metabase (and also doesn't involve a graphical user interface) we should
+be able to respond to product proposals fairly quickly.
