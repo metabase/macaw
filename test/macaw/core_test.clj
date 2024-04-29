@@ -146,12 +146,6 @@
     (is (= #{{:table "orders"} {:table "foo"}}
            (tables "SELECT id, o.id FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
-(deftest resolve-columns-test
-  (let [cols ["name" "id" "email"]]
-    (is (= {"core_user"   cols
-            "report_card" cols}
-           (m/resolve-columns ["core_user" "report_card"] cols)))))
-
 (deftest select-*-test
   (is (true? (has-wildcard? "SELECT * FROM orders")))
   (is (true? (has-wildcard? "SELECT id, * FROM orders JOIN foo ON orders.id = foo.order_id"))))

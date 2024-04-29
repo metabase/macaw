@@ -90,24 +90,6 @@
   [^String query]
   (CCJSqlParserUtil/parse query))
 
-(defn resolve-columns
-  "TODO: Make this use metadata we know about.
-  TODO: might want to live in another ns"
-  [tables columns]
-  (let [cartesian-product (for [table  tables
-                                column columns]
-                            {:table  table
-                             :column column})]
-    (update-vals (group-by :table cartesian-product)
-                 #(merge-with concat (map :column %)))))
-
-(defn lineage
-  "Returns a sequence of the columns used in / referenced by the query"
-  [query]
-  (let [parsed                   (parsed-query query)
-        {:keys [columns tables]} (query->components parsed)]
-    (resolve-columns tables columns)))
-
 (defn replace-names
   "Given a SQL query, apply the given table and column renames."
   [sql renames]
