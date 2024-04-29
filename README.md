@@ -3,7 +3,7 @@
 
 [![Clojars Project](https://clojars.org/metabase/macaw/latest-version.svg)](https://clojars.org/metabase/macaw)
 
-![Macaw logo](./assets/logo.png)
+<img src="./assets/logo.png" width="400px" alt="Macaw logo" />
 
 # Macaw
 
