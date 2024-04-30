@@ -195,21 +195,16 @@ WHERE;
 ## Query Rewriting
 
 Editing queries can be done with `replace-names`. It takes two arguments, the query itself (as a string) and a map of
-maps. The outer keys of the map are `:tables` and `:columns`. The inner maps take the form `old-name -> new-name`. For
+maps. The outer keys of the map are `:schemas`, `:tables`, and `:columns`. The inner maps take the form `old-name -> new-name`. For
 example:
 
 ```clojure
-(replace-names "SELECT p.id, orders.total FROM people p, orders;"
-               {:tables   {"people" "users"}
+(replace-names "SELECT p.id, orders.total FROM people p, public.orders;"
+               {:schemas  {"public" "private"}
+                :tables   {"people" "users"}
                 :columns  {"total" "amount"}})
-;; => "SELECT p.id, orders.amount FROM users p, orders;"
+;; => "SELECT p.id, orders.amount FROM users p, private.orders;"
 ```
-
-Note that alias and schema renames are currently (0.1.30) unsupported, but that's likely to change soon:
-
-- [ ] https://github.com/metabase/macaw/issues/25
-- [ ] https://github.com/metabase/macaw/issues/26
-
 ## Error Handling
 
 Macaw makes no effort to recover from errors. Malformed SQL strings will probably raise a

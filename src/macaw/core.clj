@@ -91,6 +91,6 @@
   (CCJSqlParserUtil/parse query))
 
 (defn replace-names
-  "Given a SQL query, apply the given table and column renames."
+  "Given a SQL query, apply the given table, column, and schema renames."
   [sql renames]
   (rewrite/replace-names sql (parsed-query sql) renames))
