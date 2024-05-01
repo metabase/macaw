@@ -1,7 +1,7 @@
 [![License](https://img.shields.io/badge/license-Eclipse%20Public%20License-blue.svg?style=for-the-badge)](https://raw.githubusercontent.com/metabase/macaw/master/LICENSE)
 [![GitHub last commit](https://img.shields.io/github/last-commit/metabase/second-date?style=for-the-badge)](https://github.com/metabase/macaw/commits/)
 
-[![Clojars Project](https://clojars.org/metabase/macaw/latest-version.svg)](https://clojars.org/metabase/macaw)
+[![Clojars Project](https://clojars.org/io.github.metabase/macaw/latest-version.svg)](https://clojars.org/io.github.metabase/macaw)
 
 <img src="./assets/logo.png" width="400px" alt="Macaw logo" />
 
