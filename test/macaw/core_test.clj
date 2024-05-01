@@ -231,3 +231,10 @@
  FROM /* /* lore */
     floor_muser,
   user,  /* more */ vigilant_user ;"))
+
+(deftest replace-schema-test
+  (test-replacement "SELECT public.orders.x FROM public.orders"
+                    {:schemas {"public" "totally_private"}
+                     :tables  {"orders" "purchases"}
+                     :columns {"x" "xx"}}
+                    "SELECT totally_private.purchases.xx FROM totally_private.purchases"))
