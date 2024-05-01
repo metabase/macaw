@@ -1,4 +1,4 @@
-# 0.1.30
+# 0.1.31
 * `replace-names` now supports `:schemas` in the renames map
 
 # 0.1.29
