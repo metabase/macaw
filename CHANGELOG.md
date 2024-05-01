@@ -1,3 +1,6 @@
+# 0.1.30
+* `replace-names` now supports `:schemas` in the renames map
+
 # 0.1.29
 
 * Now each component is a map rather than a string, with tables being `{:table "foo" :schema "bar"}` (`:schema` is
