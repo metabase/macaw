@@ -69,8 +69,8 @@
              {:column "quux_id" :table "baz"}}
            (columns "SELECT foo, bar FROM baz INNER JOIN quux ON quux.id = baz.quux_id"))))
   (testing "'group by' columns present"
-    (is (= #{{:column "id"}
-             {:column "user_id"}}
+    (is (= #{{:column "id" :table "orders"}
+             {:column "user_id" :table "orders"}}
            (columns "SELECT id FROM orders GROUP BY user_id"))))
   (testing "table alias present"
     (is (= #{{:column "id" :table "orders" :schema "public"}}
@@ -165,9 +165,9 @@
 (deftest context-test
   (testing "Sub-select with outer wildcard"
     (is (= {:columns
-            #{{:component {:column "total"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component {:column "id"},    :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            #{{:component {:column "total" :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component {:column "id"    :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+              {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?     #{{:component true, :context ["SELECT"]}},
             :mutation-commands #{},
             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
@@ -175,16 +175,16 @@
            (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"))))
   (testing "Sub-select with inner wildcard"
     (is (= {:columns
-            #{{:component {:column "id"},    :context ["SELECT"]}
-              {:component {:column "total"}, :context ["SELECT"]}
-              {:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+            #{{:component {:column "id"    :table "orders"}, :context ["SELECT"]}
+              {:component {:column "total" :table "orders"}, :context ["SELECT"]}
+              {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?     #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :mutation-commands #{},
             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
            (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10"))))
   (testing "Sub-select with dual wildcards"
-    (is (= {:columns           #{{:component {:column "total"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+    (is (= {:columns           #{{:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?
             #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
               {:component true, :context ["SELECT"]}},
