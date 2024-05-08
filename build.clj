@@ -69,7 +69,7 @@
   (b/javac (merge default-options
                   opts
                   {:src-dirs   ["java"]
-                   :javac-opts ["--release" "11"]})))
+                   :javac-opts ["--release" "11" "-Xlint:-options" #_"-Xlint:unchecked"]})))
 
 (defn jar [opts]
   (println "\nStarting to build a JAR...")

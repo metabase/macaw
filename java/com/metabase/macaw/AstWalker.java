@@ -268,6 +268,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     /**
      * Safely invoke the given callback by name.
      */
+    @SuppressWarnings("unchecked")
     public void invokeCallback(CallbackKey key, Object visitedItem) {
         IFn callback = this.callbacks.get(key);
         if (callback != null) {
@@ -882,6 +883,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         popContext(); // DELETE
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void visit(Update update) {
         pushContext(UPDATE);
