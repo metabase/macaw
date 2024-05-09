@@ -1,10 +1,10 @@
 (ns macaw.core
   (:require
-   [clojure.string :as str]
    [macaw.rewrite :as rewrite]
    [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
+   (com.metabase.macaw AstWalker$QueueItem)
    (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.parser CCJSqlParserUtil)
    (net.sf.jsqlparser.schema Column Table)
@@ -19,7 +19,10 @@
   ([key-name xf]
    (fn item-conjer [results component context]
      (update results key-name conj {:component (xf component)
-                                    :context   (vec context)}))))
+                                    :context   (mapv
+                                                 (fn [^AstWalker$QueueItem x]
+                                                   [(keyword (.getKey x)) (.getValue x)])
+                                                 context)}))))
 
 (defn- query->raw-components
   [^Statement parsed-query]
@@ -59,9 +62,9 @@
 
 ;;; columns
 
-(defn- maybe-column-alias [ctx]
-  (when (some-> (first ctx) (str/starts-with? "AS "))
-    {:alias (subs (first ctx) 3)}))
+(defn- maybe-column-alias [[maybe-alias :as _ctx]]
+  (when (= (first maybe-alias) :alias)
+    {:alias (second maybe-alias)}))
 
 (defn- maybe-column-table [{:keys [alias->table name->table]} ^Column c]
   (if-let [t (.getTable c)]
@@ -80,9 +83,17 @@
 
 ;;; get them together
 
+(defn- only-query-context [ctx]
+  (into [] (comp (filter #(= (first %) :query))
+                 (map second))
+    ctx))
+
 (defn- update-components
   [f components]
-  (map #(update % :component f (:context %)) components))
+  (map #(-> %
+            (update :component f (:context %))
+            (update :context only-query-context))
+    components))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
@@ -102,7 +113,7 @@
         data                      {:alias->table alias-map
                                    :name->table  table-map}]
     {:columns           (into #{} (update-components (partial make-column data) columns))
-     :has-wildcard?     (into #{} has-wildcard?)
+     :has-wildcard?     (into #{} (update-components (fn [x & _args] x) has-wildcard?))
      :mutation-commands (into #{} mutation-commands)
      :tables            (into #{} (vals table-map))
      :table-wildcards   (into #{} (update-components (partial resolve-table-name data) table-wildcards))}))

@@ -12,6 +12,7 @@
                   (whitespace-line-column . 118)
                   (column-enforce-column . 118)
                   (clojure-docstring-fill-column . 118)
+                  (clojure-indent-style . always-align)
                   (eval . (put-clojure-indent 'with-meta '(:form)))
                   (eval . (put-clojure-indent 'with-bindings* '(:form)))))
  (markdown-mode . ((fill-column . 80)
