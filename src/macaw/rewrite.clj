@@ -50,13 +50,12 @@
 
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
-  [updated-ast sql]
+  [updated-ast updated-node? sql]
   (let [replace-name (fn [->s]
                        (fn [acc ^ASTNodeAccess visitable _ctx]
-                         (let [node (.getASTNode visitable)]
-                           ;; not sure why sometimes we get a phantom visitable without an underlying node
-                           (if (nil? node)
-                             acc
+                         (if-not (updated-node? visitable)
+                           acc
+                           (let [node (.getASTNode visitable)]
                              (conj acc [(node->idx-range node sql) (->s visitable)])))))]
     (splice-replacements
      sql
@@ -67,21 +66,28 @@
       []))))
 
 (defn- rename-table
-  [table-renames schema-renames ^Table table _ctx]
+  [updated-nodes table-renames schema-renames ^Table table _ctx]
   (when-let [name' (get table-renames (.getName table))]
+    (vswap! updated-nodes conj table)
     (.setName table name'))
   (when-let [new-schema-name (get schema-renames (.getSchemaName table))]
     (.setSchemaName table new-schema-name)))
+
+(defn- rename-column
+  [updated-nodes column-renames ^Column column _ctx]
+  (when-let [name' (get column-renames (.getColumnName column))]
+    (vswap! updated-nodes conj column)
+    (.setColumnName column name')))
 
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
   [sql parsed-ast {schema-renames :schemas
                    table-renames  :tables
                    column-renames :columns}]
-  (-> parsed-ast
-      (mw/walk-query
-       {:table            (partial rename-table table-renames schema-renames)
-        :column-qualifier (partial rename-table table-renames schema-renames)
-        :column           (fn [^Column column _ctx] (when-let [name' (get column-renames (.getColumnName column))]
-                                                      (.setColumnName column name')))})
-      (update-query sql)))
+  (let [updated-nodes (volatile! #{})]
+    (-> parsed-ast
+        (mw/walk-query
+         {:table            (partial rename-table updated-nodes table-renames schema-renames)
+          :column-qualifier (partial rename-table updated-nodes table-renames schema-renames)
+          :column           (partial rename-column updated-nodes column-renames)})
+        (update-query @updated-nodes sql))))
