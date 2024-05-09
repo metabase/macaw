@@ -43,10 +43,13 @@
 (defn- make-column [alias-map table-map ^Column c]
   (merge
     {:column (.getColumnName c)}
-    (when-let [t (.getTable c)]
+    (if-let [t (.getTable c)]
       (or
         (get alias-map (.getName t))
-        (:component (get table-map (.getName t)))))))
+        (:component (get table-map (.getName t))))
+      ;; if we see only a single table, we can safely say it's the table of that column
+      (when (= (count table-map) 1)
+        (:component (val (first table-map)))))))
 
 (defn- alias-mapping
   [^Table table]
