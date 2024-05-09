@@ -51,12 +51,16 @@
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
   [updated-ast updated-node? sql]
-  (let [replace-name (fn [->s]
-                       (fn [acc ^ASTNodeAccess visitable _ctx]
-                         (if-not (updated-node? visitable)
-                           acc
-                           (let [node (.getASTNode visitable)]
-                             (conj acc [(node->idx-range node sql) (->s visitable)])))))]
+  (let [replacement  (fn [->text visitable]
+                       (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
+                             idx-range (node->idx-range ast-node sql)
+                             node-text (->text visitable)]
+                         [idx-range node-text]))
+        replace-name (fn [->text]
+                       (fn [acc visitable _ctx]
+                         (cond-> acc
+                           (updated-node? visitable)
+                           (conj (replacement ->text visitable)))))]
     (splice-replacements
      sql
      (mw/fold-query
