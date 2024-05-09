@@ -281,6 +281,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         this.contextStack.push(c.toString());
     }
 
+    private void pushContext(String s) {
+        this.contextStack.push(s);
+    }
+
     // This is pure sugar, but it's nice to be symmetrical with pushContext
     private void popContext() {
         this.contextStack.pop();
@@ -838,7 +842,16 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(SelectItem item) {
+        // TODO: what are .getAliasColumns()? Should we look at them?
+        var alias = item.getAlias();
+        if (alias != null) {
+            // FIXME: this is absolutely a hack, what's the best way to get around it?
+            pushContext("AS " + alias.getName());
+        }
         item.getExpression().accept(this);
+        if (alias != null) {
+            popContext();
+        }
     }
 
     @Override
