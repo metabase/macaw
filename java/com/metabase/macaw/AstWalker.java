@@ -228,7 +228,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
     }
 
-    public enum QueryContext {
+    public interface QueueItem {
+        public String getKey();
+        public String getValue();
+    }
+
+    public enum QueryContext implements QueueItem {
         DELETE,
         ELSE,
         FROM,
@@ -242,8 +247,30 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         UPDATE,
         WHERE;
 
-        public String toString() {
+        public String getKey() {
+            return "query";
+        }
+
+        public String getValue() {
             return name().toUpperCase();
+        }
+    }
+
+    public class SomeContext implements QueueItem {
+        private String key;
+        private String value;
+
+        SomeContext(String key, String value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public String getKey() {
+            return this.key;
+        }
+
+        public String getValue() {
+            return this.value;
         }
     }
 
@@ -251,7 +278,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
-    private final Deque<String> contextStack;
+    private final Deque<QueueItem> contextStack;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
@@ -262,7 +289,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
         this.callbacks = new EnumMap<>(rawCallbacks);
-        this.contextStack = new ArrayDeque<String>();
+        this.contextStack = new ArrayDeque<QueueItem>();
     }
 
     /**
@@ -278,7 +305,11 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     private void pushContext(QueryContext c) {
-        this.contextStack.push(c.toString());
+        this.contextStack.push(c);
+    }
+
+    private void pushContext(QueueItem item) {
+        this.contextStack.push(item);
     }
 
     // This is pure sugar, but it's nice to be symmetrical with pushContext
@@ -838,7 +869,16 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(SelectItem item) {
+        // TODO: what are .getAliasColumns()? Should we look at them?
+        var alias = item.getAlias();
+        if (alias != null) {
+            // FIXME: this is absolutely a hack, what's the best way to get around it?
+            pushContext(new SomeContext("alias", alias.getName()));
+        }
         item.getExpression().accept(this);
+        if (alias != null) {
+            popContext();
+        }
     }
 
     @Override

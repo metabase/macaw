@@ -76,6 +76,15 @@
     (is (= #{{:column "id" :table "orders" :schema "public"}}
            (columns "SELECT o.id FROM public.orders o")))))
 
+(deftest infer-test
+  (testing "We can first column through a few hoops"
+    (is (= #{{:column "amount" :table "orders"}}
+           (columns "SELECT amount FROM (SELECT amount FROM orders)")))
+    (is (= #{{:column "amount" :alias "cost" :table "orders"}
+             ;; FIXME: we need to figure out that `cost` is an alias from subquery
+             {:column "cost", :table "orders"}}
+           (columns "SELECT cost FROM (SELECT amount AS cost FROM orders)")))))
+
 (deftest mutation-test
   (is (= #{"alter-sequence"}
          (mutations "ALTER SEQUENCE serial RESTART WITH 42")))
