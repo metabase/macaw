@@ -215,10 +215,11 @@
   (is (= after (m/replace-names before replacements))))
 
 (deftest replace-names-test
-  (test-replacement "SELECT a.x, b.y FROM a, b;"
-                    {:tables {"a" "aa"}
-                     :columns  {"x" "xx"}}
-                    "SELECT aa.xx, b.y FROM aa, b;")
+  (test-replacement "SELECT a.x, b.x, b.y FROM a, b;"
+                    {:tables  {"a" "aa"}
+                     :columns {{:table "a" :column "x"} "xx"
+                               "y"                      "yy"}}
+                    "SELECT aa.xx, b.x, b.yy FROM aa, b;")
 
   (test-replacement
    "SELECT *, boink
