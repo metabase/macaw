@@ -84,8 +84,7 @@
   (let [col   (get known-columns column)
         name' (when col
                 (or (get column-renames (select-keys col [:column :table :schema]))
-                    (get column-renames (select-keys col [:column :table]))
-                    (get column-renames (:column col))))]
+                    (get column-renames (select-keys col [:column :table]))))]
     (when name'
       (vswap! updated-nodes conj column)
       (.setColumnName column name'))))

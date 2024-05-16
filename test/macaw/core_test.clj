@@ -217,9 +217,19 @@
 (deftest replace-names-test
   (test-replacement "SELECT a.x, b.x, b.y FROM a, b;"
                     {:tables  {"a" "aa"}
-                     :columns {{:table "a" :column "x"} "xx"
-                               "y"                      "yy"}}
+                     :columns {{:table "a" :column "x"} "xx"}}
                     "SELECT aa.xx, b.x, b.yy FROM aa, b;")
+
+  (test-replacement
+   "SELECT SUM(public.orders.amount) AS s,
+           MAX(orders.amount) AS max,
+           MIN(amount) AS min
+    FROM public.orders"
+   {:columns {{:table "orders" :column "amount"} "total"}}
+   "SELECT SUM(public.orders.total) AS s,
+           MAX(orders.total) AS max,
+           MIN(total) AS min
+    FROM public.orders")
 
   (test-replacement
    "SELECT *, boink
