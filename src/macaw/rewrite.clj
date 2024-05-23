@@ -94,6 +94,12 @@
         (throw (ex-info (str "Unknown rename: " unknown) {:type k
                                                           :rename unknown}))))))
 
+(defn- index-by-instances [xs]
+  (into {} (for [x xs
+                 :let [c (:component x)]
+                 i (:instances c)]
+             [i c])))
+
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
   [sql parsed-ast {schema-renames :schemas
@@ -101,12 +107,8 @@
                    column-renames :columns
                    :as renames}]
   (let [comps          (collect/query->components parsed-ast {:with-instance true})
-        columns        (into {} (for [c (:columns comps)
-                                      i (:instances (:component c))]
-                                  [i (:component c)]))
-        tables         (into {} (for [t (:tables comps)
-                                      i (:instances (:component t))]
-                                  [i (:component t)]))
+        columns        (index-by-instances (:columns comps))
+        tables         (index-by-instances (:tables comps))
         ;; execute rename
         updated-nodes  (volatile! [])
         res            (-> parsed-ast

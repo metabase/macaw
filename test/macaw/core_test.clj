@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- normalize-ws [s]
-  (str/replace s #"\s\s+" " "))
+  (str/replace s #"\s+" " "))
 
 (defn- and*
   [x y]
