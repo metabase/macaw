@@ -1,7 +1,8 @@
 (ns macaw.test-utils
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]))
 
 (defn- indentation [s]
   (count (re-find #"^\s*" s)))
