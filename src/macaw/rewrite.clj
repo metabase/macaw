@@ -74,7 +74,7 @@
 
 (defn- rename-table
   [updated-nodes table-renames schema-renames known-tables ^Table t _ctx]
-  (when-let [rename (u/cascading-find table-renames (get known-tables t) [:table :schema])]
+  (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
     (vswap! updated-nodes conj [t rename])
     (.setName t (val rename)))
   (when-let [schema-rename (find schema-renames (.getSchemaName t))]
@@ -83,7 +83,7 @@
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
-  (when-let [rename (u/cascading-find column-renames (get known-columns c) [:column :table :schema])]
+  (when-let [rename (u/find-relevant column-renames (get known-columns c) [:column :table :schema])]
     (vswap! updated-nodes conj [c rename])
     (.setColumnName c (val rename))))
 

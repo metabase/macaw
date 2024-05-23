@@ -19,9 +19,10 @@
   [pred coll]
   (some #(when (pred %) %) coll))
 
-(defn cascading-find
-  "Search the given map for the entry corresponding to the given [[map-key]], considering only the given keys.
-  If no entry is found, recursively start ignoring the right-most key, until we're comparing only the first one."
+(defn find-relevant
+  "Search the given map for the entry corresponding to [[map-key]], considering only the relevant keys.
+  The relevant keys are obtained by ignoring any suffix of [[ks]] for which [[map-key]] has nil or missing values.
+  We require that there is at least one relevant key to find a match."
   [m map-key ks]
   (when map-key
     (if (every? map-key ks)
