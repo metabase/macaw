@@ -52,7 +52,7 @@
 
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
-  [updated-ast updated-nodes sql & {:as opts}]
+  [updated-ast updated-nodes sql & {:as _opts}]
   (let [updated-node? (set (map first updated-nodes))
         replacement   (fn [->text visitable]
                         (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
