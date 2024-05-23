@@ -74,32 +74,18 @@
 
 (defn- rename-table
   [updated-nodes table-renames schema-renames known-tables ^Table t _ctx]
-  (let [table (-> (get known-tables t)
-                  (select-keys [:table :schema]))]
-    (when-let [rename (or (find table-renames table)
-                          (when (nil? (:schema table))
-                            (u/seek #(= (:table table) (:table (key %))) table-renames)))]
-      (vswap! updated-nodes conj [t rename])
-      (.setName t (val rename)))
-    (when-let [schema-rename (find schema-renames (.getSchemaName t))]
-      (vswap! updated-nodes conj [(.getSchemaName t) schema-rename])
-      (.setSchemaName t (val schema-rename)))))
+  (when-let [rename (u/cascading-find table-renames (get known-tables t) [:table :schema])]
+    (vswap! updated-nodes conj [t rename])
+    (.setName t (val rename)))
+  (when-let [schema-rename (find schema-renames (.getSchemaName t))]
+    (vswap! updated-nodes conj [(.getSchemaName t) schema-rename])
+    (.setSchemaName t (val schema-rename))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
-  (let [col    (-> (get known-columns c)
-                   (select-keys [:column :table :schema]))
-        rename (when col
-                 (or (find column-renames col)
-                     (when (nil? (:schema col))
-                       (u/seek #(= (dissoc col :schema)
-                                   (dissoc (key %) :schema))
-                               column-renames))
-                     (when (nil? (:table col))
-                       (u/seek #(= (:column col) (:column (key %))) column-renames))))]
-    (when rename
-      (vswap! updated-nodes conj [c rename])
-      (.setColumnName c (val rename)))))
+  (when-let [rename (u/cascading-find column-renames (get known-columns c) [:column :table :schema])]
+    (vswap! updated-nodes conj [c rename])
+    (.setColumnName c (val rename))))
 
 (defn- alert-unused! [updated-nodes renames]
   (let [known-rename? (set (map second updated-nodes))]
