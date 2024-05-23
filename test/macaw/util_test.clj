@@ -8,7 +8,7 @@
    {:a 3 :b nil :c 1} 3
    {:a 1 :b 2 :c 3}   1})
 
-(deftest relevant-find-test
+(deftest ^:parallel relevant-find-test
   (testing "We ignore any suffix of degenerate keys"
     (doseq [x [{:a 1}
                {:a 1 :b nil}
