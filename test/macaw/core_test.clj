@@ -1,12 +1,16 @@
 (ns ^:parallel macaw.core-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
    [macaw.walk :as mw])
   (:import
    (net.sf.jsqlparser.schema Table)))
 
 (set! *warn-on-reflection* true)
+
+(defn- normalize-ws [s]
+  (str/replace s #"\s\s+" " "))
 
 (defn- and*
   [x y]
@@ -34,10 +38,14 @@
            (tables "SELECT id, email FROM core_user;"))))
   (testing "With a schema (Postgres)" ;; TODO: only run this against supported DBs
     (is (= #{{:table "core_user" :schema "the_schema_name"}}
-           (tables "SELECT * FROM the_schema_name.core_user;"))))
+           (tables "SELECT * FROM the_schema_name.core_user;")))
+    (is (= #{{:table "orders" :schema "public"}
+             {:table "orders" :schema "private"}}
+           (tables "SELECT a.x FROM public.orders a, private.orders"))))
   (testing "Sub-selects"
     (is (= #{{:table "core_user"}}
            (tables "SELECT * FROM (SELECT DISTINCT email FROM core_user) q;")))))
+
 
 (deftest tables-with-complex-aliases-issue-14-test
   (testing "With an alias that is also a table name"
@@ -74,7 +82,10 @@
            (columns "SELECT id FROM orders GROUP BY user_id"))))
   (testing "table alias present"
     (is (= #{{:column "id" :table "orders" :schema "public"}}
-           (columns "SELECT o.id FROM public.orders o")))))
+           (columns "SELECT o.id FROM public.orders o"))))
+  (testing "schema is determined correctly"
+    (is (= #{{:column "x" :table "orders" :schema "public"}}
+           (columns "SELECT public.orders.x FROM public.orders, private.orders")))))
 
 (deftest infer-test
   (testing "We can first column through a few hoops"
@@ -160,9 +171,9 @@
   (is (true? (has-wildcard? "SELECT id, * FROM orders JOIN foo ON orders.id = foo.order_id"))))
 
 (deftest table-wildcard-test-without-aliases
-  (is (= #{{:component {:table "orders"} :context ["FROM" "SELECT"]}}
+  (is (= #{{:table "orders"}}
          (table-wcs "SELECT orders.* FROM orders JOIN foo ON orders.id = foo.order_id")))
-  (is (= #{{:component {:table "foo" :schema "public"} :context ["FROM" "JOIN" "SELECT"]}}
+  (is (= #{{:table "foo" :schema "public"}}
          (table-wcs "SELECT foo.* FROM orders JOIN public.foo f ON orders.id = foo.order_id"))))
 
 (deftest table-star-test-with-aliases
@@ -211,39 +222,55 @@
             :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
          (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
-(defn test-replacement [before replacements after]
-  (is (= after (m/replace-names before replacements))))
-
 (deftest replace-names-test
-  (test-replacement "SELECT a.x, b.y FROM a, b;"
-                    {:tables {"a" "aa"}
-                     :columns  {"x" "xx"}}
-                    "SELECT aa.xx, b.y FROM aa, b;")
+  (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
+         (m/replace-names  "SELECT a.x, b.x, b.y FROM a, b;"
+                           {:tables  {{:schema "public" :table "a"} "aa"}
+                            :columns {{:schema "public" :table "a" :column "x"} "xx"}})))
 
-  (test-replacement
-   "SELECT *, boink
-  , yoink AS oink
- FROM /* /* lore */
-    core_user,
-  bore_user,  /* more */ snore_user ;"
+  (is (= "SELECT qwe FROM orders"
+         (m/replace-names "SELECT id FROM orders"
+                          {:columns {{:schema "public" :table "orders" :column "id"} "qwe"}})))
 
-   {:tables  {"core_user"  "floor_muser"
-              "bore_user"  "user"
-              "snore_user" "vigilant_user"
-              "cruft"      "tuft"}
-    :columns {"boink" "sturmunddrang"
-              "yoink" "oink"
-              "hoi"   "polloi"}}
+  (is (= "SELECT p.id, q.id FROM public.whatever p join private.orders q"
+         (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
+                          {:tables {{:schema "public" :table "orders"} "whatever"}})))
 
-   "SELECT *, sturmunddrang
-  , oink AS oink
- FROM /* /* lore */
-    floor_muser,
-  user,  /* more */ vigilant_user ;"))
+  (is (= (normalize-ws "SELECT SUM(public.orders.total) AS s,
+           MAX(orders.total) AS max,
+           MIN(total) AS min
+           FROM public.orders")
+         (m/replace-names
+          (normalize-ws "SELECT SUM(public.orders.amount) AS s,
+           MAX(orders.amount) AS max,
+           MIN(amount) AS min
+           FROM public.orders")
+          {:columns {{:schema "public" :table "orders" :column "amount"} "total"}})))
+
+  (is (= (normalize-ws "SELECT *, sturmunddrang
+                                , oink AS oink
+                        FROM /* /* lore */
+                             floor_muser,
+                             user,  /* more */ vigilant_user ;")
+         (m/replace-names
+          (normalize-ws
+           "SELECT *, boink
+                    , yoink AS oink
+            FROM /* /* lore */
+                core_user,
+                bore_user,  /* more */ snore_user ;")
+          {:tables  {{:schema "public" :table "core_user"}  "floor_muser"
+                     {:schema "public" :table "bore_user"}  "user"
+                     {:schema "public" :table "snore_user"} "vigilant_user"}
+           :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
+                     {:schema "public" :table "snore_user" :column "yoink"} "oink"}})))
+
+  (is (thrown? Exception #"Unknown rename"
+               (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}))))
 
 (deftest replace-schema-test
-  (test-replacement "SELECT public.orders.x FROM public.orders"
-                    {:schemas {"public" "totally_private"}
-                     :tables  {"orders" "purchases"}
-                     :columns {"x" "xx"}}
-                    "SELECT totally_private.purchases.xx FROM totally_private.purchases"))
+  (is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
+         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                          {:schemas {"public" "totally_private"}
+                           :tables  {{:schema "public" :table "orders"} "purchases"}
+                           :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))

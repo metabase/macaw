@@ -1,5 +1,7 @@
 (ns macaw.rewrite
   (:require
+   [macaw.collect :as collect]
+   [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
    (net.sf.jsqlparser.parser ASTNodeAccess SimpleNode)
@@ -50,13 +52,14 @@
 
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
-  [updated-ast updated-node? sql]
-  (let [replacement  (fn [->text visitable]
-                       (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
-                             idx-range (node->idx-range ast-node sql)
-                             node-text (->text visitable)]
+  [updated-ast updated-nodes sql]
+  (let [updated-node? (set (map first updated-nodes))
+        replacement   (fn [->text visitable]
+                        (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
+                              idx-range (node->idx-range ast-node sql)
+                              node-text (->text visitable)]
                          [idx-range node-text]))
-        replace-name (fn [->text]
+        replace-name  (fn [->text]
                        (fn [acc visitable _ctx]
                          (cond-> acc
                            (updated-node? visitable)
@@ -70,28 +73,61 @@
       []))))
 
 (defn- rename-table
-  [updated-nodes table-renames schema-renames ^Table table _ctx]
-  (when-let [name' (get table-renames (.getName table))]
-    (vswap! updated-nodes conj table)
-    (.setName table name'))
-  (when-let [new-schema-name (get schema-renames (.getSchemaName table))]
-    (.setSchemaName table new-schema-name)))
+  [updated-nodes table-renames schema-renames known-tables ^Table t _ctx]
+  (let [table (-> (get known-tables t)
+                  (select-keys [:table :schema]))]
+    (when-let [rename (or (find table-renames table)
+                          (when (nil? (:schema table))
+                            (u/seek #(= (:table table) (:table (key %))) table-renames)))]
+      (vswap! updated-nodes conj [t rename])
+      (.setName t (val rename)))
+    (when-let [schema-rename (find schema-renames (.getSchemaName t))]
+      (vswap! updated-nodes conj [(.getSchemaName t) schema-rename])
+      (.setSchemaName t (val schema-rename)))))
 
 (defn- rename-column
-  [updated-nodes column-renames ^Column column _ctx]
-  (when-let [name' (get column-renames (.getColumnName column))]
-    (vswap! updated-nodes conj column)
-    (.setColumnName column name')))
+  [updated-nodes column-renames known-columns ^Column c _ctx]
+  (let [col    (-> (get known-columns c)
+                   (select-keys [:column :table :schema]))
+        rename (when col
+                 (or (find column-renames col)
+                     (when (nil? (:schema col))
+                       (u/seek #(= (dissoc col :schema)
+                                   (dissoc (key %) :schema))
+                               column-renames))
+                     (when (nil? (:table col))
+                       (u/seek #(= (:column col) (:column (key %))) column-renames))))]
+    (when rename
+      (vswap! updated-nodes conj [c rename])
+      (.setColumnName c (val rename)))))
+
+(defn- alert-unused! [updated-nodes renames]
+  (let [known-rename? (set (map second updated-nodes))]
+    (doseq [[k items] renames]
+      (when-let [unknown (first (remove known-rename? items))]
+        (throw (ex-info (str "Unknown rename: " unknown) {:type k
+                                                          :rename unknown}))))))
 
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
   [sql parsed-ast {schema-renames :schemas
                    table-renames  :tables
-                   column-renames :columns}]
-  (let [updated-nodes (volatile! #{})]
-    (-> parsed-ast
-        (mw/walk-query
-         {:table            (partial rename-table updated-nodes table-renames schema-renames)
-          :column-qualifier (partial rename-table updated-nodes table-renames schema-renames)
-          :column           (partial rename-column updated-nodes column-renames)})
-        (update-query @updated-nodes sql))))
+                   column-renames :columns
+                   :as renames}]
+  (let [comps          (collect/query->components parsed-ast {:with-instance true})
+        columns        (into {} (for [c (:columns comps)
+                                      i (:instances (:component c))]
+                                  [i (:component c)]))
+        tables         (into {} (for [t (:tables comps)
+                                      i (:instances (:component t))]
+                                  [i (:component t)]))
+        ;; execute rename
+        updated-nodes  (volatile! [])
+        res            (-> parsed-ast
+                           (mw/walk-query
+                            {:table            (partial rename-table updated-nodes table-renames schema-renames tables)
+                             :column-qualifier (partial rename-table updated-nodes table-renames schema-renames tables)
+                             :column           (partial rename-column updated-nodes column-renames columns)})
+                           (update-query @updated-nodes sql))]
+    (alert-unused! @updated-nodes renames)
+    res))

@@ -202,7 +202,7 @@ example:
 (replace-names "SELECT p.id, orders.total FROM people p, public.orders;"
                {:schemas  {"public" "private"}
                 :tables   {"people" "users"}
-                :columns  {"total" "amount"}})
+                :columns  {{:table "orders" :column "total"} "amount"}})
 ;; => "SELECT p.id, orders.amount FROM users p, private.orders;"
 ```
 ## Error Handling
