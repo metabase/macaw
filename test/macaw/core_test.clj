@@ -394,3 +394,6 @@
                           {:columns {{:table "orders" :column "total"} "subtotal"}
                            :tables  {{:table "orders"} "purchases"}}
                           {:allow-unused? true}))))
+
+(deftest large-snowflake-test
+  (slurp (clojure.java.io/resource "snowflake.sql")))
