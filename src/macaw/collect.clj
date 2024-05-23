@@ -1,5 +1,6 @@
 (ns macaw.collect
   (:require
+   [clojure.string :as str]
    [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
@@ -39,26 +40,27 @@
 
 ;;; tables
 
-(defn- find-table [{:keys [alias->table name->table]} ^Table t]
-  (let [n      (.getName t)
+(defn- normalize-reference [s {:keys [case-insensitive?]}]
+  (cond-> s (and s case-insensitive?) str/lower-case))
+
+(defn- find-table [{:keys [alias->table name->table] :as opts} ^Table t]
+  (let [n      (normalize-reference (.getName t) opts)
         schema (.getSchemaName t)]
     (or (get alias->table n)
-        (:component (get name->table {:table n :schema schema}))
-        (:component (get name->table {:table n :schema nil}))
-        (:component (last (u/seek #(= n (:table (key %))) name->table))))))
+        (:component (last (u/find-relevant name->table {:table n :schema schema} [:table :schema]))))))
 
 (defn- find-qualifier-table [opts ^Table q _ctx]
   (when-let [table (find-table opts q)]
     (cond-> table
       (:with-instance opts) (assoc :instances [q]))))
 
-(defn- make-table [{:keys [with-instance qualifier? alias->table]} ^Table t _ctx]
+(defn- make-table [{:keys [with-instance qualifier? alias->table] :as opts} ^Table t _ctx]
   (if (and qualifier?
            (get alias->table (.getName t)))
     (get alias->table (.getName t))
     (merge
-     {:table (.getName t)}
-     (when-let [s (.getSchemaName t)]
+     {:table (normalize-reference (.getName t) opts)}
+     (when-let [s (normalize-reference (.getSchemaName t) opts)]
        {:schema s})
      (when with-instance
        {:instances [t]}))))
@@ -88,12 +90,12 @@
     (when (= (count name->table) 1)
       (:component (val (first name->table))))))
 
-(defn- make-column [data ^Column c ctx]
+(defn- make-column [opts ^Column c ctx]
   (merge
-   {:column (.getColumnName c)}
+   {:column (normalize-reference (.getColumnName c) opts)}
    (maybe-column-alias ctx)
-   (maybe-column-table data c)
-   (when (:with-instance data)
+   (maybe-column-table opts c)
+   (when (:with-instance opts)
      {:instances [c]})))
 
 ;;; get them together
