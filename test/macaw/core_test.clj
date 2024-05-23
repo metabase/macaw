@@ -238,12 +238,12 @@
             MAX(orders.total) AS max,
             MIN(total) AS min
             FROM public.orders"
-         (m/replace-names
-          "SELECT SUM(public.orders.amount) AS s,
-           MAX(orders.amount) AS max,
-           MIN(amount) AS min
-           FROM public.orders"
-          {:columns {{:schema "public" :table "orders" :column "amount"} "total"}})))
+           (m/replace-names
+            "SELECT SUM(public.orders.amount) AS s,
+             MAX(orders.amount) AS max,
+             MIN(amount) AS min
+             FROM public.orders"
+            {:columns {{:schema "public" :table "orders" :column "amount"} "total"}})))
 
   (is (ws= "SELECT *, sturmunddrang
                     , oink AS oink
