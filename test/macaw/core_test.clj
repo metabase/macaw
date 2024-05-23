@@ -1,16 +1,13 @@
 (ns ^:parallel macaw.core-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
-   [macaw.walk :as mw])
+   [macaw.walk :as mw]
+   [macaw.test-utils :refer [ws=]])
   (:import
    (net.sf.jsqlparser.schema Table)))
 
 (set! *warn-on-reflection* true)
-
-(defn- normalize-ws [s]
-  (str/replace s #"\s+" " "))
 
 (defn- and*
   [x y]
@@ -236,34 +233,33 @@
          (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
                           {:tables {{:schema "public" :table "orders"} "whatever"}})))
 
-  (is (= (normalize-ws "SELECT SUM(public.orders.total) AS s,
-           MAX(orders.total) AS max,
-           MIN(total) AS min
-           FROM public.orders")
+  (is (ws= "SELECT SUM(public.orders.total) AS s,
+            MAX(orders.total) AS max,
+            MIN(total) AS min
+            FROM public.orders"
          (m/replace-names
-          (normalize-ws "SELECT SUM(public.orders.amount) AS s,
+          "SELECT SUM(public.orders.amount) AS s,
            MAX(orders.amount) AS max,
            MIN(amount) AS min
-           FROM public.orders")
+           FROM public.orders"
           {:columns {{:schema "public" :table "orders" :column "amount"} "total"}})))
 
-  (is (= (normalize-ws "SELECT *, sturmunddrang
-                                , oink AS oink
-                        FROM /* /* lore */
-                             floor_muser,
-                             user,  /* more */ vigilant_user ;")
-         (m/replace-names
-          (normalize-ws
-           "SELECT *, boink
-                    , yoink AS oink
+  (is (ws= "SELECT *, sturmunddrang
+                    , oink AS oink
             FROM /* /* lore */
-                core_user,
-                bore_user,  /* more */ snore_user ;")
-          {:tables  {{:schema "public" :table "core_user"}  "floor_muser"
-                     {:schema "public" :table "bore_user"}  "user"
-                     {:schema "public" :table "snore_user"} "vigilant_user"}
-           :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
-                     {:schema "public" :table "snore_user" :column "yoink"} "oink"}})))
+                 floor_muser,
+                 user,  /* more */ vigilant_user ;"
+           (m/replace-names
+            "SELECT *, boink
+                     , yoink AS oink
+             FROM /* /* lore */
+                  core_user,
+                  bore_user,  /* more */ snore_user ;"
+            {:tables  {{:schema "public" :table "core_user"}  "floor_muser"
+                       {:schema "public" :table "bore_user"}  "user"
+                       {:schema "public" :table "snore_user"} "vigilant_user"}
+             :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
+                       {:schema "public" :table "snore_user" :column "yoink"} "oink"}})))
 
   (is (thrown? Exception #"Unknown rename"
                (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}))))
