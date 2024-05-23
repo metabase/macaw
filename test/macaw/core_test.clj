@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
-   #_{:clj-kondo/ignore [:refer]}
-   [macaw.test-utils :refer [ws=]]
+   [macaw.test.util :refer [ws=]]
    [macaw.walk :as mw])
   (:import
    (net.sf.jsqlparser.schema Table)))

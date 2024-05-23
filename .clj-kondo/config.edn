@@ -16,7 +16,8 @@
 
   :refer
   {:level   :warning
-   :exclude [clojure.test]}
+   :exclude [clojure.test
+             macaw.test.util]}
 
   :docstring-leading-trailing-whitespace {:level :warning}
   :keyword-binding                       {:level :warning}

@@ -1,4 +1,4 @@
-(ns macaw.test-utils
+(ns macaw.test.util
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
