@@ -127,12 +127,12 @@
             (update :context only-query-context))
        components))
 
-(defn- merge-with-instances [a b]
-  (cond-> (merge a b)
-    ;; collect all instances so we can refer back to maps
-    (or (-> a :component :instances)
-        (-> b :component :instances))
-    (update-in [:component :instances] concat (-> a :component :instances))))
+(defn- merge-with-instances
+  "Merge two nodes, keeping the union of their instances."
+  [a b]
+  (let [cs-a (-> a :component :instances)]
+    (cond-> (merge a b)
+      cs-a (update-in [:component :instances] into cs-a))))
 
 (defn query->components
   "See macaw.core/query->components doc."
