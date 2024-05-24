@@ -84,6 +84,15 @@
     (is (= #{{:column "x" :table "orders" :schema "public"}}
            (columns "SELECT public.orders.x FROM public.orders, private.orders")))))
 
+(deftest quotes-test
+  (let [query "SELECT \"foo\", \"dong\".\"bar\", `ding`.`dong`.`fee` FROM `ding`.dong"]
+    (is (= #{{:column "bar", :table "dong", :schema "ding"}
+             {:column "foo", :table "dong", :schema "ding"}
+             {:column "fee", :table "dong", :schema "ding"}}
+           (columns query)))
+    (is (= #{{:table "dong", :schema "ding"}}
+           (tables query)))))
+
 (deftest infer-test
   (testing "We can first column through a few hoops"
     (is (= #{{:column "amount" :table "orders"}}
