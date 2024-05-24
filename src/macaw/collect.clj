@@ -105,14 +105,14 @@
       (:component (val (first name->table))))))
 
 (defn- make-column [opts ^Column c ctx]
-  (merge
-   ;; Be careful of inheriting unwanted metadata like :instances
-   (select-keys (maybe-column-table opts c) [:table :schema])
-   (u/strip-nils
-    {:column    (normalize-reference (.getColumnName c) opts)
-     :alias     (let [[k y] (first ctx)]
-                  (when (= k :alias) y))
-     :instances (when (:with-instance opts) [c])})))
+  (let [{:keys [schema table]} (maybe-column-table opts c)]
+    (u/strip-nils
+     {:schema    schema
+      :table     table
+      :column    (normalize-reference (.getColumnName c) opts)
+      :alias     (let [[k y] (first ctx)]
+                   (when (= k :alias) y))
+      :instances (when (:with-instance opts) [c])})))
 
 ;;; get them together
 
