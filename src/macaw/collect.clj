@@ -78,12 +78,10 @@
   (if (and qualifier?
            (get alias->table (.getName t)))
     (get alias->table (.getName t))
-    (merge
-     {:table (normalize-reference (.getName t) opts)}
-     (when-let [s (normalize-reference (.getSchemaName t) opts)]
-       {:schema s})
-     (when with-instance
-       {:instances [t]}))))
+    (u/strip-nils
+     {:table     (normalize-reference (.getName t) opts)
+      :schema    (normalize-reference (.getSchemaName t) opts)
+      :instances (when with-instance [t])})))
 
 (defn- alias-mapping
   [opts ^Table table ctx]
@@ -99,10 +97,6 @@
 
 ;;; columns
 
-(defn- maybe-column-alias [[maybe-alias :as _ctx]]
-  (when (= (first maybe-alias) :alias)
-    {:alias (second maybe-alias)}))
-
 (defn- maybe-column-table [{:keys [name->table] :as opts} ^Column c]
   (if-let [t (.getTable c)]
     (find-table opts t)
@@ -112,11 +106,12 @@
 
 (defn- make-column [opts ^Column c ctx]
   (merge
-   {:column (normalize-reference (.getColumnName c) opts)}
-   (maybe-column-alias ctx)
    (maybe-column-table opts c)
-   (when (:with-instance opts)
-     {:instances [c]})))
+   (u/strip-nils
+    {:column    (normalize-reference (.getColumnName c) opts)
+     :alias     (let [[k y] (first ctx)]
+                  (when (= k :alias) y))
+     :instances (when (:with-instance opts) [c])})))
 
 ;;; get them together
 

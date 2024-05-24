@@ -38,3 +38,12 @@
                       #(select-keys % ks-prefix)
                       key)
                 m))))))
+
+(def ^:private nil-val? (comp nil? val))
+
+(defn strip-nils
+  "Remove any keys corresponding to nil values from the given map."
+  [m]
+  (if (some nil-val? m)
+    (with-meta (into {} (remove nil-val?) m) (meta m))
+    m))
