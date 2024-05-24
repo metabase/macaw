@@ -91,7 +91,14 @@
              {:column "fee", :table "dong", :schema "ding"}}
            (columns query)))
     (is (= #{{:table "dong", :schema "ding"}}
-           (tables query)))))
+           (tables query)))
+    (is (= "SELECT glue, long.lark, king.long.flee FROM king.long"
+           (m/replace-names query
+                            {:schemas {"ding" "king"}
+                             :tables  {{:schema "ding" :table "dong"} "long"}
+                             :columns {{:schema "ding" :table "dong" :column "fee"} "flee"
+                                       {:schema "ding" :table "dong" :column "bar"} "lark"
+                                       {:schema "ding" :table "dong" :column "foo"} "glue"}})))))
 
 (deftest infer-test
   (testing "We can first column through a few hoops"

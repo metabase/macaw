@@ -50,7 +50,9 @@
             quotes)
       s))
 
-(defn- normalize-reference [s {:keys [case-insensitive?]}]
+(defn normalize-reference
+  "Normalize a schema, table, column, etc references so that we can match them regardless of syntactic differences."
+  [s {:keys [case-insensitive?]}]
   (when s
     (cond-> s
       case-insensitive? str/lower-case
