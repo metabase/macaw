@@ -106,7 +106,8 @@
 
 (defn- make-column [opts ^Column c ctx]
   (merge
-   (maybe-column-table opts c)
+   ;; Be careful of inheriting unwanted metadata like :instances
+   (select-keys (maybe-column-table opts c) [:table :schema])
    (u/strip-nils
     {:column    (normalize-reference (.getColumnName c) opts)
      :alias     (let [[k y] (first ctx)]
