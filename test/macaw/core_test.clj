@@ -1,5 +1,6 @@
 (ns ^:parallel macaw.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
@@ -84,21 +85,65 @@
     (is (= #{{:column "x" :table "orders" :schema "public"}}
            (columns "SELECT public.orders.x FROM public.orders, private.orders")))))
 
+(def ^:private heavily-quoted-query
+  "SELECT raw, \"foo\", \"dong\".\"bar\", `ding`.`dong`.`fee` FROM `ding`.dong")
+
+(def ^:private heavily-quoted-query-rewritten
+  "SELECT flaw, glue, long.lark, king.long.flee FROM king.long")
+
+(def ^:private heavily-quoted-query-rewrites
+  {:schemas {"ding" "king"}
+   :tables  {{:schema "ding" :table "dong"} "long"}
+   :columns {{:schema "ding" :table "dong" :column "raw"} "flaw"
+             {:schema "ding" :table "dong" :column "fee"} "flee"
+             {:schema "ding" :table "dong" :column "bar"} "lark"
+             {:schema "ding" :table "dong" :column "foo"} "glue"}})
+
 (deftest quotes-test
-  (let [query "SELECT \"foo\", \"dong\".\"bar\", `ding`.`dong`.`fee` FROM `ding`.dong"]
-    (is (= #{{:column "bar", :table "dong", :schema "ding"}
-             {:column "foo", :table "dong", :schema "ding"}
-             {:column "fee", :table "dong", :schema "ding"}}
-           (columns query)))
-    (is (= #{{:table "dong", :schema "ding"}}
-           (tables query)))
-    (is (= "SELECT glue, long.lark, king.long.flee FROM king.long"
-           (m/replace-names query
-                            {:schemas {"ding" "king"}
-                             :tables  {{:schema "ding" :table "dong"} "long"}
-                             :columns {{:schema "ding" :table "dong" :column "fee"} "flee"
-                                       {:schema "ding" :table "dong" :column "bar"} "lark"
-                                       {:schema "ding" :table "dong" :column "foo"} "glue"}})))))
+  (is (= #{{:column "raw", :table "dong", :schema "ding"}
+           {:column "foo", :table "dong", :schema "ding"}
+           {:column "bar", :table "dong", :schema "ding"}
+           {:column "fee", :table "dong", :schema "ding"}}
+         (columns heavily-quoted-query)))
+  (is (= #{{:table "dong", :schema "ding"}}
+         (tables heavily-quoted-query)))
+  (is (= heavily-quoted-query-rewritten
+         (m/replace-names heavily-quoted-query heavily-quoted-query-rewrites))))
+
+(deftest case-sensitive-test
+  (is (= "SELECT X.Y, X.y, x.Z, x.z FROM X LEFT JOIN x ON X.Y=x.Z"
+         (m/replace-names "SELECT a.b, a.B, A.b, A.B FROM a LEFT JOIN A ON a.b=A.b"
+                          {:tables  {{:table "a"} "X"
+                                    {:table "A"} "x"}
+                           :columns {{:table "a" :column "b"} "Y"
+                                     {:table "a" :column "B"} "y"
+                                     {:table "A" :column "b"} "Z"
+                                     {:table "A" :column "B"} "z"}}))))
+
+(deftest case-insensitive-test
+  ;; In the future, we might try to be smarter and preserve case.
+  (is (= "SELECT cats.meow FROM cats"
+         (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
+                          {:tables  {{:table "dogs"} "cats"}
+                           :columns {{:table "dogs" :column "bark"} "meow"}}
+                          :case-insensitive? true))))
+
+(def ^:private heavily-quoted-query-mixed-case
+  "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")
+
+(deftest case-and-quotes-test
+  (testing "By default, quoted references are also case insensitive"
+    (is (= heavily-quoted-query-rewritten
+           (m/replace-names heavily-quoted-query-mixed-case
+                            heavily-quoted-query-rewrites
+                            :case-insensitive? true))))
+  (testing "One can opt-into ignoring case only for unquoted references"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
+                          (m/replace-names heavily-quoted-query-mixed-case
+                                           heavily-quoted-query-rewrites
+                                           :case-insensitive? true
+                                           :quotes-preserve-case? true)))))
 
 (deftest infer-test
   (testing "We can first column through a few hoops"
@@ -279,14 +324,6 @@
 
   (is (thrown? Exception #"Unknown rename"
                (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}))))
-
-(deftest case-insensitive-test
-  ;; In future we might try to be smarter and preserve case.
-  (is (= "SELECT cats.meow FROM cats"
-         (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
-                          {:tables  {{:table "dogs"} "cats"}
-                           :columns {{:table "dogs" :column "bark"} "meow"}}
-                          :case-insensitive? true))))
 
 (deftest replace-schema-test
   (is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
