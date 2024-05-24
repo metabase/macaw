@@ -73,11 +73,11 @@
       []))))
 
 (defn- rename-table
-  [updated-nodes table-renames schema-renames known-tables ^Table t _ctx]
+  [updated-nodes table-renames schema-renames known-tables ^Table t opts]
   (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
     (vswap! updated-nodes conj [t rename])
     (.setName t (val rename)))
-  (let [schema-name (collect/normalize-reference (.getSchemaName t) _ctx)]
+  (let [schema-name (collect/normalize-reference (.getSchemaName t) opts)]
     (when-let [schema-rename (find schema-renames schema-name)]
       (vswap! updated-nodes conj [schema-name schema-rename])
       (.setSchemaName t (val schema-rename)))))
