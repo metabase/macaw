@@ -259,10 +259,7 @@
                        {:schema "public" :table "bore_user"}  "user"
                        {:schema "public" :table "snore_user"} "vigilant_user"}
              :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
-                       {:schema "public" :table "snore_user" :column "yoink"} "oink"}})))
-
-  (is (thrown? Exception #"Unknown rename"
-               (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}))))
+                       {:schema "public" :table "snore_user" :column "yoink"} "oink"}}))))
 
 (deftest case-insensitive-test
   ;; In future we might try to be smarter and preserve case.
@@ -278,3 +275,11 @@
                           {:schemas {"public" "totally_private"}
                            :tables  {{:schema "public" :table "orders"} "purchases"}
                            :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
+
+(deftest allow-unused-test
+  (is (thrown-with-msg?
+       Exception #"Unknown rename"
+       (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}})))
+  (is (= "SELECT 1"
+         (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}
+                          {:allow-unused? true}))))

@@ -117,5 +117,6 @@
                              :column-qualifier (partial rename-table updated-nodes table-renames schema-renames tables)
                              :column           (partial rename-column updated-nodes column-renames columns)})
                            (update-query @updated-nodes sql opts))]
-    (alert-unused! @updated-nodes renames)
+    (when-not (:allow-unused? opts)
+      (alert-unused! @updated-nodes renames))
     res))
