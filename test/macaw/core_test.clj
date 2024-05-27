@@ -161,7 +161,7 @@
                            :allow-unused?    true}))))
 
 (def ^:private heavily-quoted-query-mixed-case
-  "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `ding`.`doNg`")
 
 (deftest case-and-quotes-test
   (testing "By default, quoted references are also case insensitive"
@@ -170,13 +170,21 @@
                             heavily-quoted-query-rewrites
                             :case-insensitive :lower))))
 
-  (testing "One can opt-into ignoring case only for unquoted references"
-    (is (thrown-with-msg? ExceptionInfo
-                          #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
-                          (m/replace-names heavily-quoted-query-mixed-case
-                                           heavily-quoted-query-rewrites
-                                           :case-insensitive :lower
-                                           :quotes-preserve-case? true)))))
+  (testing "One can opt-into ignoring case only for unquoted references\n"
+    (testing "None of the quoted identifiers with different case will be matched"
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Unknown rename: .* \"(dong)|(bar)|(foo)|(fee)\""
+                            (m/replace-names heavily-quoted-query-mixed-case
+                                             heavily-quoted-query-rewrites
+                                             :case-insensitive :agnostic
+                                             :quotes-preserve-case? true))))
+    (testing "The query is unchanged when allowed to run partially"
+      (is (= heavily-quoted-query-mixed-case
+             (m/replace-names heavily-quoted-query-mixed-case
+                              heavily-quoted-query-rewrites
+                              {:case-insensitive      :agnostic
+                               :quotes-preserve-case? true
+                               :allow-unused?         true}))))))
 
 (def ^:private ambiguous-case-replacements
   {:columns {{:schema "public" :table "DOGS" :column "BARK"}  "MEOW"
