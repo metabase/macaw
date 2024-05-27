@@ -22,5 +22,5 @@
 
 (defn replace-names
   "Given a SQL query, apply the given table, column, and schema renames."
-  [sql renames]
-  (rewrite/replace-names sql (parsed-query sql) renames))
+  [sql renames & {:as opts}]
+  (rewrite/replace-names sql (parsed-query sql) renames opts))

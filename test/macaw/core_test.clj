@@ -264,6 +264,14 @@
   (is (thrown? Exception #"Unknown rename"
                (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}))))
 
+(deftest case-insensitive-test
+  ;; In future we might try to be smarter and preserve case.
+  (is (= "SELECT cats.meow FROM cats"
+         (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
+                          {:tables  {{:table "dogs"} "cats"}
+                           :columns {{:table "dogs" :column "bark"} "meow"}}
+                          :case-insensitive? true))))
+
 (deftest replace-schema-test
   (is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
          (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"

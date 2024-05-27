@@ -52,7 +52,7 @@
 
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
-  [updated-ast updated-nodes sql]
+  [updated-ast updated-nodes sql & {:as _opts}]
   (let [updated-node? (set (map first updated-nodes))
         replacement   (fn [->text visitable]
                         (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
@@ -102,11 +102,11 @@
 
 (defn replace-names
   "Given a SQL query and its corresponding (untransformed) AST, apply the given table and column renames."
-  [sql parsed-ast {schema-renames :schemas
-                   table-renames  :tables
-                   column-renames :columns
-                   :as renames}]
-  (let [comps          (collect/query->components parsed-ast {:with-instance true})
+  [sql parsed-ast renames & {:as opts}]
+  (let [{schema-renames :schemas
+         table-renames  :tables
+         column-renames :columns} renames
+        comps          (collect/query->components parsed-ast (assoc opts :with-instance true))
         columns        (index-by-instances (:columns comps))
         tables         (index-by-instances (:tables comps))
         ;; execute rename
@@ -116,6 +116,6 @@
                             {:table            (partial rename-table updated-nodes table-renames schema-renames tables)
                              :column-qualifier (partial rename-table updated-nodes table-renames schema-renames tables)
                              :column           (partial rename-column updated-nodes column-renames columns)})
-                           (update-query @updated-nodes sql))]
+                           (update-query @updated-nodes sql opts))]
     (alert-unused! @updated-nodes renames)
     res))
