@@ -125,7 +125,14 @@
          (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
                           {:tables  {{:table "dogs"} "cats"}
                            :columns {{:table "dogs" :column "bark"} "meow"}}
-                          :case-insensitive? true))))
+                          {:case-insensitive? true})))
+
+  (is (= "SELECT meow FROM private.cats"
+         (m/replace-names "SELECT bark FROM PUBLIC.dogs"
+                          {:schemas {"public" "private"}
+                           :tables  {{:schema "public" :table "dogs"} "cats"}
+                           :columns {{:schema "public" :table "dogs" :column "bark"} "meow"}}
+                          {:case-insensitive? true}))))
 
 (def ^:private heavily-quoted-query-mixed-case
   "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")

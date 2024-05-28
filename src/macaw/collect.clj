@@ -52,7 +52,7 @@
   (subs s 1 (dec (count s))))
 
 (defn normalize-reference
-  "Normalize a schema, table, column, etc references so that we can match them regardless of syntactic differences."
+  "Normalize a schema, table, column, etc. references so that we can match them regardless of syntactic differences."
   [s {:keys [case-insensitive? quotes-preserve-case?]}]
   (when s
     (let [quoted (quoted? s)
