@@ -73,13 +73,15 @@
       []))))
 
 (defn- rename-table
-  [updated-nodes table-renames schema-renames known-tables ^Table t _ctx]
+  [updated-nodes table-renames schema-renames known-tables opts ^Table t _ctx]
   (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
     (vswap! updated-nodes conj [t rename])
     (.setName t (val rename)))
-  (when-let [schema-rename (find schema-renames (.getSchemaName t))]
-    (vswap! updated-nodes conj [(.getSchemaName t) schema-rename])
-    (.setSchemaName t (val schema-rename))))
+  (let [raw-schema-name (.getSchemaName t)
+        schema-name     (collect/normalize-reference raw-schema-name opts)]
+    (when-let [schema-rename (find schema-renames schema-name)]
+      (vswap! updated-nodes conj [raw-schema-name schema-rename])
+      (.setSchemaName t (val schema-rename)))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
@@ -111,11 +113,13 @@
         tables         (index-by-instances (:tables comps))
         ;; execute rename
         updated-nodes  (volatile! [])
+        rename-table*  (partial rename-table updated-nodes table-renames schema-renames tables opts)
+        rename-column* (partial rename-column updated-nodes column-renames columns)
         res            (-> parsed-ast
                            (mw/walk-query
-                            {:table            (partial rename-table updated-nodes table-renames schema-renames tables)
-                             :column-qualifier (partial rename-table updated-nodes table-renames schema-renames tables)
-                             :column           (partial rename-column updated-nodes column-renames columns)})
+                            {:table            rename-table*
+                             :column-qualifier rename-table*
+                             :column           rename-column*})
                            (update-query @updated-nodes sql opts))]
     (alert-unused! @updated-nodes renames)
     res))

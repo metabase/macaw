@@ -40,12 +40,32 @@
 
 ;;; tables
 
-(defn- normalize-reference [s {:keys [case-insensitive?]}]
-  (cond-> s (and s case-insensitive?) str/lower-case))
+(def ^:private quotes (map str [\` \"]))
+
+(defn- quoted? [s]
+  (some (fn [q]
+          (and (str/starts-with? s q)
+               (str/ends-with? s q)))
+        quotes))
+
+(defn- strip-quotes [s]
+  (subs s 1 (dec (count s))))
+
+(defn normalize-reference
+  "Normalize a schema, table, column, etc. references so that we can match them regardless of syntactic differences."
+  [s {:keys [case-insensitive? quotes-preserve-case?]}]
+  (when s
+    (let [quoted (quoted? s)
+          case-insensitive (and case-insensitive?
+                                (not (and quotes-preserve-case?
+                                          quoted)))]
+      (cond-> s
+        quoted           strip-quotes
+        case-insensitive str/lower-case))))
 
 (defn- find-table [{:keys [alias->table name->table] :as opts} ^Table t]
   (let [n      (normalize-reference (.getName t) opts)
-        schema (.getSchemaName t)]
+        schema (normalize-reference (.getSchemaName t) opts)]
     (or (get alias->table n)
         (:component (last (u/find-relevant name->table {:table n :schema schema} [:table :schema]))))))
 
