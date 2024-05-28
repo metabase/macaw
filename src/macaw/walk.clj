@@ -31,12 +31,15 @@
             (apply f args))))))
 
 (defn- update-keys-vals [m key-f val-f]
-  (into {} (map (fn [[k v]]
-                  [(key-f k) (val-f v)]))
-        m))
+  (let [ret (persistent!
+             (reduce-kv (fn [acc k v]
+                          (assoc! acc (key-f k) (val-f v)))
+                        (transient {})
+                        m))]
+    (with-meta ret (meta m))))
 
 (defn walk-query
-  "Walk over the query's AST, using the callbacks for their side-effects, for example to mutate the AST itself."
+  "Walk over the query's AST, using the callbacks for their side effects, for example to mutate the AST itself."
   [parsed-query callbacks]
   (let [callbacks (update-keys-vals callbacks ->callback-key (comp deduplicate-visits preserve))]
     (.walk (AstWalker. callbacks ::ignored) parsed-query)))
