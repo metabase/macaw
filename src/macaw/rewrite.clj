@@ -111,7 +111,6 @@
         comps          (collect/query->components parsed-ast (assoc opts :with-instance true))
         columns        (index-by-instances (:columns comps))
         tables         (index-by-instances (:tables comps))
-        schemas        (index-by-instances (:schemas comps))
         ;; execute rename
         updated-nodes  (volatile! [])
         rename-table*  (partial rename-table updated-nodes table-renames schema-renames tables opts)
