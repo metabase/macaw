@@ -53,15 +53,17 @@
 
 (defn normalize-reference
   "Normalize a schema, table, column, etc. references so that we can match them regardless of syntactic differences."
-  [s {:keys [case-insensitive? quotes-preserve-case?]}]
-  (when s
-    (let [quoted (quoted? s)
-          case-insensitive (and case-insensitive?
-                                (not (and quotes-preserve-case?
-                                          quoted)))]
-      (cond-> s
-        quoted           strip-quotes
-        case-insensitive str/lower-case))))
+  [s {:keys [preserve-identifiers? case-insensitive? quotes-preserve-case?]}]
+  (if preserve-identifiers?
+    s
+    (when s
+      (let [quoted           (quoted? s)
+            case-insensitive (and case-insensitive?
+                                  (not (and quotes-preserve-case?
+                                            quoted)))]
+        (cond-> s
+          quoted strip-quotes
+          case-insensitive str/lower-case)))))
 
 (defn- find-table [{:keys [alias->table name->table] :as opts} ^Table t]
   (let [n      (normalize-reference (.getName t) opts)
@@ -137,7 +139,7 @@
 
 (defn query->components
   "See macaw.core/query->components doc."
-  [^Statement parsed-ast & [opts]]
+  [^Statement parsed-ast & {:as opts}]
   (let [{:keys [columns
                 qualifiers
                 has-wildcard?

@@ -82,7 +82,16 @@
            (columns "SELECT o.id FROM public.orders o"))))
   (testing "schema is determined correctly"
     (is (= #{{:column "x" :table "orders" :schema "public"}}
-           (columns "SELECT public.orders.x FROM public.orders, private.orders")))))
+           (columns "SELECT public.orders.x FROM public.orders, private.orders"))))
+  (testing "quotes are retained"
+    (is (= #{{:column "`x`" :table "`orders`" :schema "`public`"}}
+           (columns "SELECT `public`.`orders`.`x` FROM `public`.`orders`, `private`.`orders`"))))
+  (testing "quotes and case are not interpreted"
+    (is (= #{{:column "x" :table "ORDERS" :schema "`public`"}
+             {:column "X" :table "ORDERS" :schema "`public`"}
+             {:column "`x`" :table "ORDERS" :schema "`public`"}
+             {:column "`X`" :table "ORDERS" :schema "`public`"}}
+           (columns "SELECT x, X, `x`, `X` FROM `public`.ORDERS")))))
 
 (def ^:private heavily-quoted-query
   "SELECT raw, \"foo\", \"dong\".\"bar\", `ding`.`dong`.`fee` FROM `ding`.dong")
@@ -98,14 +107,20 @@
              {:schema "ding" :table "dong" :column "bar"} "lark"
              {:schema "ding" :table "dong" :column "foo"} "glue"}})
 
+(defn normalized-components [sql]
+  (m/query->components (m/parsed-query sql) {:preserve-identifiers? false}))
+
+(def normalized-columns (comp raw-components :columns normalized-components))
+(def normalized-tables (comp raw-components :tables normalized-components))
+
 (deftest quotes-test
   (is (= #{{:column "raw", :table "dong", :schema "ding"}
            {:column "foo", :table "dong", :schema "ding"}
            {:column "bar", :table "dong", :schema "ding"}
            {:column "fee", :table "dong", :schema "ding"}}
-         (columns heavily-quoted-query)))
+         (normalized-columns heavily-quoted-query)))
   (is (= #{{:table "dong", :schema "ding"}}
-         (tables heavily-quoted-query)))
+         (normalized-tables heavily-quoted-query)))
   (is (= heavily-quoted-query-rewritten
          (m/replace-names heavily-quoted-query heavily-quoted-query-rewrites))))
 
