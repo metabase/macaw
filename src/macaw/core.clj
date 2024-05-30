@@ -18,7 +18,9 @@
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [statement & {:as opts}]
-  (collect/query->components statement opts))
+  ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behaviour.
+  ;; This may result in duplicate components, which are left to the caller to deduplicate.
+  (collect/query->components statement (merge {:preserve-identifiers? true} opts)))
 
 (defn replace-names
   "Given a SQL query, apply the given table, column, and schema renames."
