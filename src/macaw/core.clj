@@ -17,8 +17,8 @@
 
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
-  [statement]
-  (collect/query->components statement))
+  [statement & {:as opts}]
+  (collect/query->components statement opts))
 
 (defn replace-names
   "Given a SQL query, apply the given table, column, and schema renames."

@@ -1,4 +1,6 @@
-(ns macaw.util)
+(ns macaw.util
+  (:require
+   [clojure.string :as str]))
 
 (defn group-with
   "Generalized `group-by`, where you can supply your own reducing function (instead of usual `conj`).
@@ -22,17 +24,24 @@
    nil
    coll))
 
+(defn non-sentinel
+  "A hack around the fact that we don't (yet) track what columns are exposed by given sentinels."
+  [s]
+  (when s
+    (nil? (str/index-of s "_sentinel_"))))
+
 (defn find-relevant
   "Search the given map for the entry corresponding to [[map-key]], considering only the relevant keys.
   The relevant keys are obtained by ignoring any suffix of [[ks]] for which [[map-key]] has nil or missing values.
   We require that there is at least one relevant key to find a match."
   [m map-key ks]
   (when map-key
-    (if (every? map-key ks)
+    (if (every? (comp non-sentinel map-key) ks)
       (find m (select-keys map-key ks))
       ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
       ;; We need at least one non-generate key to remain for the search.
-      (when-let [ks-prefix (->> ks reverse (drop-while (comp nil? map-key)) reverse seq)]
+      ;; NOTE: we could optimize away calling `non-sentinel` twice in this function, but for now just keeping it simple.
+      (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel map-key)) reverse seq)]
         (when (not= ks ks-prefix)
           (seek (comp #{(select-keys map-key ks-prefix)}
                       #(select-keys % ks-prefix)
