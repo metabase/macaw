@@ -342,3 +342,9 @@
   (is (= "SELECT 1"
          (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}
                           {:allow-unused? true}))))
+
+(deftest model-reference-test
+  (m/replace-names "SELECT total FROM metabase_sentinel_table_154643 LIMIT 3"
+                   {:columns {{:table "orders" :column "total"} "subtotal"}
+                    :tables  {{:table "orders"} "purchases"}}
+                   {:allow-unused? true}))
