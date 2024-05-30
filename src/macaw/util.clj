@@ -40,6 +40,7 @@
       (find m (select-keys map-key ks))
       ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
       ;; We need at least one non-generate key to remain for the search.
+      ;; NOTE: we could optimize away calling `non-sentinel` twice in this function, but for now just keeping it simple.
       (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel map-key)) reverse seq)]
         (when (not= ks ks-prefix)
           (seek (comp #{(select-keys map-key ks-prefix)}
