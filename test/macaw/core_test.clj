@@ -344,7 +344,7 @@
                           {:allow-unused? true}))))
 
 (deftest model-reference-test
-  (m/replace-names "SELECT total FROM metabase_sentinel_table_154643 LIMIT 3"
+  (m/replace-names "SELECT subtotal FROM metabase_sentinel_table_154643 LIMIT 3"
                    {:columns {{:table "orders" :column "total"} "subtotal"}
                     :tables  {{:table "orders"} "purchases"}}
                    {:allow-unused? true}))
