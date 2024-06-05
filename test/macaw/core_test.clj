@@ -10,13 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- warnf
-  "Print a warning even from a passing test."
-  [s & args]
-  ^:clj-kondo/ignore
-  (println "WARN:" (apply format s args))
-  (flush))
-
 (defn- and*
   [x y]
   (and x y))
