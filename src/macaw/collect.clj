@@ -5,6 +5,7 @@
    [macaw.walk :as mw])
   (:import
    (com.metabase.macaw AstWalker$QueueItem)
+   (java.util.regex Pattern)
    (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.schema Column Table)
    (net.sf.jsqlparser.statement Statement)
@@ -51,19 +52,27 @@
 (defn- strip-quotes [s]
   (subs s 1 (dec (count s))))
 
+(defn- setting->relax-case [setting]
+  (when setting
+    (case setting
+      true str/lower-case
+      :lower str/lower-case
+      :upper str/upper-case
+      ;; This will work for replace, but not for analyzing where we need a literal to accumulate
+      :agnostic (fn [s] (re-pattern (str "(?i)" (Pattern/quote s)))))))
+
 (defn normalize-reference
   "Normalize a schema, table, column, etc. references so that we can match them regardless of syntactic differences."
   [s {:keys [preserve-identifiers? case-insensitive? quotes-preserve-case?]}]
   (if preserve-identifiers?
     s
     (when s
-      (let [quoted           (quoted? s)
-            case-insensitive (and case-insensitive?
-                                  (not (and quotes-preserve-case?
-                                            quoted)))]
+      (let [quoted     (quoted? s)
+            relax-case (when-not (and quotes-preserve-case? quoted)
+                         (setting->relax-case case-insensitive?))]
         (cond-> s
-          quoted strip-quotes
-          case-insensitive str/lower-case)))))
+          quoted     strip-quotes
+          relax-case relax-case)))))
 
 (defn- find-table [{:keys [alias->table name->table] :as opts} ^Table t]
   (let [n      (normalize-reference (.getName t) opts)

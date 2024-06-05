@@ -30,23 +30,30 @@
   (when s
     (nil? (str/index-of s "_sentinel_"))))
 
+(defn match-component
+  "Check whether the given literal matches the expected literal or pattern."
+  [expected actual]
+  (when expected
+    (if (string? expected)
+      (= expected actual)
+      (boolean (re-find expected actual)))))
+
+(defn- match-prefix [element ks-prefix]
+  (let [expected (map element ks-prefix)]
+    (fn [entry]
+      (every? true? (map match-component expected (map (key entry) ks-prefix))))))
+
 (defn find-relevant
-  "Search the given map for the entry corresponding to [[map-key]], considering only the relevant keys.
-  The relevant keys are obtained by ignoring any suffix of [[ks]] for which [[map-key]] has nil or missing values.
+  "Search the given map for the entry corresponding to [[element]], considering only the relevant keys.
+  The relevant keys are obtained by ignoring any suffix of [[ks]] for which [[element]] has nil or missing values.
   We require that there is at least one relevant key to find a match."
-  [m map-key ks]
-  (when map-key
-    (if (every? (comp non-sentinel map-key) ks)
-      (find m (select-keys map-key ks))
-      ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
-      ;; We need at least one non-generate key to remain for the search.
-      ;; NOTE: we could optimize away calling `non-sentinel` twice in this function, but for now just keeping it simple.
-      (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel map-key)) reverse seq)]
-        (when (not= ks ks-prefix)
-          (seek (comp #{(select-keys map-key ks-prefix)}
-                      #(select-keys % ks-prefix)
-                      key)
-                m))))))
+  [m element ks]
+  (when element
+    ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
+    ;; We need at least one non-generate key to remain for the search.
+    ;; NOTE: we could optimize away calling `non-sentinel` twice in this function, but for now just keeping it simple.
+    (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel element)) reverse seq)]
+      (seek (match-prefix element ks-prefix) m))))
 
 (def ^:private nil-val? (comp nil? val))
 

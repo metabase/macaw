@@ -5,9 +5,17 @@
    [macaw.test.util :refer [ws=]]
    [macaw.walk :as mw])
   (:import
+   (clojure.lang ExceptionInfo)
    (net.sf.jsqlparser.schema Table)))
 
 (set! *warn-on-reflection* true)
+
+(defn- warnf
+  "Print a warning even from a passing test."
+  [s & args]
+  ^:clj-kondo/ignore
+  (println "WARN:" (apply format s args))
+  (flush))
 
 (defmacro should=
   "Handle a case wWe use a macro to ensure the correct test runner output."
@@ -17,13 +25,12 @@
          actual#   ~form]
      (if (= correct# actual#)
        (do
-         #_^:clj-kondo/ignore
-         (printf "WARN: %s now has the correct answer, please update the test to remove `should=`\n" label#)
+         (warnf "%s now has the correct answer, please update the test to remove `should=`\n" label#)
          (is (= ~correct ~form)))
        (do
-         #_^:clj-kondo/ignore
-         (printf "WARN: we are getting the expected result for %s, but it is not correct\n" label#)
-         (is (= ~expected ~form))))))
+         (warnf "testing for an incorrect, but accepted result for %s\n" label#)
+         (is (= ~expected ~form))))
+     ))
 
 (defn- and*
   [x y]
@@ -156,24 +163,22 @@
          (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
                           {:tables  {{:table "dogs"} "cats"}
                            :columns {{:table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? true})))
+                          {:case-insensitive? :lower})))
 
   (is (= "SELECT meow FROM private.cats"
          (m/replace-names "SELECT bark FROM PUBLIC.dogs"
                           {:schemas {"public" "private"}
                            :tables  {{:schema "public" :table "dogs"} "cats"}
                            :columns {{:schema "public" :table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? true})))
+                          {:case-insensitive? :lower})))
 
-  (should= :replacement-source-case-insensitivity-1
-           "SELECT meow FROM private.cats"
-           "SELECT bark FROM PUBLIC.dogs"
-           (m/replace-names "SELECT bark FROM PUBLIC.dogs"
-                            {:schemas {"public" "private"}
-                             :tables  {{:schema "public" :table "DOGS"} "cats"}
-                             :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
-                            {:case-insensitive? true
-                             :allow-unused?     true})))
+  (is (= "SELECT id, meow FROM private.cats"
+         (m/replace-names "SELECT id, bark FROM PUBLIC.dogs"
+                          {:schemas {"public" "private"}
+                           :tables  {{:schema "public" :table "DOGS"} "cats"}
+                           :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
+                          {:case-insensitive? :agnostic
+                           :allow-unused?     true}))))
 
 (def ^:private heavily-quoted-query-mixed-case
   "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")
@@ -183,15 +188,14 @@
     (is (= heavily-quoted-query-rewritten
            (m/replace-names heavily-quoted-query-mixed-case
                             heavily-quoted-query-rewrites
-                            :case-insensitive? true))))
+                            :case-insensitive? :lower))))
 
   (testing "One can opt-into ignoring case only for unquoted references"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
-                          (m/replace-names heavily-quoted-query-mixed-case
-                                           heavily-quoted-query-rewrites
-                                           :case-insensitive? true
-                                           :quotes-preserve-case? true))))
+    (is (thrown-with-msg? ExceptionInfo #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
+          (m/replace-names heavily-quoted-query-mixed-case
+                           heavily-quoted-query-rewrites
+                           :case-insensitive? :lower
+                           :quotes-preserve-case? true))))
 
   (testing "Correctly handles flexibility around the case of the replacements"
     ;; Technically speaking, this should contain lowercase "meow" for some databases such as Oracle, which treat
@@ -199,14 +203,14 @@
     ;; In this case Oracle, Snowflake, et al are following the SQL standard, as per Section 5.6 of the SQL-92 standard
     ;;in rules 10 through 13. Due to popularity with Metabase however for now we are tracking Postgres semantics for
     ;; the unusual cases where these collisions occur.
-    (should= :replacement-source-case-insensitivity
+    (should= :replacement-source-case-insensitivity-2
              "SELECT MEOW, PURR FROM DOGS"
              "SELECT bark, PURR FROM DOGS"
              (m/replace-names "SELECT bark, `GROWL` FROM DOGS"
                               {:columns {{:schema "public" :table "dogs" :column "BARK"}  "MEOW"
                                          {:schema "public" :table "dogs" :column "growl"} "purr"
                                          {:schema "public" :table "dogs" :column "GROWL"} "PURR"}}
-                              {:case-insensitive?     true
+                              {:case-insensitive?     :lower
                                :quotes-preserve-case? true
                                :allow-unused?         true}))))
 
