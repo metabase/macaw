@@ -1,6 +1,7 @@
 (ns macaw.util
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import (java.util.regex Pattern)))
 
 (defn group-with
   "Generalized `group-by`, where you can supply your own reducing function (instead of usual `conj`).
@@ -34,9 +35,9 @@
   "Check whether the given literal matches the expected literal or pattern."
   [expected actual]
   (when expected
-    (if (string? expected)
-      (= expected actual)
-      (boolean (re-find expected actual)))))
+    (if (instance? Pattern expected)
+      (boolean (re-find expected actual))
+      (= expected actual))))
 
 (defn- match-prefix [element ks-prefix]
   (let [expected (map element ks-prefix)]

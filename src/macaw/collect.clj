@@ -52,10 +52,9 @@
 (defn- strip-quotes [s]
   (subs s 1 (dec (count s))))
 
-(defn- setting->relax-case [setting]
-  (when setting
-    (case setting
-      true str/lower-case
+(defn- setting->relax-case [{:keys [case-insensitive]}]
+  (when case-insensitive
+    (case case-insensitive
       :lower str/lower-case
       :upper str/upper-case
       ;; This will work for replace, but not for analyzing where we need a literal to accumulate
@@ -63,13 +62,13 @@
 
 (defn normalize-reference
   "Normalize a schema, table, column, etc. references so that we can match them regardless of syntactic differences."
-  [s {:keys [preserve-identifiers? case-insensitive? quotes-preserve-case?]}]
+  [s {:keys [preserve-identifiers? quotes-preserve-case?] :as opts}]
   (if preserve-identifiers?
     s
     (when s
       (let [quoted     (quoted? s)
             relax-case (when-not (and quotes-preserve-case? quoted)
-                         (setting->relax-case case-insensitive?))]
+                         (setting->relax-case opts))]
         (cond-> s
           quoted     strip-quotes
           relax-case relax-case)))))

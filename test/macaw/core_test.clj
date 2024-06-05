@@ -17,21 +17,6 @@
   (println "WARN:" (apply format s args))
   (flush))
 
-(defmacro should=
-  "Handle a case wWe use a macro to ensure the correct test runner output."
-  [label correct expected form]
-  `(let [label#    ~label
-         correct#  ~correct
-         actual#   ~form]
-     (if (= correct# actual#)
-       (do
-         (warnf "%s now has the correct answer, please update the test to remove `should=`\n" label#)
-         (is (= ~correct ~form)))
-       (do
-         (warnf "testing for an incorrect, but accepted result for %s\n" label#)
-         (is (= ~expected ~form))))
-     ))
-
 (defn- and*
   [x y]
   (and x y))
@@ -163,22 +148,22 @@
          (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
                           {:tables  {{:table "dogs"} "cats"}
                            :columns {{:table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? :lower})))
+                          {:case-insensitive :lower})))
 
   (is (= "SELECT meow FROM private.cats"
          (m/replace-names "SELECT bark FROM PUBLIC.dogs"
                           {:schemas {"public" "private"}
                            :tables  {{:schema "public" :table "dogs"} "cats"}
                            :columns {{:schema "public" :table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? :lower})))
+                          {:case-insensitive :lower})))
 
   (is (= "SELECT id, meow FROM private.cats"
          (m/replace-names "SELECT id, bark FROM PUBLIC.dogs"
                           {:schemas {"public" "private"}
                            :tables  {{:schema "public" :table "DOGS"} "cats"}
                            :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? :agnostic
-                           :allow-unused?     true}))))
+                          {:case-insensitive :agnostic
+                           :allow-unused?    true}))))
 
 (def ^:private heavily-quoted-query-mixed-case
   "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")
@@ -188,31 +173,35 @@
     (is (= heavily-quoted-query-rewritten
            (m/replace-names heavily-quoted-query-mixed-case
                             heavily-quoted-query-rewrites
-                            :case-insensitive? :lower))))
+                            :case-insensitive :lower))))
 
   (testing "One can opt-into ignoring case only for unquoted references"
-    (is (thrown-with-msg? ExceptionInfo #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
-          (m/replace-names heavily-quoted-query-mixed-case
-                           heavily-quoted-query-rewrites
-                           :case-insensitive? :lower
-                           :quotes-preserve-case? true))))
+    (is (thrown-with-msg? ExceptionInfo
+                          #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
+                          (m/replace-names heavily-quoted-query-mixed-case
+                                           heavily-quoted-query-rewrites
+                                           :case-insensitive :lower
+                                           :quotes-preserve-case? true)))))
 
+(def ^:private ambiguous-case-replacements
+  {:columns {{:schema "public" :table "DOGS" :column "BARK"}  "MEOW"
+             {:schema "public" :table "dogs" :column "bark"}  "meow"
+             {:schema "public" :table "dogs" :column "growl"} "purr"
+             {:schema "public" :table "dogs" :column "GROWL"} "PuRr"
+             {:schema "public" :table "DOGS" :column "GROWL"} "PURR"}} )
+
+(deftest ambiguous-case-test
   (testing "Correctly handles flexibility around the case of the replacements"
-    ;; Technically speaking, this should contain lowercase "meow" for some databases such as Oracle, which treat
-    ;; unquoted identifiers as UPPERCASE, versus databases like Postgres which treat it as lower case.
-    ;; In this case Oracle, Snowflake, et al are following the SQL standard, as per Section 5.6 of the SQL-92 standard
-    ;;in rules 10 through 13. Due to popularity with Metabase however for now we are tracking Postgres semantics for
-    ;; the unusual cases where these collisions occur.
-    (should= :replacement-source-case-insensitivity-2
-             "SELECT MEOW, PURR FROM DOGS"
-             "SELECT bark, PURR FROM DOGS"
+    (doseq [[case-insensitive expected] {:lower    "SELECT meow, PuRr FROM DOGS"
+                                         :upper    "SELECT MEOW, PURR FROM DOGS"
+                                         ;; Not strictly deterministic, depends on map ordering.
+                                         :agnostic "SELECT MEOW, PuRr FROM DOGS"}]
+      (is (= expected
              (m/replace-names "SELECT bark, `GROWL` FROM DOGS"
-                              {:columns {{:schema "public" :table "dogs" :column "BARK"}  "MEOW"
-                                         {:schema "public" :table "dogs" :column "growl"} "purr"
-                                         {:schema "public" :table "dogs" :column "GROWL"} "PURR"}}
-                              {:case-insensitive?     :lower
+                              ambiguous-case-replacements
+                              {:case-insensitive      case-insensitive
                                :quotes-preserve-case? true
-                               :allow-unused?         true}))))
+                               :allow-unused?         true}))))))
 
 (deftest infer-test
   (testing "We can first column through a few hoops"
