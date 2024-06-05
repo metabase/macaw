@@ -79,7 +79,7 @@
     (.setName t (val rename)))
   (let [raw-schema-name (.getSchemaName t)
         schema-name     (collect/normalize-reference raw-schema-name opts)]
-    (when-let [schema-rename (find schema-renames schema-name)]
+    (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
       (vswap! updated-nodes conj [raw-schema-name schema-rename])
       (.setSchemaName t (val schema-rename)))))
 

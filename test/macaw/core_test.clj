@@ -5,6 +5,7 @@
    [macaw.test.util :refer [ws=]]
    [macaw.walk :as mw])
   (:import
+   (clojure.lang ExceptionInfo)
    (net.sf.jsqlparser.schema Table)))
 
 (set! *warn-on-reflection* true)
@@ -140,14 +141,22 @@
          (m/replace-names "SELECT DOGS.BaRk FROM dOGS"
                           {:tables  {{:table "dogs"} "cats"}
                            :columns {{:table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? true})))
+                          {:case-insensitive :lower})))
 
   (is (= "SELECT meow FROM private.cats"
          (m/replace-names "SELECT bark FROM PUBLIC.dogs"
                           {:schemas {"public" "private"}
                            :tables  {{:schema "public" :table "dogs"} "cats"}
                            :columns {{:schema "public" :table "dogs" :column "bark"} "meow"}}
-                          {:case-insensitive? true}))))
+                          {:case-insensitive :lower})))
+
+  (is (= "SELECT id, meow FROM private.cats"
+         (m/replace-names "SELECT id, bark FROM PUBLIC.dogs"
+                          {:schemas {"public" "private"}
+                           :tables  {{:schema "public" :table "DOGS"} "cats"}
+                           :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
+                          {:case-insensitive :agnostic
+                           :allow-unused?    true}))))
 
 (def ^:private heavily-quoted-query-mixed-case
   "SELECT RAW, \"Foo\", \"dong\".\"bAr\", `ding`.`dong`.`feE` FROM `ding`.dong")
@@ -157,14 +166,35 @@
     (is (= heavily-quoted-query-rewritten
            (m/replace-names heavily-quoted-query-mixed-case
                             heavily-quoted-query-rewrites
-                            :case-insensitive? true))))
+                            :case-insensitive :lower))))
+
   (testing "One can opt-into ignoring case only for unquoted references"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+    (is (thrown-with-msg? ExceptionInfo
                           #"Unknown rename: .* \"(bar)|(foo)|(fee)\""
                           (m/replace-names heavily-quoted-query-mixed-case
                                            heavily-quoted-query-rewrites
-                                           :case-insensitive? true
+                                           :case-insensitive :lower
                                            :quotes-preserve-case? true)))))
+
+(def ^:private ambiguous-case-replacements
+  {:columns {{:schema "public" :table "DOGS" :column "BARK"}  "MEOW"
+             {:schema "public" :table "dogs" :column "bark"}  "meow"
+             {:schema "public" :table "dogs" :column "growl"} "purr"
+             {:schema "public" :table "dogs" :column "GROWL"} "PuRr"
+             {:schema "public" :table "DOGS" :column "GROWL"} "PURR"}} )
+
+(deftest ambiguous-case-test
+  (testing "Correctly handles flexibility around the case of the replacements"
+    (doseq [[case-insensitive expected] {:lower    "SELECT meow, PuRr FROM DOGS"
+                                         :upper    "SELECT MEOW, PURR FROM DOGS"
+                                         ;; Not strictly deterministic, depends on map ordering.
+                                         :agnostic "SELECT MEOW, PuRr FROM DOGS"}]
+      (is (= expected
+             (m/replace-names "SELECT bark, `GROWL` FROM DOGS"
+                              ambiguous-case-replacements
+                              {:case-insensitive      case-insensitive
+                               :quotes-preserve-case? true
+                               :allow-unused?         true}))))))
 
 (deftest infer-test
   (testing "We can first column through a few hoops"

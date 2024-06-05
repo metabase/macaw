@@ -20,9 +20,22 @@
   [statement & {:as opts}]
   ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behaviour.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
+  ;; In Metabase's case this is done during the stage where the database metadata is queried.
   (collect/query->components statement (merge {:preserve-identifiers? true} opts)))
 
 (defn replace-names
-  "Given a SQL query, apply the given table, column, and schema renames."
+  "Given a SQL query, apply the given table, column, and schema renames.
+
+  Supported options:
+
+  - case-insensitive: whether to relax the comparison
+    - :upper    - identifiers are implicitly case to uppercase, as per the SQL-92 standard.
+    - :lower    - identifiers are implicitly cast to lowercase, as per Postgres et al.
+    - :agnostic - case is ignored when comparing identifiers in code to replacement \"from\" strings.
+
+  - quotes-preserve-case: whether quoted identifiers should override the previous option."
   [sql renames & {:as opts}]
-  (rewrite/replace-names sql (parsed-query sql) renames opts))
+  (rewrite/replace-names sql
+                         (parsed-query sql)
+                         renames
+                         (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])))
