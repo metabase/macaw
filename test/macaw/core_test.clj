@@ -405,6 +405,7 @@
                            :tables  {{:table "orders"} "purchases"}}
                           {:allow-unused? true}))))
 
+<<<<<<< HEAD
 (defn- name-seq [seq-type]
   (let [prefix (str seq-type "_")]
     (rest (iterate (fn [_] (str (gensym prefix))) nil))))
@@ -434,6 +435,57 @@
     (spit (str "test/resources/" filename)
           (anonymize-query (query-fixture fixture)))))
 
+(def ^:private alias-shadow-query
+  "SELECT people.*, orders.a as foo
+   FROM orders
+   JOIN people
+   ON
+   people.foo = orders.foo_id")
+
+(deftest alias-shadow-replace-test
+  (testing "Aliases are not replaced, but real usages are"
+    (is (ws= (str/replace alias-shadow-query "people.foo" "people.bar")
+             (m/replace-names alias-shadow-query
+                              {:columns {{:table "people" :column "foo"} "bar"}}
+                              {:allow-unused? true})))))
+
+(def ^:private cte-query
+  "WITH engineering_employees AS (
+       SELECT id, name, department, favorite_language
+       FROM employees
+       WHERE department = 'Engineering'
+   )
+   SELECT id, name, favorite_language as fave_lang
+   FROM engineering_employees
+   WHERE favorite_language in ('mandarin clojure', 'middle javascript');")
+
+(def ^:private sub-select-query
+  "SELECT id, name, favorite_language as fave_lang
+   FROM (
+       SELECT id, name, department, favorite_language
+       FROM employees
+       WHERE department = 'Engineering'
+   ) as engineering_employees
+   WHERE favorite_language in ('mandarin clojure', 'middle javascript');")
+
+(deftest cte-propagate-test
+  (testing "Transitive references are tracked to their source when replacing columns in queries with CTEs."
+    (is (= (str/replace cte-query "favorite_language" "first_language")
+           (m/replace-names cte-query
+                            {:columns {{:table "employees", :column "favorite_language"} "first_language"}})))))
+
+(deftest sub-select-propagate-test
+  (testing "Transitive references are tracked to their source when replacing columns in queries with sub-selects."
+    (is (= (str/replace sub-select-query "favorite_language" "first_language")
+           (m/replace-names sub-select-query
+                            {:columns {{:table "employees", :column "favorite_language"} "first_language"}})))))
+
+(deftest large-snowflake-test
+  (testing "We are able to parse a complex Snowflake queries"
+    ;; Start with the smaller example
+    (components (query-fixture :snowflakelet))
+    (components (query-fixture :snowflake))))
+
 (comment
  (require 'virgil)
  (require 'clojure.tools.namespace.repl)
@@ -443,9 +495,3 @@
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
  )
-
-(deftest large-snowflake-test
-  ;; See https://metabase.zendesk.com/agent/tickets/27376
-  (testing "We are able to parse a complex Snowflake queries"
-    (components (query-fixture :snowflakelet))
-    (components (query-fixture :snowflake))))
