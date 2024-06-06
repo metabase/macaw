@@ -2,7 +2,7 @@
 *.jar
 .\#*
 /*.iml
-/.clj-kondo/.cache
+/.calva
 /.cpcache
 /.eastwood
 /.env
@@ -13,6 +13,7 @@
 /.lein-failures
 /.lein-plugins
 /.lein-repl-history
+/.lsp
 /.nrepl-port
 /build.xml
 /checkouts
@@ -26,3 +27,10 @@
 /tags
 /target
 \#*\#
+
+**/.clj-kondo/.cache
+
+# clj-kondo: ignore all except our defined config
+.clj-kondo/*
+!.clj-kondo/config.edn
+!.clj-kondo/hooks

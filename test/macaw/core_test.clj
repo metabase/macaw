@@ -1,5 +1,7 @@
 (ns ^:parallel macaw.core-test
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
@@ -129,7 +131,7 @@
   (is (= "SELECT X.Y, X.y, x.Z, x.z FROM X LEFT JOIN x ON X.Y=x.Z"
          (m/replace-names "SELECT a.b, a.B, A.b, A.B FROM a LEFT JOIN A ON a.b=A.b"
                           {:tables  {{:table "a"} "X"
-                                    {:table "A"} "x"}
+                                     {:table "A"} "x"}
                            :columns {{:table "a" :column "b"} "Y"
                                      {:table "a" :column "B"} "y"
                                      {:table "A" :column "b"} "Z"
@@ -181,7 +183,7 @@
              {:schema "public" :table "dogs" :column "bark"}  "meow"
              {:schema "public" :table "dogs" :column "growl"} "purr"
              {:schema "public" :table "dogs" :column "GROWL"} "PuRr"
-             {:schema "public" :table "DOGS" :column "GROWL"} "PURR"}} )
+             {:schema "public" :table "DOGS" :column "GROWL"} "PURR"}})
 
 (deftest ambiguous-case-test
   (testing "Correctly handles flexibility around the case of the replacements"
@@ -263,7 +265,7 @@
                      )
                      INSERT INTO order_log
                      SELECT * from outdated_orders;")))
-    (is (= #{ "insert"}
+  (is (= #{"insert"}
          (mutations "WITH outdated_orders AS (
                        SELECT * from orders
                      )
@@ -329,13 +331,13 @@
             :tables            #{{:component {:table "foo"}, :context ["FROM" "JOIN" "SELECT"]}
                                  {:component {:table "orders"}, :context ["FROM" "SELECT"]}},
             :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
-         (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
+           (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
 
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
-         (m/replace-names  "SELECT a.x, b.x, b.y FROM a, b;"
-                           {:tables  {{:schema "public" :table "a"} "aa"}
-                            :columns {{:schema "public" :table "a" :column "x"} "xx"}})))
+         (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                          {:tables  {{:schema "public" :table "a"} "aa"}
+                           :columns {{:schema "public" :table "a" :column "x"} "xx"}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
@@ -394,3 +396,48 @@
                           {:columns {{:table "orders" :column "total"} "subtotal"}
                            :tables  {{:table "orders"} "purchases"}}
                           {:allow-unused? true}))))
+
+(defn- name-seq [seq-type]
+  (let [prefix (str seq-type "_")]
+    (rest (iterate (fn [_] (str (gensym prefix))) nil))))
+
+(defn- fixture->filename [fixture]
+  (str (str/replace (name fixture) "-" "_") ".sql"))
+
+(defn- query-fixture [fixture]
+  (slurp (io/resource (fixture->filename fixture))))
+
+(defn- anonymize-query [query]
+  (let [m (components query)
+        ts (raw-components (:tables m))
+        cs (raw-components (:columns m))
+        ss (transduce (keep :schema) conj #{} (concat ts cs))]
+    (m/replace-names query
+                     {:schemas (zipmap ss (name-seq "schema"))
+                      :tables  (zipmap ts (name-seq "table"))
+                      :columns (zipmap cs (name-seq "column"))}
+                     ;; nothing should be unused... but we currently get some junk from analysis, sadly
+                     {:allow-unused? true})))
+
+(defn- anonymize-fixture
+  "Read fixture, anonymize the identifiers, write it back out again."
+  [fixture]
+  (let [filename (fixture->filename fixture)]
+    (spit (str "test/resources/" filename)
+          (anonymize-query (query-fixture fixture)))))
+
+(comment
+ (require 'virgil)
+ (require 'clojure.tools.namespace.repl)
+ (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all)
+
+ (anonymize-query "SELECT x FROM a")
+ (anonymize-fixture :snowflake)
+ (anonymize-fixture :snowflakelet)
+ )
+
+(deftest large-snowflake-test
+  ;; See https://metabase.zendesk.com/agent/tickets/27376
+  #_(testing "We are able to parse a complex Snowflake queries"
+    (components (query-fixture :snowflakelet))
+    (components (query-fixture :snowflake))))
