@@ -428,7 +428,8 @@
 
 (comment
  (require 'virgil)
- (virgil/watch-and-recompile ["java"])
+ (require 'clojure.tools.namespace.repl)
+ (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all)
 
  (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)
