@@ -397,4 +397,5 @@
                           {:allow-unused? true}))))
 
 (deftest large-snowflake-test
-  (columns (slurp (io/resource "snowflake.sql"))))
+  (let [query (slurp (io/resource "snowflakelet.sql"))]
+    (columns query)))
