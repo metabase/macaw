@@ -17,7 +17,7 @@
     virgil/virgil           {:mvn/version "0.3.0"}}
 
    :extra-paths
-   ["test"]
+   ["test" "test/resources"]
 
    :jvm-opts
    ["-Duser.timezone=UTC"

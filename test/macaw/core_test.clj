@@ -1,5 +1,6 @@
 (ns ^:parallel macaw.core-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
@@ -396,4 +397,4 @@
                           {:allow-unused? true}))))
 
 (deftest large-snowflake-test
-  (slurp (clojure.java.io/resource "snowflake.sql")))
+  (columns (slurp (io/resource "snowflake.sql"))))
