@@ -427,6 +427,9 @@
           (anonymize-query (query-fixture fixture)))))
 
 (comment
+ (require 'virgil)
+ (virgil/watch-and-recompile ["java"])
+
  (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
