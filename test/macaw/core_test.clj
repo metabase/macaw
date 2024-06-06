@@ -408,9 +408,9 @@
   (slurp (io/resource (fixture->filename fixture))))
 
 (defn- anonymize-query [query]
-  (let [{:keys [tables columns]} (components query)
-        ts (raw-components tables)
-        cs (raw-components columns)
+  (let [m (components query)
+        ts (raw-components (:tables m))
+        cs (raw-components (:columns m))
         ss (transduce (keep :schema) conj #{} (concat ts cs))]
     (m/replace-names query
                      {:schemas (zipmap ss (name-seq "schema"))
@@ -427,6 +427,7 @@
           (anonymize-query (query-fixture fixture)))))
 
 (comment
+ (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
  )
