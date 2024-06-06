@@ -438,6 +438,6 @@
 
 (deftest large-snowflake-test
   ;; See https://metabase.zendesk.com/agent/tickets/27376
-  #_(testing "We are able to parse a complex Snowflake queries"
+  (testing "We are able to parse a complex Snowflake queries"
     (components (query-fixture :snowflakelet))
     (components (query-fixture :snowflake))))
