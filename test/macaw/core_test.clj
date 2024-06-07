@@ -405,7 +405,6 @@
                            :tables  {{:table "orders"} "purchases"}}
                           {:allow-unused? true}))))
 
-<<<<<<< HEAD
 (defn- name-seq [seq-type]
   (let [prefix (str seq-type "_")]
     (rest (iterate (fn [_] (str (gensym prefix))) nil))))
