@@ -132,11 +132,12 @@
     ctx))
 
 (defn- update-components
-  [f components]
-  (map #(-> %
-            (update :component f (:context %))
-            (update :context only-query-context))
-       components))
+  ([f]
+   (map #(-> %
+             (update :component f (:context %))
+             (update :context only-query-context))))
+  ([f components]
+   (eduction (update-components f) components)))
 
 (defn- merge-with-instances
   "Merge two nodes, keeping the union of their instances."
@@ -144,6 +145,14 @@
   (let [cs-a (-> a :component :instances)]
     (cond-> (merge a b)
       cs-a (update-in [:component :instances] into cs-a))))
+
+(defn- remove-redundancies
+  "Remove any unqualified references that would resolve to a given qualified reference"
+  [column-set]
+  ;; TODO as far as "used columns" go, we don't really care about context, and should drop it before doing this
+  (let [{qualified true, unqualified false} (group-by (comp boolean :table :component) column-set)
+        qualifications (into #{} (mapcat #(keep (comp % :component) qualified)) [:column :alias])]
+    (into qualified (remove (comp qualifications :column :component)) unqualified)))
 
 (defn query->components
   "See macaw.core/query->components doc."
@@ -155,8 +164,7 @@
                 tables
                 table-wildcards]} (query->raw-components parsed-ast)
         alias-map                 (into {} (map #(-> % :component ((partial alias-mapping opts) (:context %))) tables))
-        ;; we're parsing qualifiers here only for a single purpose - rewrite uses instances to find tables for
-        ;; renaming
+        ;; we're parsing qualifiers here for a single purpose - rewrite uses instances to find tables for renaming
         table-map                 (->> (update-components (partial make-table opts) tables)
                                        (u/group-with #(select-keys (:component %) [:schema :table])
                                                      merge-with-instances))
@@ -167,9 +175,12 @@
         qualifier-map             (->> (update-components (partial find-qualifier-table opts) qualifiers)
                                        (u/group-with #(select-keys (:component %) [:schema :table])
                                                      merge-with-instances))
-        table-map                 (merge-with merge-with-instances qualifier-map table-map)]
-    {:columns           (into #{} (update-components (partial make-column opts) columns))
-     :has-wildcard?     (into #{} (update-components (fn [x & _args] x) has-wildcard?))
+        table-map                 (merge-with merge-with-instances qualifier-map table-map)
+        raw-columns               (into #{} (update-components (partial make-column opts)) columns)
+        strip-alias               (fn [c] (dissoc c :alias))]
+    {:columns           (into #{} (map #(update % :component strip-alias)) (remove-redundancies raw-columns))
+     :elements          (into #{} (map #(update % :component strip-alias)) raw-columns)
+     :has-wildcard?     (into #{} (update-components (fn [x & _args] x)) has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
      :tables            (into #{} (vals table-map))
-     :table-wildcards   (into #{} (update-components (partial resolve-table-name opts) table-wildcards))}))
+     :table-wildcards   (into #{} (update-components (partial resolve-table-name opts)) table-wildcards)}))
