@@ -13,7 +13,7 @@
  :aliases
  {:dev
   {:extra-deps
-   {io.github.metabase/hawk     {:sha "539eefaa31a43d52d7c9b5731f471bb6742e7131"}
+   {io.github.metabase/hawk     {:sha "ac3c663b22114d99303b8da88d982248da391780"}
     virgil/virgil               {:mvn/version "0.3.0"}
     org.clojure/tools.namespace {:mvn/version "1.4.5"}}
 

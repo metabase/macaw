@@ -3,9 +3,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
-   [macaw.walk :as mw])
+   [macaw.walk :as mw]
+   [mb.hawk.assert-exprs.approximately-equal :as =?])
   (:import
    (clojure.lang ExceptionInfo)
    (net.sf.jsqlparser.schema Table)))
@@ -23,6 +25,22 @@
 (def mutations      (comp raw-components :mutation-commands components))
 (def tables         (comp raw-components :tables components))
 (def table-wcs      (comp raw-components :table-wildcards components))
+
+(defn- strip-context-ids [m]
+  (walk/prewalk
+   (fn [x]
+     (if (:context x)
+       (update x :context (partial mapv first))
+       x))
+   m))
+
+(defn- contexts->scopes [m]
+  (walk/prewalk
+   (fn [x]
+     (if-let [context (:context x)]
+       (-> x (dissoc :context) (assoc :scope (first context)))
+       x))
+   m))
 
 (defn column-qualifiers
   [query]
@@ -311,7 +329,7 @@
             :mutation-commands #{},
             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
-           (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"))))
+           (strip-context-ids (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10")))))
   (testing "Sub-select with inner wildcard"
     (is (= {:columns
             #{{:component {:column "id"    :table "orders"}, :context ["SELECT"]}
@@ -321,7 +339,7 @@
             :mutation-commands #{},
             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
-           (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10"))))
+           (strip-context-ids (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10")))))
   (testing "Sub-select with dual wildcards"
     (is (= {:columns           #{{:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
             :has-wildcard?
@@ -330,7 +348,7 @@
             :mutation-commands #{},
             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
             :table-wildcards   #{}}
-           (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10"))))
+           (strip-context-ids (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10")))))
   (testing "Join; table wildcard"
     (is (= {:columns           #{{:component {:column "order_id" :table "foo"}, :context ["JOIN" "SELECT"]}
                                  {:component {:column "id" :table "orders"}, :context ["JOIN" "SELECT"]}},
@@ -339,7 +357,7 @@
             :tables            #{{:component {:table "foo"}, :context ["FROM" "JOIN" "SELECT"]}
                                  {:component {:table "orders"}, :context ["FROM" "SELECT"]}},
             :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
-           (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id")))))
+           (strip-context-ids (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id"))))))
 
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
@@ -484,6 +502,19 @@
     ;; Start with the smaller example
     (components (query-fixture :snowflakelet))
     (components (query-fixture :snowflake))))
+
+(defn sorted-vec
+  "A transformation to help write tests, where hawk would face limitations on predicates within sets."
+  [element-set]
+  (sort-by (comp (juxt :schema :table :column :scope) :component) element-set))
+
+(deftest duplicate-scopes-test
+  ;; TODO Fix these entries to mention "a" as their source table, otherwise we cannot compute the source fields.
+  (is (=? [{:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
+           {:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
+           {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
+           {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
+          (sorted-vec (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
 
 (comment
  (require 'virgil)
