@@ -14,14 +14,15 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- and*
-  [x y]
-  (and x y))
+(defn- non-empty-and-truthy [xs]
+  (if (seq xs)
+    (every? true? xs)
+    false))
 
 (def components     (comp m/query->components m/parsed-query))
 (def raw-components (comp (partial into #{}) (partial map :component)))
 (def columns        (comp raw-components :columns components))
-(def has-wildcard?  (comp (partial reduce and*) raw-components :has-wildcard? components))
+(def has-wildcard?  (comp non-empty-and-truthy raw-components :has-wildcard? components))
 (def mutations      (comp raw-components :mutation-commands components))
 (def tables         (comp raw-components :tables components))
 (def table-wcs      (comp raw-components :table-wildcards components))
@@ -545,6 +546,10 @@ from foo")
     (is (empty? (columns "SELECT COUNT(*) FROM users")))
     #_(is (false? (has-wildcard? "SELECT COUNT(*) FROM users")))
     (is (empty? (table-wcs "SELECT COUNT(*) FROM users"))))
+  (testing "COUNT(1) does not actually read any columns"
+    (is (empty? (columns "SELECT COUNT(1) FROM users")))
+    (is (false? (has-wildcard? "SELECT COUNT(1) FROM users")))
+    (is (empty? (table-wcs "SELECT COUNT(1) FROM users"))))
   (testing "We do care about explicitly referenced fields in a COUNT"
     (is (= #{{:table "users" :column "id"}}
            (columns "SELECT COUNT(id) FROM users"))))
