@@ -510,6 +510,8 @@
 
 (deftest duplicate-scopes-test
   ;; TODO Fix these entries to mention "a" as their source table, otherwise we cannot compute the source fields.
+  ;; TODO Fix kondo linting of =?/same
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
   (is (=? [{:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
            {:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
            {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
