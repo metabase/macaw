@@ -37,9 +37,15 @@
 
 from foo")
 
+(defn- ->windows [sql]
+  (str/replace sql "\n" "\r\n"))
+
 (deftest three-or-more-line-breaks-test
-  (is (= (str/replace implicit-semicolon "id" "pk")
-         (m/replace-names implicit-semicolon {:columns {{:table "foo" :column "id"} "pk"}}))))
+  (doseq [f [identity ->windows]
+          :let [query (f implicit-semicolon)]]
+    (is (= (str/replace query "id" "pk")
+           (m/replace-names query
+                            {:columns {{:table "foo" :column "id"} "pk"}})))))
 
 (deftest query->tables-test
   (testing "Simple queries"
