@@ -30,6 +30,17 @@
                  {:column-qualifier (fn [acc tbl _ctx] (conj acc (.getName ^Table tbl)))}
                  #{}))
 
+;; See [[macaw.core/parsed-query]] and https://github.com/JSQLParser/JSqlParser/issues/1988 for more details.
+(def ^:private implicit-semicolon
+  "select id
+
+
+from foo")
+
+(deftest three-or-more-line-breaks-test
+  (is (= (str/replace implicit-semicolon "id" "pk")
+         (m/replace-names implicit-semicolon {:columns {{:table "foo" :column "id"} "pk"}}))))
+
 (deftest query->tables-test
   (testing "Simple queries"
     (is (= #{{:table "core_user"}}

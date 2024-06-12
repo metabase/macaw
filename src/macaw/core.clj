@@ -1,5 +1,6 @@
 (ns macaw.core
   (:require
+   [clojure.string :as str]
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
@@ -10,7 +11,12 @@
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
   [^String query]
-  (CCJSqlParserUtil/parse query))
+  ;; Dialects like SQLite and Databricks treat consecutive blank lines as implicit semicolons.
+  ;; JSQLParser, as a polyglot parser, always has this behavior, and there is no option to disable it.
+  ;; For Metabase, we are always dealing with single queries, so there's no point ever having this behavior.
+  ;; TODO When JSQLParser 4.10 is released, move to the more robust [[CCJSqlParserUtil.sanitizeSingleSql]] helper.
+  ;; See https://github.com/JSQLParser/JSqlParser/issues/1988
+  (CCJSqlParserUtil/parse (str/replace query #"\n{2,}" "\n")))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
