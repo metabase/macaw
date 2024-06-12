@@ -446,7 +446,11 @@ from foo")
     (rest (iterate (fn [_] (str (gensym prefix))) nil))))
 
 (defn- fixture->filename [fixture]
-  (str (str/replace (name fixture) "-" "_") ".sql"))
+  (-> (->> ((juxt namespace name) fixture)
+           (remove nil?)
+           (str/join "__"))
+      (str/replace "-" "_")
+      (str ".sql")))
 
 (defn- query-fixture [fixture]
   (slurp (io/resource (fixture->filename fixture))))
@@ -521,20 +525,89 @@ from foo")
     (components (query-fixture :snowflakelet))
     (components (query-fixture :snowflake))))
 
-(defn sorted-vec
+(defn sorted
   "A transformation to help write tests, where hawk would face limitations on predicates within sets."
   [element-set]
-  (sort-by (comp (juxt :schema :table :column :scope) :component) element-set))
+  (sort-by (comp (juxt :schema :table :column :scope) #(:component % %)) element-set))
 
 (deftest duplicate-scopes-test
   ;; TODO Fix these entries to mention "a" as their source table, otherwise we cannot compute the source fields.
   ;; TODO Fix kondo linting of =?/same
   #_{:clj-kondo/ignore [:unresolved-symbol]}
-  (is (=? [{:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
-           {:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
+  (is (=? [{:component {#_#_:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
+           {:component {#_#_:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
            {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
            {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
-          (sorted-vec (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
+          (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
+
+(deftest count-field-test
+  (testing "COUNT(*) does not actually read any columns"
+    (is (empty? (columns "SELECT COUNT(*) FROM users")))
+    #_(is (false? (has-wildcard? "SELECT COUNT(*) FROM users")))
+    (is (empty? (table-wcs "SELECT COUNT(*) FROM users"))))
+  (testing "We do care about explicitly referenced fields in a COUNT"
+    (is (= #{{:table "users" :column "id"}}
+           (columns "SELECT COUNT(id) FROM users"))))
+  (testing "We do care about deeply referenced fields in a COUNT however"
+    (is (= #{{:table "users" :column "id"}}
+           (columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
+
+(deftest compound-subselect-test
+  ;; TODO These first three entries should track what they're derived from, so we can filter them from query fields.
+  (is (= [{:column "average_salary", :alias "avg_salary"}
+          {:column "department", :alias "department_name"}
+          {:column "department"}
+          ;; TODO This doesn't belong here, as the identifier does not relate to any collumn
+          {:column "total_employees"}
+
+          {:table "employees", :column "department"}
+          {:table "employees", :column "salary"}
+          ;; TODO We will want to indicate that this value is transformed, somehow.
+          {:table "employees", :column "salary", :alias "average_salary"}]
+         (sorted (columns (query-fixture :compound/subselect))))))
+
+(deftest compound-cte-test
+  ;; TODO These first three entries should track what they're derived from, so we can filter them from query fields.
+  (is (= [{:column "department"}
+          ;; TODO Both salary selects must be attributed to the employees table, and we should indicate the transform.
+          {:column "salary", :alias "average_salary"}
+          {:column "salary"}
+          ;; TODO Somehow we must track that "department stats" and "high_earners" are CTEs, not tables.
+          ;;      We _could_ keep using the :table key, and track the scope / pseudo-table correspondence out of band.
+          {:table "department_stats", :column "average_salary", :alias "avg_summary"}
+          {:table "department_stats", :column "department", :alias "department_name"}
+          {:table "department_stats", :column "department"}
+          {:table "department_stats", :column "total_employees"}
+          {:table "high_earners", :column "department"}
+          {:table "high_earners", :column "high_earners_count", :alias "high_earners"}]
+         (sorted (columns (query-fixture :compound/cte))))))
+
+(deftest compound-union-test
+  ;; TODO We are missing the fact that we expose "total_employees" and "high_earners" columns from the query.
+  (is (= [{:table "employees", :column "department", :alias "department_name"}
+          ;; TODO there's no use for this internal reference, which is not exposed
+          {:table "employees", :column "department"}
+          ;; TODO We will want to indicate that this value is transformed, somehow.
+          {:table "employees", :column "salary", :alias "avg_salary"}
+          {:table "employees", :column "salary"}]
+         (sorted (columns (query-fixture :compound/union))))))
+
+(deftest compound-correlated-subquery-test
+  ;; TODO We are missing the fact that we expose "avg_salary", "total_employees" and "high_earners" columns from the query.
+  (is (= [{:table "employees", :column "department", :alias "department_name"}
+          ;; TODO there's no use for this internal reference, which is not exposed
+          {:table "employees", :column "department"}
+          ;; TODO We no longer
+          {:table "employees", :column "salary"}]
+         (sorted (columns (query-fixture :compound/correlated-subquery))))))
+
+(deftest shadow-subselect-test
+  ;; TODO this case is just a total mess right now
+  #_(is (= #{} (columns (query-fixture :shadow/subselect)))))
+
+(deftest cycle-cte-test
+  ;; TODO this case is just a total mess right now
+  #_(is (= #{} (columns (query-fixture :cycle/cte)))))
 
 (comment
  (require 'virgil)
