@@ -597,7 +597,6 @@ from foo")
   (is (= [{:table "employees", :column "department", :alias "department_name"}
           ;; TODO there's no use for this internal reference, which is not exposed
           {:table "employees", :column "department"}
-          ;; TODO We no longer
           {:table "employees", :column "salary"}]
          (sorted (columns (query-fixture :compound/correlated-subquery))))))
 
