@@ -41,7 +41,10 @@
 
   - quotes-preserve-case: whether quoted identifiers should override the previous option."
   [sql renames & {:as opts}]
-  (rewrite/replace-names sql
-                         (parsed-query sql)
-                         renames
-                         (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])))
+  ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
+  ;; Currently we use a more complex and expensive sanitization method, so that it's reversible.
+  ;; If we decide that it's OK to normalize whitespace etc. during replacement then we can use the same helper.
+  (let [sql' (str/replace sql #"(?m)^\n" " \n")
+        opts' (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])]
+    (str/replace (rewrite/replace-names sql' (parsed-query sql') renames opts')
+                 #"(?m)^ \n" "\n")))
