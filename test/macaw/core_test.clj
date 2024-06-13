@@ -40,7 +40,9 @@
        x))
    m))
 
-(defn- contexts->scopes [m]
+(defn- contexts->scopes
+  "Replace full context stack with a reference to the local scope, only."
+  [m]
   (walk/prewalk
    (fn [x]
      (if-let [context (:context x)]
