@@ -1,5 +1,6 @@
 (ns macaw.core
   (:require
+   [clojure.string :as str]
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
@@ -10,7 +11,12 @@
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
   [^String query]
-  (CCJSqlParserUtil/parse query))
+  ;; Dialects like SQLite and Databricks treat consecutive blank lines as implicit semicolons.
+  ;; JSQLParser, as a polyglot parser, always has this behavior, and there is no option to disable it.
+  ;; For Metabase, we are always dealing with single queries, so there's no point ever having this behavior.
+  ;; TODO When JSQLParser 4.10 is released, move to the more robust [[CCJSqlParserUtil.sanitizeSingleSql]] helper.
+  ;; See https://github.com/JSQLParser/JSqlParser/issues/1988
+  (CCJSqlParserUtil/parse (str/replace query #"\n{2,}" "\n")))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
@@ -35,7 +41,10 @@
 
   - quotes-preserve-case: whether quoted identifiers should override the previous option."
   [sql renames & {:as opts}]
-  (rewrite/replace-names sql
-                         (parsed-query sql)
-                         renames
-                         (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])))
+  ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
+  ;; Currently we use a more complex and expensive sanitization method, so that it's reversible.
+  ;; If we decide that it's OK to normalize whitespace etc. during replacement then we can use the same helper.
+  (let [sql' (str/replace sql #"(?m)^\n" " \n")
+        opts' (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])]
+    (str/replace (rewrite/replace-names sql' (parsed-query sql') renames opts')
+                 #"(?m)^ \n" "\n")))
