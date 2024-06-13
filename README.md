@@ -175,7 +175,7 @@ $ grep MUTATION_COMMAND java/com/metabase/macaw/AstWalker.java | grep -oEi '".+"
 
 As can be seen above, every item additional has a `:context` key containing a stack (most-specific first) of the query
 components in which the item was found. The definitive list of components if found in
-`com.metabase.macaw.AstWalker.QueryContext`, but as of 0.1.30 the list is as follows (and is unlikely to change):
+`com.metabase.macaw.AstWalker.QueryScopeLabel`, but as of 0.1.30 the list is as follows (and is unlikely to change):
 
 ```java
 DELETE,

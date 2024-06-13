@@ -3,7 +3,6 @@ package com.metabase.macaw;
 // Borrows substantially from JSqlParser's TablesNamesFinder
 
 import clojure.lang.IFn;
-import clojure.lang.Keyword;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -124,7 +123,7 @@ import net.sf.jsqlparser.statement.upsert.Upsert;
 
 import static com.metabase.macaw.AstWalker.CallbackKey.*;
 
-import static com.metabase.macaw.AstWalker.QueryContext.*;
+import static com.metabase.macaw.AstWalker.QueryScopeLabel.*;
 
 /**
  * Walks the AST, using JSqlParser's `visit()` methods. Each `visit()` method additionally calls an applicable callback
@@ -158,8 +157,8 @@ import static com.metabase.macaw.AstWalker.QueryContext.*;
  * <hr>
  *
  * Therefore, this class provides a more convenient escape hatch for Clojure. It removes the overloading requirement for
- * the conventional visitor pattern, instead providing the `callbacks` map This lets Clojure code use a normal Clojure
- * map and functions to implement the necessary behavior; no `reify` necesary.
+ * the conventional visitor pattern, providing instead the `callbacks` map. This lets Clojure code use a normal Clojure
+ * map and functions to implement the necessary behavior; no `reify` necessary.
  */
 public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
        SelectItemVisitor, StatementVisitor, GroupByVisitor {
@@ -177,12 +176,50 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
     }
 
-    public interface QueueItem {
-        public String getKey();
-        public String getValue();
+    public interface Scope {
+        long getId();
+        String getType();
+        String getLabel();
+
+        static ScopeInstance fromLabel(QueryScopeLabel label) {
+            return new ScopeInstance("query", label.getValue());
+        }
+
+        static ScopeInstance other(String type, String label) {
+            return new ScopeInstance(type, label);
+        }
     }
 
-    public enum QueryContext implements QueueItem {
+    public static class ScopeInstance implements Scope {
+        private static long nextId = 1;
+
+        private final long id;
+        private final String type;
+        private final String label;
+
+        private ScopeInstance(String type, String label) {
+            this.id = nextId++;
+            this.type = type;
+            this.label = label;
+        }
+
+        @Override
+        public long getId() {
+            return id;
+        }
+
+        @Override
+        public String getType() {
+            return type;
+        }
+
+        @Override
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    public enum QueryScopeLabel {
         DELETE,
         ELSE,
         FROM,
@@ -196,30 +233,14 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         UPDATE,
         WHERE;
 
-        public String getKey() {
-            return "query";
+        private final String value;
+
+        QueryScopeLabel() {
+            this.value = name().toUpperCase();
         }
 
         public String getValue() {
-            return name().toUpperCase();
-        }
-    }
-
-    public class SomeContext implements QueueItem {
-        private String key;
-        private String value;
-
-        SomeContext(String key, String value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        public String getKey() {
-            return this.key;
-        }
-
-        public String getValue() {
-            return this.value;
+            return value;
         }
     }
 
@@ -227,18 +248,18 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
-    private final Deque<QueueItem> contextStack;
+    private final Deque<Scope> contextStack;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
      * reducing functions.
-     *
+     * <p>
      * c.f. the Clojure wrapper in <code>macaw.walk</code>
      */
     public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
         this.callbacks = new EnumMap<>(rawCallbacks);
-        this.contextStack = new ArrayDeque<QueueItem>();
+        this.contextStack = new ArrayDeque<>();
     }
 
     /**
@@ -253,12 +274,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         }
     }
 
-    private void pushContext(QueryContext c) {
-        this.contextStack.push(c);
+    private void pushContext(QueryScopeLabel label) {
+        this.contextStack.push(Scope.fromLabel(label));
     }
 
-    private void pushContext(QueueItem item) {
-        this.contextStack.push(item);
+    private void pushContext(@SuppressWarnings("SameParameterValue") String type, String label) {
+        this.contextStack.push(Scope.other(type, label));
     }
 
     // This is pure sugar, but it's nice to be symmetrical with pushContext
@@ -417,11 +438,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public void visit(Column tableColumn) {
         invokeCallback(COLUMN, tableColumn);
 
-        if (tableColumn.getTable() != null
-                && tableColumn.getTable().getName() != null) {
-            // visiting aliases (e.g., the `o` in `o.id` in `select o.id from orders o`) is unhelpful if we're trying
-            // to get the set of actual table names used. However, for query rewriting it's necessary
-            visitColumnQualifier(tableColumn.getTable());
+        Table table = tableColumn.getTable();
+        if (table != null && table.getName() != null) {
+            // Visiting aliases (e.g., the `o` in `o.id` in `select o.id from orders o`) is unhelpful if we're trying
+            // to get the set of actual table names used.
+            // However, for query rewriting it is necessary.
+            visitColumnQualifier(table);
         }
     }
 
@@ -827,7 +849,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         var alias = item.getAlias();
         if (alias != null) {
             // FIXME: this is absolutely a hack, what's the best way to get around it?
-            pushContext(new SomeContext("alias", alias.getName()));
+            pushContext("alias", alias.getName());
         }
         item.getExpression().accept(this);
         if (alias != null) {
@@ -1109,7 +1131,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public void visit(GroupByElement element) {
         pushContext(GROUP_BY);
         element.getGroupByExpressionList().accept(this);
-        for (ExpressionList exprList : element.getGroupingSets()) {
+        for (ExpressionList<?> exprList : element.getGroupingSets()) {
             exprList.accept(this);
         }
         popContext(); // GROUP_BY

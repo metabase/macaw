@@ -24,13 +24,13 @@
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [statement & {:as opts}]
-  ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behaviour.
+  ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behavior.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
-  ;; In Metabase's case this is done during the stage where the database metadata is queried.
+  ;; In Metabase's case, this is done during the stage where the database metadata is queried.
   (collect/query->components statement (merge {:preserve-identifiers? true} opts)))
 
 (defn replace-names
-  "Given a SQL query, apply the given table, column, and schema renames.
+  "Given an SQL query, apply the given table, column, and schema renames.
 
   Supported options:
 

@@ -4,7 +4,7 @@
    [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
-   (com.metabase.macaw AstWalker$QueueItem)
+   (com.metabase.macaw AstWalker$Scope)
    (java.util.regex Pattern)
    (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.schema Column Table)
@@ -20,8 +20,8 @@
    (fn item-conjer [results component context]
      (update results key-name conj {:component (xf component)
                                     :context   (mapv
-                                                 (fn [^AstWalker$QueueItem x]
-                                                   [(keyword (.getKey x)) (.getValue x)])
+                                                 (fn [^AstWalker$Scope x]
+                                                   [(keyword (.getType x)) (.getLabel x) (.getId x)])
                                                  context)}))))
 
 (defn- query->raw-components
@@ -128,7 +128,7 @@
 
 (defn- only-query-context [ctx]
   (into [] (comp (filter #(= (first %) :query))
-                 (map second))
+                 (map (comp vec rest)))
     ctx))
 
 (defn- update-components
