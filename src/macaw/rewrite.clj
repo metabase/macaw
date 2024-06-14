@@ -84,7 +84,7 @@
     (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
       (vswap! updated-nodes conj [raw-schema-name schema-rename])
       (let [identifier (as-> (val schema-rename) % (:table % %))]
-        (.setSchemaName t schema-rename)))))
+        (.setSchemaName t identifier)))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
