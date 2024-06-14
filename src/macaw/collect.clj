@@ -150,10 +150,9 @@
 (defn- remove-redundant-columns
   "Remove any unqualified references that would resolve to a given qualified reference"
   [column-set]
-  ;; TODO as far as "used columns" go, we don't really care about context, and should drop it before doing this
-  (let [{qualified true, unqualified false} (group-by (comp boolean :table :component) column-set)
-        qualifications (into #{} (mapcat #(keep (comp % :component) qualified)) [:column :alias])]
-    (into qualified (remove (comp qualifications :column :component)) unqualified)))
+  (let [{qualified true, unqualified false} (group-by (comp boolean :table) column-set)
+        qualifications (into #{} (mapcat #(keep % qualified)) [:column :alias])]
+    (into qualified (remove (comp qualifications :column)) unqualified)))
 
 (defn query->components
   "See macaw.core/query->components doc."
@@ -189,7 +188,7 @@
         strip-alias               (fn [c] (dissoc c :alias))
         strip-aliases             (map #(update % :component strip-alias))]
     {:columns           all-columns
-     :source-columns    (into #{} strip-aliases (remove-redundant-columns all-columns))
+     :source-columns    (into #{} (map strip-alias) (remove-redundant-columns (map :component all-columns)))
      ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
      :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
      :mutation-commands (into #{} mutation-commands)

@@ -25,7 +25,7 @@
 ;;      some of these tests are still related to this superset, and other will want to talk about "result-columns"
 ;;      we probably want to test both source and result columns for everything...
 (def columns        (comp raw-components :columns components))
-(def source-columns        (comp raw-components :source-columns components))
+(def source-columns (comp :source-columns components))
 (def has-wildcard?  (comp non-empty-and-truthy raw-components :has-wildcard? components))
 (def mutations      (comp raw-components :mutation-commands components))
 (def tables         (comp raw-components :tables components))
@@ -565,14 +565,14 @@ from foo")
   (sort-by (comp (juxt :schema :table :column :scope) #(:component % %)) element-set))
 
 (deftest duplicate-scopes-test
-  ;; TODO We must mention the columns with "a" as their source table, otherwise we cannot compute the source fields.
   ;; TODO Fix kondo linting of =?/same
   ^:clj-kondo/ignore
-  (is (=? [#_{:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
-           #_{:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
+  ;; TODO We need to mention "a" as the source table in the first subselect, to cannot compute the source fields.
+  (is (=? [{:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
+           {:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
            {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
            {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
-          (sorted (contexts->scopes (:source-columns (components (query-fixture :duplicate-scopes))))))))
+          (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
 
 (deftest count-field-test
   (testing "COUNT(*) does not actually read any columns"
@@ -621,6 +621,20 @@ from foo")
   (is (= [{:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
          (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
+
+(deftest phatom-tables-test
+  (is (= #{{:table "a"}
+           ;; these are actually aliases to internal scopes, we should not list them
+           {:table "b"}
+           {:table "c"}})
+      (tables (query-fixture :duplicate-scopes)))
+  (is (= #{#_{:table "a", :column "x"}
+           ;; These two internal references are being confused for qualified source references.
+           ;; This causes us to remove the inner unqualified reference.
+           ;; As there is only one real table, the unqualified reference could then resolve to the expected value above.
+           {:table "b" :column "x"}
+           {:table "c" :column "x"}}
+         (source-columns (query-fixture :duplicate-scopes)))))
 
 (deftest shadow-subselect-test
   ;; TODO this case is just a total mess right now
