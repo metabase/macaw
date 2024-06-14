@@ -114,12 +114,12 @@
          table-renames  :tables
          column-renames :columns} renames
         comps          (collect/query->components parsed-ast (assoc opts :with-instance true))
-        elements       (index-by-instances (:elements comps))
+        columns        (index-by-instances (:columns comps))
         tables         (index-by-instances (:tables comps))
         ;; execute rename
         updated-nodes  (volatile! [])
         rename-table*  (partial rename-table updated-nodes table-renames schema-renames tables opts)
-        rename-column* (partial rename-column updated-nodes column-renames elements)
+        rename-column* (partial rename-column updated-nodes column-renames columns)
         res            (-> parsed-ast
                            (mw/walk-query
                             {:table            rename-table*

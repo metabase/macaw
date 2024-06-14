@@ -107,15 +107,15 @@
 
 ;;; columns
 
-(defn- maybe-column-table [{:keys [name->table] :as opts} ^Column c]
+(defn- maybe-column-table [alias? {:keys [name->table] :as opts} ^Column c]
   (if-let [t (.getTable c)]
     (find-table opts t)
     ;; if we see only a single table, we can safely say it's the table of that column
-    (when (= (count name->table) 1)
+    (when (and (= (count name->table) 1) (not (alias? (.getColumnName c))))
       (:component (val (first name->table))))))
 
-(defn- make-column [opts ^Column c ctx]
-  (let [{:keys [schema table]} (maybe-column-table opts c)]
+(defn- make-column [aliases opts ^Column c ctx]
+  (let [{:keys [schema table]} (maybe-column-table aliases opts c)]
     (u/strip-nils
      {:schema    schema
       :table     table
@@ -131,11 +131,12 @@
                  (map (comp vec rest)))
     ctx))
 
+(def ^:private strip-non-query-contexts
+  (map #(update % :context only-query-context)))
+
 (defn- update-components
   ([f]
-   (map #(-> %
-             (update :component f (:context %))
-             (update :context only-query-context))))
+   (map #(update % :component f (:context %))))
   ([f components]
    (eduction (update-components f) components)))
 
@@ -146,7 +147,7 @@
     (cond-> (merge a b)
       cs-a (update-in [:component :instances] into cs-a))))
 
-(defn- remove-redundancies
+(defn- remove-redundant-columns
   "Remove any unqualified references that would resolve to a given qualified reference"
   [column-set]
   ;; TODO as far as "used columns" go, we don't really care about context, and should drop it before doing this
@@ -176,12 +177,24 @@
                                        (u/group-with #(select-keys (:component %) [:schema :table])
                                                      merge-with-instances))
         table-map                 (merge-with merge-with-instances qualifier-map table-map)
-        raw-columns               (into #{} (update-components (partial make-column opts)) columns)
-        strip-alias               (fn [c] (dissoc c :alias))]
-    {:columns           raw-columns
-     :source-columns    (into #{} (map #(update % :component strip-alias)) (remove-redundancies raw-columns))
-     :elements          (into #{} (map #(update % :component strip-alias)) raw-columns)
-     :has-wildcard?     (into #{} (update-components (fn [x & _args] x)) has-wildcard?)
+        ;; TODO clean this overwrought two-phase calculation up
+        aliases                   (into #{} (comp (update-components (partial make-column #{} {}))
+                                                  (keep (comp :alias :component))
+                                                  (distinct))
+                                        columns)
+        all-columns               (into #{}
+                                        (comp (update-components (partial make-column aliases opts))
+                                              strip-non-query-contexts)
+                                        columns)
+        strip-alias               (fn [c] (dissoc c :alias))
+        strip-aliases             (map #(update % :component strip-alias))]
+    {:columns           all-columns
+     :source-columns    (into #{} strip-aliases (remove-redundant-columns all-columns))
+     ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
+     :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (vals table-map))
-     :table-wildcards   (into #{} (update-components (partial resolve-table-name opts)) table-wildcards)}))
+     :tables            (into #{} (comp (map val) strip-non-query-contexts) table-map)
+     :table-wildcards   (into #{}
+                              (comp strip-non-query-contexts
+                                    (update-components (partial resolve-table-name opts)))
+                              table-wildcards)}))

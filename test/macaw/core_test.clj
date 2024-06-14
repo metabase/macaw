@@ -252,13 +252,17 @@ from foo")
                                :allow-unused?         true}))))))
 
 (deftest infer-test
-  (testing "We can first column through a few hoops"
+  (testing "We can infer a column through a few hoops"
     (is (= #{{:column "amount" :table "orders"}}
            (columns "SELECT amount FROM (SELECT amount FROM orders)")))
     (is (= #{{:column "amount" :alias "cost" :table "orders"}
-             ;; FIXME: we need to figure out that `cost` is an alias from subquery
-             {:column "cost", :table "orders"}}
-           (columns "SELECT cost FROM (SELECT amount AS cost FROM orders)")))))
+             ;; We preserve this  for now, which has its scope to differentiate it from the qualified element.
+             ;; Importantly, we do not infer it as coming from the orders table, despite that being the only table.
+             {:column "cost"}}
+           (columns "SELECT cost FROM (SELECT amount AS cost FROM orders)")))
+    (testing "We do not expose phantom columns due to references to aliases"
+      (is (= #{{:column "amount" :table "orders"}}
+             (source-columns "SELECT cost FROM (SELECT amount AS cost FROM orders)"))))))
 
 (deftest mutation-test
   (is (= #{"alter-sequence"}
@@ -348,7 +352,7 @@ from foo")
 
 (deftest context-test
   (testing "Sub-select with outer wildcard"
-    ;; TODO: we should test all elements
+    ;; TODO we should test the source and result columns too
     (is (=? {:columns
             #{{:component {:column "total" :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
               {:component {:column "id"    :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
