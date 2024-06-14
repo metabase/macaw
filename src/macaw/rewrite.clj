@@ -75,19 +75,24 @@
 (defn- rename-table
   [updated-nodes table-renames schema-renames known-tables opts ^Table t _ctx]
   (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
+    ;; Handle both raw string renames, as well as more precise element based ones.
     (vswap! updated-nodes conj [t rename])
-    (.setName t (val rename)))
+    (let [identifier (as-> (val rename) % (:table % %))]
+      (.setName t identifier)))
   (let [raw-schema-name (.getSchemaName t)
         schema-name     (collect/normalize-reference raw-schema-name opts)]
     (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
       (vswap! updated-nodes conj [raw-schema-name schema-rename])
-      (.setSchemaName t (val schema-rename)))))
+      (let [identifier (as-> (val schema-rename) % (:table % %))]
+        (.setSchemaName t schema-rename)))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
   (when-let [rename (u/find-relevant column-renames (get known-columns c) [:column :table :schema])]
+    ;; Handle both raw string renames, as well as more precise element based ones.
     (vswap! updated-nodes conj [c rename])
-    (.setColumnName c (val rename))))
+    (let [identifier (as-> (val rename) % (:column % %))]
+      (.setColumnName c identifier))))
 
 (defn- alert-unused! [updated-nodes renames]
   (let [known-rename? (set (map second updated-nodes))]
