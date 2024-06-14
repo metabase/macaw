@@ -178,7 +178,8 @@
         table-map                 (merge-with merge-with-instances qualifier-map table-map)
         raw-columns               (into #{} (update-components (partial make-column opts)) columns)
         strip-alias               (fn [c] (dissoc c :alias))]
-    {:columns           (into #{} (map #(update % :component strip-alias)) (remove-redundancies raw-columns))
+    {:columns           raw-columns
+     :source-columns    (into #{} (map #(update % :component strip-alias)) (remove-redundancies raw-columns))
      :elements          (into #{} (map #(update % :component strip-alias)) raw-columns)
      :has-wildcard?     (into #{} (update-components (fn [x & _args] x)) has-wildcard?)
      :mutation-commands (into #{} mutation-commands)

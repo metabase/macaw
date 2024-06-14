@@ -25,6 +25,7 @@
 ;;      some of these tests are still related to this superset, and other will want to talk about "result-columns"
 ;;      we probably want to test both source and result columns for everything...
 (def columns        (comp raw-components :columns components))
+(def source-columns        (comp raw-components :source-columns components))
 (def has-wildcard?  (comp non-empty-and-truthy raw-components :has-wildcard? components))
 (def mutations      (comp raw-components :mutation-commands components))
 (def tables         (comp raw-components :tables components))
@@ -254,7 +255,7 @@ from foo")
   (testing "We can first column through a few hoops"
     (is (= #{{:column "amount" :table "orders"}}
            (columns "SELECT amount FROM (SELECT amount FROM orders)")))
-    (is (= #{{:column "amount" #_:alias #_"cost" :table "orders"}
+    (is (= #{{:column "amount" :alias "cost" :table "orders"}
              ;; FIXME: we need to figure out that `cost` is an alias from subquery
              {:column "cost", :table "orders"}}
            (columns "SELECT cost FROM (SELECT amount AS cost FROM orders)")))))
@@ -565,7 +566,7 @@ from foo")
            #_{:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
            {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
            {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
-          (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
+          (sorted (contexts->scopes (:source-columns (components (query-fixture :duplicate-scopes))))))))
 
 (deftest count-field-test
   (testing "COUNT(*) does not actually read any columns"
@@ -578,10 +579,10 @@ from foo")
     (is (empty? (table-wcs "SELECT COUNT(1) FROM users"))))
   (testing "We do care about explicitly referenced fields in a COUNT"
     (is (= #{{:table "users" :column "id"}}
-           (columns "SELECT COUNT(id) FROM users"))))
+           (source-columns "SELECT COUNT(id) FROM users"))))
   (testing "We do care about deeply referenced fields in a COUNT however"
     (is (= #{{:table "users" :column "id"}}
-           (columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
+           (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
 (deftest compound-subselect-test
   ;; TODO These first three entries should track what they're derived from, so we can filter them from query fields.
@@ -592,7 +593,7 @@ from foo")
           {:column "total_employees"}
           {:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
-         (sorted (columns (query-fixture :compound/subselect))))))
+         (sorted (source-columns (query-fixture :compound/subselect))))))
 
 (deftest compound-cte-test
   (is (= [{:column "salary"}
@@ -603,17 +604,17 @@ from foo")
           {:table "department_stats", :column "total_employees"}
           {:table "high_earners", :column "department"}
           {:table "high_earners", :column "high_earners_count"}]
-         (sorted (columns (query-fixture :compound/cte))))))
+         (sorted (source-columns (query-fixture :compound/cte))))))
 
 (deftest compound-union-test
   (is (= [{:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
-         (sorted (columns (query-fixture :compound/union))))))
+         (sorted (source-columns (query-fixture :compound/union))))))
 
 (deftest compound-correlated-subquery-test
   (is (= [{:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
-         (sorted (columns (query-fixture :compound/correlated-subquery))))))
+         (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
 
 (deftest shadow-subselect-test
   ;; TODO this case is just a total mess right now
