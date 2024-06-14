@@ -350,6 +350,8 @@ from foo")
   (is (= #{{:table "foo"}}
          (table-wcs "SELECT f.* FROM orders o JOIN foo f ON orders.id = foo.order_id"))))
 
+;; TODO Fix kondo linting of =? (strangely enough I don't need this locally)
+^:clj-kondo/ignore
 (deftest context-test
   (testing "Sub-select with outer wildcard"
     ;; TODO we should test the source and result columns too
