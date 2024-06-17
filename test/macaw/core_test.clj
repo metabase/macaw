@@ -562,7 +562,7 @@ from foo")
   (is (= [{:column "average_salary", :alias "avg_salary"}
           {:column "department", :alias "department_name"}
           {:column "department"}
-          ;; TODO This doesn't belong here, as the identifier does not relate to any collumn
+          ;; TODO This doesn't belong here, as the identifier does not relate to any column
           {:column "total_employees"}
 
           {:table "employees", :column "department"}
