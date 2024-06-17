@@ -27,7 +27,9 @@
 (def tables         (comp raw-components :tables components))
 (def table-wcs      (comp raw-components :table-wildcards components))
 
-(defn- strip-context-ids [m]
+(defn- strip-context-ids
+  "Strip the scope id from the context stacks, to get deterministic values for testing."
+  [m]
   (walk/prewalk
    (fn [x]
      (if (:context x)
@@ -383,6 +385,23 @@ from foo")
          (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
                           {:tables  {{:schema "public" :table "a"} "aa"}
                            :columns {{:schema "public" :table "a" :column "x"} "xx"}})))
+
+  (testing "Handle fully qualified replacement targets"
+    ;; Giving Macaw more context could make it easier to
+    ;; In any case, this is trivial for Metabase to provide.
+    (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
+           (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                            {:tables  {{:schema "public" :table "a"} "aa"}
+                             :columns {{:schema "public" :table "a"  :column "x"}
+                                       {:schema "public" :table "aa" :column "xx"}}}))))
+
+  ;; To consider - we could avoid splitting up the renames into column and table portions in the client, as
+  ;; qualified targets would allow us to infer such changes. Partial qualification could also work fine where there
+  ;; is no ambiguity - even if this is just a nice convenience for testing.
+  #_(is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
+         (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                          {:columns {{:schema "public" :table "a" :column "x"}
+                                     {:table "aa" :column "xx"}}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
