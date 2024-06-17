@@ -622,7 +622,7 @@ from foo")
           {:table "employees", :column "salary"}]
          (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
 
-(deftest phatom-tables-test
+(deftest phantom-tables-test
   (is (= #{{:table "a"}
            ;; these are actually aliases to internal scopes, we should not list them
            {:table "b"}
