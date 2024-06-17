@@ -21,9 +21,6 @@
 
 (def components     (comp m/query->components m/parsed-query))
 (def raw-components #(let [xs (empty %)] (into xs (keep :component) %)))
-;; TODO we should rename this to "source-columns" or something, to be clearer.
-;;      some of these tests are still related to this superset, and other will want to talk about "result-columns"
-;;      we probably want to test both source and result columns for everything...
 (def columns        (comp raw-components :columns components))
 (def source-columns (comp :source-columns components))
 (def has-wildcard?  (comp non-empty-and-truthy raw-components :has-wildcard? components))
