@@ -30,12 +30,14 @@
                  {:column           (conj-to :columns)
                   :column-qualifier (conj-to :qualifiers)
                   :mutation         (conj-to :mutation-commands)
-                  :wildcard         (conj-to :has-wildcard? (constantly true))
+                  :pseudo-table     (conj-to :pseudo-tables)
                   :table            (conj-to :tables)
-                  :table-wildcard   (conj-to :table-wildcards)}
+                  :table-wildcard   (conj-to :table-wildcards)
+                  :wildcard         (conj-to :has-wildcard? (constantly true))}
                  {:columns           #{}
                   :has-wildcard?     #{}
                   :mutation-commands #{}
+                  :pseudo-tables     #{}
                   :tables            #{}
                   :table-wildcards   #{}}))
 
@@ -73,11 +75,13 @@
           quoted     strip-quotes
           relax-case relax-case)))))
 
-(defn- find-table [{:keys [alias->table name->table] :as opts} ^Table t]
+(defn- find-table [{:keys [alias->table name->table keep-internal-tables?] :as opts} ^Table t]
   (let [n      (normalize-reference (.getName t) opts)
         schema (normalize-reference (.getSchemaName t) opts)]
     (or (get alias->table n)
-        (:component (last (u/find-relevant name->table {:table n :schema schema} [:table :schema]))))))
+        (:component (last (u/find-relevant name->table {:table n :schema schema} [:table :schema])))
+        (when keep-internal-tables?
+          {:table n, :schema schema, :internal? true}))))
 
 (defn- find-qualifier-table [opts ^Table q _ctx]
   (when-let [table (find-table opts q)]
@@ -161,6 +165,7 @@
                 qualifiers
                 has-wildcard?
                 mutation-commands
+                pseudo-tables
                 tables
                 table-wildcards]} (query->raw-components parsed-ast)
         alias-map                 (into {} (map #(-> % :component ((partial alias-mapping opts) (:context %))) tables))
@@ -168,6 +173,12 @@
         table-map                 (->> (update-components (partial make-table opts) tables)
                                        (u/group-with #(select-keys (:component %) [:schema :table])
                                                      merge-with-instances))
+        pseudo-table-names        (into #{} (comp (map :component)
+                                                  (map (fn [^Alias a] (.getName a))))
+                                        pseudo-tables)
+        table-map                 (into (empty table-map)
+                                        (remove (comp pseudo-table-names :table :component val))
+                                        table-map)
         ;; we need both aliases and tables for columns
         opts                      (assoc opts
                                          :alias->table alias-map
@@ -182,16 +193,24 @@
                                                   (distinct))
                                         columns)
         all-columns               (into #{}
-                                        (comp (update-components (partial make-column aliases opts))
+                                        (comp (update-components (partial make-column aliases
+                                                                          (assoc opts :keep-internal-tables? true)))
                                               strip-non-query-contexts)
                                         columns)
         strip-alias               (fn [c] (dissoc c :alias))]
     {:columns           all-columns
-     :source-columns    (into #{} (map strip-alias) (remove-redundant-columns (map :component all-columns)))
+     :source-columns    (into #{}
+                              (comp (remove (comp pseudo-table-names :table))
+                                    (remove :internal?)
+                                    (map strip-alias))
+                              (remove-redundant-columns (map :component all-columns)))
      ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
      :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (comp (map val) strip-non-query-contexts) table-map)
+     :tables            (into #{} (comp (map val)
+                                        (remove (comp :internal? :component))
+                                        strip-non-query-contexts)
+                              table-map)
      :table-wildcards   (into #{}
                               (comp strip-non-query-contexts
                                     (update-components (partial resolve-table-name opts)))
