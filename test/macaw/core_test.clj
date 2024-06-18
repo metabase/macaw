@@ -619,8 +619,8 @@ from foo")
   (is (= #{{:table "a"}
            ;; these are actually aliases to internal scopes, we should not list them
            {:table "b"}
-           {:table "c"}})
-      (tables (query-fixture :duplicate-scopes)))
+           {:table "c"}}
+         (tables (query-fixture :duplicate-scopes))))
   (is (= #{#_{:table "a", :column "x"}
            ;; These two internal references are being confused for qualified source references.
            ;; This causes us to remove the inner unqualified reference.

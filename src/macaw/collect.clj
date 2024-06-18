@@ -185,8 +185,7 @@
                                         (comp (update-components (partial make-column aliases opts))
                                               strip-non-query-contexts)
                                         columns)
-        strip-alias               (fn [c] (dissoc c :alias))
-        strip-aliases             (map #(update % :component strip-alias))]
+        strip-alias               (fn [c] (dissoc c :alias))]
     {:columns           all-columns
      :source-columns    (into #{} (map strip-alias) (remove-redundant-columns (map :component all-columns)))
      ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
