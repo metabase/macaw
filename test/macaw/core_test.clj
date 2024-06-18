@@ -588,11 +588,7 @@ from foo")
            (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
 (deftest compound-subselect-test
-  ;; TODO These first three entries should track what they're derived from, so we can filter them from query fields.
-  (is (= [{:column "average_salary", :alias "avg_salary"}
-          {:column "department", :alias "department_name"}
-          {:column "department"}
-          ;; TODO This doesn't belong here, as the identifier does not relate to any column
+  (is (= [;; TODO This doesn't belong here, as the identifier does not relate to any column
           {:column "total_employees"}
           {:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
