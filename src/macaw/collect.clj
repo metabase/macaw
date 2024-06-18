@@ -9,7 +9,7 @@
    (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.schema Column Table)
    (net.sf.jsqlparser.statement Statement)
-   (net.sf.jsqlparser.statement.select AllTableColumns)))
+   (net.sf.jsqlparser.statement.select AllTableColumns SelectItem)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,13 +27,17 @@
 (defn- query->raw-components
   [^Statement parsed-ast]
   (mw/fold-query parsed-ast
-                 {:column           (conj-to :columns)
+                 {:alias            (conj-to :aliases (fn [^SelectItem item]
+                                                        {:alias      (.getName (.getAlias item))
+                                                         :expression (.getExpression item)}))
+                  :column           (conj-to :columns)
                   :column-qualifier (conj-to :qualifiers)
                   :mutation         (conj-to :mutation-commands)
                   :wildcard         (conj-to :has-wildcard? (constantly true))
                   :table            (conj-to :tables)
                   :table-wildcard   (conj-to :table-wildcards)}
-                 {:columns           #{}
+                 {:aliases           #{}
+                  :columns           #{}
                   :has-wildcard?     #{}
                   :mutation-commands #{}
                   :tables            #{}
@@ -148,16 +152,24 @@
       cs-a (update-in [:component :instances] into cs-a))))
 
 (defn- remove-redundant-columns
-  "Remove any unqualified references that would resolve to a given qualified reference"
-  [column-set]
+  "Remove any unqualified references that would resolve to an alias or qualified reference"
+  [alias? column-set]
   (let [{qualified true, unqualified false} (group-by (comp boolean :table) column-set)
-        qualifications (into #{} (mapcat #(keep % qualified)) [:column :alias])]
-    (into qualified (remove (comp qualifications :column)) unqualified)))
+        ;; Get all the bindings introduced by qualified columns
+        has-qualification? (into #{} (mapcat #(keep % qualified)) [:column :alias])]
+    (into qualified
+          (remove (comp (some-fn alias? has-qualification?)
+                        :column))
+          unqualified)))
+
+(defn- remove-phantoms [table-alias? columns]
+  (distinct (filter (comp #(or (nil? %) (table? %)) :table) columns)))
 
 (defn query->components
   "See macaw.core/query->components doc."
   [^Statement parsed-ast & {:as opts}]
-  (let [{:keys [columns
+  (let [{:keys [aliases
+                columns
                 qualifiers
                 has-wildcard?
                 mutation-commands
@@ -175,23 +187,26 @@
         qualifier-map             (->> (update-components (partial find-qualifier-table opts) qualifiers)
                                        (u/group-with #(select-keys (:component %) [:schema :table])
                                                      merge-with-instances))
-        table-map                 (merge-with merge-with-instances qualifier-map table-map)
-        ;; TODO clean this overwrought two-phase calculation up
-        aliases                   (into #{} (comp (update-components (partial make-column #{} {}))
-                                                  (keep (comp :alias :component))
-                                                  (distinct))
-                                        columns)
+        table-map                 (into {} (remove (comp (set (keys qualifier-map)) key))
+                                        table-map)
+        real-tables               (into #{} (comp (map val)
+                                                  strip-non-query-contexts)
+                                        table-map)
+        alias?                    (into #{} (keep (comp :alias :component)) aliases)
         all-columns               (into #{}
-                                        (comp (update-components (partial make-column aliases opts))
+                                        (comp (update-components (partial make-column alias? opts))
                                               strip-non-query-contexts)
                                         columns)
         strip-alias               (fn [c] (dissoc c :alias))]
     {:columns           all-columns
-     :source-columns    (into #{} (map strip-alias) (remove-redundant-columns (map :component all-columns)))
+     :source-columns    (->> (map :component all-columns)
+                             (remove-phantoms (into #{} (keep (comp :table :component)) real-tables))
+                             (remove-redundant-columns alias?)
+                             (into #{} (map strip-alias)))
      ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
      :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (comp (map val) strip-non-query-contexts) table-map)
+     :tables            real-tables
      :table-wildcards   (into #{}
                               (comp strip-non-query-contexts
                                     (update-components (partial resolve-table-name opts)))

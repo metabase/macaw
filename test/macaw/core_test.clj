@@ -588,8 +588,8 @@ from foo")
            (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
 (deftest compound-subselect-test
-  (is (= [;; TODO This doesn't belong here, as the identifier does not relate to any column
-          {:column "total_employees"}
+  ;; this is a phantom column
+  (is (= [{:column "total_employees"}
           {:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
          (sorted (source-columns (query-fixture :compound/subselect))))))
@@ -641,7 +641,7 @@ from foo")
  (require 'hashp.core)
  (require 'virgil)
  (require 'clojure.tools.namespace.repl)
- (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all)
+ (virgil/watch-and-recompile  :post-hook clojure.tools.namespace.repl/refresh-all)
 
  (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)

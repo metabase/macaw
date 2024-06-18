@@ -7,7 +7,8 @@
 (def ->callback-key
   "keyword->key map for the AST-folding callbacks."
   ;; TODO: Move this to a Malli schema to simplify the indirection
-  {:column           AstWalker$CallbackKey/COLUMN
+  {:alias            AstWalker$CallbackKey/ALIAS
+   :column           AstWalker$CallbackKey/COLUMN
    :column-qualifier AstWalker$CallbackKey/COLUMN_QUALIFIER
    :mutation         AstWalker$CallbackKey/MUTATION_COMMAND
    :table            AstWalker$CallbackKey/TABLE

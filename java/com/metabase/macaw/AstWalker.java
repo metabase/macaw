@@ -164,6 +164,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
        SelectItemVisitor, StatementVisitor, GroupByVisitor {
 
     public enum CallbackKey {
+        ALIAS,
         ALL_COLUMNS,
         ALL_TABLE_COLUMNS,
         COLUMN,
@@ -850,6 +851,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (alias != null) {
             // FIXME: this is absolutely a hack, what's the best way to get around it?
             pushContext("alias", alias.getName());
+            // This should be able to replace it.
+            invokeCallback(ALIAS, item);
         }
         item.getExpression().accept(this);
         if (alias != null) {
