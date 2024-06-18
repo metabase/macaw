@@ -616,10 +616,7 @@ from foo")
          (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
 
 (deftest phantom-tables-test
-  (is (= #{{:table "a"}
-           ;; these are actually aliases to internal scopes, we should not list them
-           {:table "b"}
-           {:table "c"}}
+  (is (= #{{:table "a"}}
          (tables (query-fixture :duplicate-scopes))))
   (is (= #{#_{:table "a", :column "x"}
            ;; These two internal references are being confused for qualified source references.
