@@ -571,6 +571,9 @@ from foo")
            {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
           (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
 
+(deftest no-source-columns-test
+  (is (empty? (source-columns (query-fixture :no-source-columns)))))
+
 (deftest count-field-test
   (testing "COUNT(*) does not actually read any columns"
     (is (empty? (columns "SELECT COUNT(*) FROM users")))
