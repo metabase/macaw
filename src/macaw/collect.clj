@@ -163,7 +163,7 @@
           unqualified)))
 
 (defn- remove-phantoms [table-alias? columns]
-  (distinct (filter (comp #(or (nil? %) (table? %)) :table) columns)))
+  (distinct (filter (comp #(or (nil? %) (table-alias? %)) :table) columns)))
 
 (defn query->components
   "See macaw.core/query->components doc."
