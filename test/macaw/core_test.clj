@@ -564,9 +564,8 @@ from foo")
 (deftest duplicate-scopes-test
   ;; TODO Fix kondo linting of =?/same
   ^:clj-kondo/ignore
-  ;; TODO We need to mention "a" as the source table in the first subselect, to cannot compute the source fields.
-  (is (=? [{:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
-           {:component {:column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
+  (is (=? [{:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
+           {:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
            {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
            {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
           (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
@@ -588,21 +587,13 @@ from foo")
            (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
 (deftest compound-subselect-test
-  (is (= [;; TODO This doesn't belong here, as the identifier does not relate to any column
-          {:column "total_employees"}
-          {:table "employees", :column "department"}
+  (is (= [{:table "employees", :column "department"}
           {:table "employees", :column "salary"}]
          (sorted (source-columns (query-fixture :compound/subselect))))))
 
 (deftest compound-cte-test
-  (is (= [{:column "salary"}
-          ;; TODO Somehow we must track that "department stats" and "high_earners" are CTEs, not tables.
-          ;;      We _could_ keep using the :table key, and track the scope / pseudo-table correspondence out of band.
-          {:table "department_stats", :column "average_salary"}
-          {:table "department_stats", :column "department"}
-          {:table "department_stats", :column "total_employees"}
-          {:table "high_earners", :column "department"}
-          {:table "high_earners", :column "high_earners_count"}]
+  (is (= [{:table "employees" :column "department"}
+          {:table "employees" :column "salary"}]
          (sorted (source-columns (query-fixture :compound/cte))))))
 
 (deftest compound-union-test
@@ -616,26 +607,27 @@ from foo")
          (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
 
 (deftest phantom-tables-test
-  (is (= #{{:table "a"}
-           ;; these are actually aliases to internal scopes, we should not list them
-           {:table "b"}
-           {:table "c"}}
+  (is (= #{{:table "a"}}
          (tables (query-fixture :duplicate-scopes))))
-  (is (= #{#_{:table "a", :column "x"}
-           ;; These two internal references are being confused for qualified source references.
-           ;; This causes us to remove the inner unqualified reference.
-           ;; As there is only one real table, the unqualified reference could then resolve to the expected value above.
-           {:table "b" :column "x"}
-           {:table "c" :column "x"}}
+  (is (= #{{:table "a", :column "x"}}
          (source-columns (query-fixture :duplicate-scopes)))))
 
 (deftest shadow-subselect-test
   ;; TODO this case is just a total mess right now
-  #_(is (= #{} (columns (query-fixture :shadow/subselect)))))
+  #_(is (= #{{:table "departments" :column "id"}
+             {:table "departments" :column "name"}
+             {:table "employees" :column "id"}
+             {:table "employees" :column "first_name"}
+             {:table "employees" :column "last_name"}
+             {:table "employees" :column "department_id"}}
+           (source-columns (query-fixture :shadow/subselect)))))
 
 (deftest cycle-cte-test
   ;; TODO this case is just a total mess right now
-  #_(is (= #{} (columns (query-fixture :cycle/cte)))))
+  #_(is (= #{{:table "a" :column "x"}
+             {:table "a" :column "y"}
+             {:table "a" :column "z"}}
+           (source-columns (query-fixture :cycle/cte)))))
 
 (comment
  (require 'hashp.core)
