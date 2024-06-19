@@ -183,24 +183,23 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         String getType();
         String getLabel();
 
-        static ScopeInstance fromLabel(QueryScopeLabel label) {
-            return new ScopeInstance("query", label.getValue());
+        static ScopeInstance fromLabel(long id, QueryScopeLabel label) {
+            return new ScopeInstance(id, "query", label.getValue());
         }
 
-        static ScopeInstance other(String type, String label) {
-            return new ScopeInstance(type, label);
+        static ScopeInstance other(long id, String type, String label) {
+            return new ScopeInstance(id, type, label);
         }
     }
 
     public static class ScopeInstance implements Scope {
-        private static long nextId = 1;
 
         private final long id;
         private final String type;
         private final String label;
 
-        private ScopeInstance(String type, String label) {
-            this.id = nextId++;
+        private ScopeInstance(long id, String type, String label) {
+            this.id = id;
             this.type = type;
             this.label = label;
         }
@@ -252,6 +251,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
     private final Deque<Scope> contextStack;
+    private long nextScopeId = 1;
 
     /**
      * Construct a new walker with the given `callbacks`. The `callbacks` should be a (Clojure) map of CallbackKeys to
@@ -278,11 +278,11 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     private void pushContext(QueryScopeLabel label) {
-        this.contextStack.push(Scope.fromLabel(label));
+        this.contextStack.push(Scope.fromLabel(nextScopeId++, label));
     }
 
     private void pushContext(@SuppressWarnings("SameParameterValue") String type, String label) {
-        this.contextStack.push(Scope.other(type, label));
+        this.contextStack.push(Scope.other(nextScopeId++, type, label));
     }
 
     // This is pure sugar, but it's nice to be symmetrical with pushContext
