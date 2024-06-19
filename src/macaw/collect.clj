@@ -166,6 +166,17 @@
                         :column))
           unqualified)))
 
+(defn- infer-table-schema [columns node]
+  (update node :component
+          #(let [{:keys [schema table] :as element} %]
+             (if schema
+               element
+               (if-let [schema' (->> columns
+                                     (filter (comp #{table} :table))
+                                     (some :schema))]
+                 (assoc element :schema schema')
+                 element)))))
+
 (defn query->components
   "See macaw.core/query->components doc."
   [^Statement parsed-ast & {:as opts}]
@@ -201,14 +212,16 @@
                                                                           (assoc opts :keep-internal-tables? true)))
                                               strip-non-query-contexts)
                                         columns)
-        strip-alias               (fn [c] (dissoc c :alias))]
+        strip-alias               (fn [c] (dissoc c :alias))
+        source-columns            (->> (map :component all-columns)
+                                       (remove-redundant-columns alias?)
+                                       (into #{}
+                                             (comp (remove (comp pseudo-table-names :table))
+                                                   (remove :internal?)
+                                                   (map strip-alias))))
+        table-map                 (update-vals table-map (partial infer-table-schema source-columns))]
     {:columns           all-columns
-     :source-columns    (->> (map :component all-columns)
-                             (remove-redundant-columns alias?)
-                             (into #{}
-                                   (comp (remove (comp pseudo-table-names :table))
-                                         (remove :internal?)
-                                         (map strip-alias))))
+     :source-columns    source-columns
      ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
      :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
      :mutation-commands (into #{} mutation-commands)
