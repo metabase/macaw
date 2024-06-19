@@ -507,8 +507,6 @@ from foo")
 (defn fixture-rewritten [fixture]
   (some-> fixture (fixture->filename ".rewritten.sql") io/resource slurp))
 
-;; auto-populate analysis results
-
 (defn- anonymize-query [query]
   (let [m (components query)
         ts (raw-components (:tables m))
