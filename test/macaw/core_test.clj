@@ -640,18 +640,18 @@ from foo")
   [fixture]
   (let [prefix      (str "(fixture: " (subs (str fixture) 1) ")")
         sql         (query-fixture fixture)
-        cs          (testing (str prefix " analysis does not throw")
-                      (is (components sql)))
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)]
-    (doseq [[ck cv] expected-cs]
-      (testing (str prefix " analysis is correct: " (name ck))
-        (let [actual-cv (get-component cs ck)
-              expected  (get-in expectation-exceptions [fixture ck] cv)]
-          (if (vector? cv)
-            (is (= expected (sorted actual-cv)))
-            (is (= expected actual-cv))))))
+    (when-let [cs (testing (str prefix " analysis does not throw")
+                    (is (components sql)))]
+      (doseq [[ck cv] expected-cs]
+        (testing (str prefix " analysis is correct: " (name ck))
+          (let [actual-cv (get-component cs ck)
+                expected  (get-in expectation-exceptions [fixture ck] cv)]
+            (if (vector? cv)
+              (is (= expected (sorted actual-cv)))
+              (is (= expected actual-cv)))))))
     (when renames
       (let [rewritten (testing (str prefix " rewriting does not throw")
                         (is (m/replace-names sql renames)))]
