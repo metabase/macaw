@@ -6,4 +6,3 @@
                    {:table "employees" :column "first_name"}
                    {:table "employees" :column "last_name"}
                    {:table "employees" :column "department_id"}}}
-
