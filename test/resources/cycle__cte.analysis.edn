@@ -1,0 +1,4 @@
+{:tables         [{:table "a"}]
+ :source-columns #{{:table "a" :column "x"}
+                   {:table "a" :column "y"}
+                   {:table "a" :column "z"}}}

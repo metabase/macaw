@@ -1,0 +1,3 @@
+{:tables #{{:table "foo"}
+           {:table "bar"}}
+ :source-columns #{}}

@@ -1,0 +1,9 @@
+{:tables         [{:table "departments"}
+                  {:table "employees"}]
+ :source-columns #{{:table "departments" :column "id"}
+                   {:table "departments" :column "name"}
+                   {:table "employees" :column "id"}
+                   {:table "employees" :column "first_name"}
+                   {:table "employees" :column "last_name"}
+                   {:table "employees" :column "department_id"}}}
+
