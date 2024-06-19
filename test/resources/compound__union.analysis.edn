@@ -1,0 +1,3 @@
+{:tables         [{:table "employees"}]
+ :source-columns [{:table "employees", :column "department"}
+                  {:table "employees", :column "salary"}]}
