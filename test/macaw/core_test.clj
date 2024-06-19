@@ -10,7 +10,6 @@
    [mb.hawk.assert-exprs.approximately-equal])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.io File)
    (net.sf.jsqlparser.schema Table)))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +38,7 @@
        x))
    m))
 
-(defn- contexts->scopes
+(defn contexts->scopes
   "Replace full context stack with a reference to the local scope, only."
   [m]
   (walk/prewalk
@@ -481,7 +480,7 @@ from foo")
   (let [prefix (str seq-type "_")]
     (rest (iterate (fn [_] (str (gensym prefix))) nil))))
 
-(defn- fixture->filename
+(defn fixture->filename
   ([fixture suffix]
    (-> (->> ((juxt namespace name) fixture)
             (remove nil?)
@@ -495,17 +494,8 @@ from foo")
       (keyword x y)
       (keyword x))))
 
-(defn- query-fixture [fixture]
+(defn query-fixture [fixture]
   (some-> fixture (fixture->filename ".sql") io/resource slurp))
-
-(defn- fixture-analysis [fixture]
-  (some-> fixture (fixture->filename ".analysis.edn") io/resource slurp read-string))
-
-(defn fixture-renames [fixture]
-  (some-> fixture (fixture->filename ".renames.edn") io/resource slurp read-string))
-
-(defn fixture-rewritten [fixture]
-  (some-> fixture (fixture->filename ".rewritten.sql") io/resource slurp))
 
 (defn- anonymize-query [query]
   (let [m (components query)
@@ -602,94 +592,4 @@ from foo")
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
 
- )
-
-;; Useful for stepping through debugger on save.
-#_(let [sql "SELECT COUNT(*) FROM bar"
-        ;; sql (query-fixture :duplicate-scopes)
-        q   (m/parsed-query sql)]
-    (components q))
-
-;; The SADNESS ZONE
-;; These are overrides to the correct expectations in the fixture EDN files, where we still need to fix things.
-;; The reason for putting these here, rather than via comments in the EDN files, is to give central visibility.
-(def expectation-exceptions
-  {
-   ;; TODO currently all the sources get cancelled out with the derived columns due to analysis having flat scope.
-   :cycle/cte        {:source-columns #{}}
-   ;; TODO We are missing some fields and some table qualifiers.
-   :shadow/subselect {:source-columns #{{:table "departments" :column "id"}
-                                        {:table "departments" :column "name"}
-                                        {:column "first_name"}
-                                        {:column "last_name"}}}})
-
-;; MOAR SADNESS
-;; Remove fixtures from here as we fix them.
-(def broken-rename?
-  #{:duplicate-scopes})
-
-
-(defn- get-component [cs k]
-  (case k
-    :source-columns (get cs k)
-    :columns-with-scope (contexts->scopes (get cs :columns))
-    (raw-components (get cs k))))
-
-(defn- test-fixture
-  "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
-  [fixture]
-  (let [prefix      (str "(fixture: " (subs (str fixture) 1) ")")
-        sql         (query-fixture fixture)
-        expected-cs (fixture-analysis fixture)
-        renames     (fixture-renames fixture)
-        expected-rw (fixture-rewritten fixture)]
-    (when-let [cs (testing (str prefix " analysis does not throw")
-                    (is (components sql)))]
-      (doseq [[ck cv] expected-cs]
-        (testing (str prefix " analysis is correct: " (name ck))
-          (let [actual-cv (get-component cs ck)
-                expected  (get-in expectation-exceptions [fixture ck] cv)]
-            (if (vector? cv)
-              (is (= expected (sorted actual-cv)))
-              (is (= expected actual-cv)))))))
-    (when renames
-      (let [rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql renames)))]
-        (when expected-rw
-          (testing (str prefix " rewritten SQL is correct")
-            (if (broken-rename? fixture)
-              (is (not= expected-rw rewritten))
-              (is (= expected-rw rewritten)))))))))
-
-(defn find-fixtures
-  "Find all the fixture symbols within our test resources."
-  []
-  (->> (io/resource "resources")
-       io/file
-       file-seq
-       (keep #(when (.isFile ^File %)
-                (let [n (.getName ^File %)]
-                  (when (.endsWith n ".sql")
-                    (str/replace n #"\.sql$" "")))))
-       (remove #(.contains ^String % "."))
-       (map stem->fixture)
-       (sort-by str)))
-
-(defmacro create-fixture-tests!
-  "Find all the fixture files and for each of them run all the tests we can construct from the related files."
-  []
-  (let [fixtures (find-fixtures)]
-    (cons 'do
-          (for [f fixtures
-                :let [test-name (symbol (str/replace (fixture->filename f "-test") #"(?<!_)_(?!_)" "-"))]]
-            `(deftest ~test-name
-               (test-fixture ~f))))))
-
-(create-fixture-tests!)
-
-(comment
- ;; Unload all the tests, useful for flushing stale fixture tests
- (doseq [[sym ns-var] (ns-interns *ns*)]
-   (when (:test (meta ns-var))
-     (ns-unmap *ns* sym)))
  )
