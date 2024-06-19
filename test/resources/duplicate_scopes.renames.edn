@@ -1,0 +1,2 @@
+{:tables {{:table "a"} "aa"}
+ :columns {{:table "a", :column "x"} "xx"}}
