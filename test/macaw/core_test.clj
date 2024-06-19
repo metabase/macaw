@@ -622,21 +622,21 @@ from foo")
          (source-columns (query-fixture :duplicate-scopes)))))
 
 (deftest shadow-subselect-test
-  ;; TODO this case is just a total mess right now
-  #_(is (= #{{:table "departments" :column "id"}
-             {:table "departments" :column "name"}
-             {:table "employees" :column "id"}
-             {:table "employees" :column "first_name"}
-             {:table "employees" :column "last_name"}
-             {:table "employees" :column "department_id"}}
-           (source-columns (query-fixture :shadow/subselect)))))
+  ;; TODO fix the missing context and fields
+  (is (= #{{:table "departments" :column "id"}
+           {:table "departments" :column "name"}
+           #_{:table "employees" :column "id"}
+           {#_#_:table "employees" :column "first_name"}
+           {#_#_:table "employees" :column "last_name"}
+           #_{:table "employees" :column "department_id"}}
+         (source-columns (query-fixture :shadow/subselect)))))
 
 (deftest cycle-cte-test
-  ;; TODO this case is just a total mess right now
-  #_(is (= #{{:table "a" :column "x"}
-             {:table "a" :column "y"}
-             {:table "a" :column "z"}}
-           (source-columns (query-fixture :cycle/cte)))))
+  ;; TODO currently all the sources get cancelled out with the derived columns due to analysis having flat scope.
+  (is (= #{#_{:table "a" :column "x"}
+           #_{:table "a" :column "y"}
+           #_{:table "a" :column "z"}}
+         (source-columns (query-fixture :cycle/cte)))))
 
 (comment
  (require 'hashp.core)
