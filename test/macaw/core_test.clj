@@ -482,11 +482,15 @@ from foo")
 
 (defn fixture->filename
   ([fixture suffix]
-   (-> (->> ((juxt namespace name) fixture)
-            (remove nil?)
-            (str/join "__"))
-       (str/replace "-" "_")
-       (str suffix))))
+   (fixture->filename fixture nil suffix))
+  ([fixture path suffix]
+   (as-> fixture %
+         [(namespace %) (name %)]
+         (remove nil? %)
+         (str/join "__" %)
+         (str/replace % "-" "_")
+         (if path (str path "/" %) %)
+         (str % suffix))))
 
 (defn stem->fixture [stem]
   (let [[x y] (map #(str/replace % "_" "-") (str/split stem #"__"))]
@@ -494,8 +498,14 @@ from foo")
       (keyword x y)
       (keyword x))))
 
-(defn query-fixture [fixture]
-  (some-> fixture (fixture->filename ".sql") io/resource slurp))
+(def ^:private fixture-paths
+  #{nil "acceptance"})
+
+(defn query-fixture
+  ([fixture]
+   (let [paths (map #(fixture->filename fixture % ".sql") fixture-paths)]
+     (when-let [r (some io/resource paths)]
+       (slurp r)))))
 
 (defn- anonymize-query [query]
   (let [m (components query)
@@ -510,7 +520,7 @@ from foo")
                      {:allow-unused? true})))
 
 (defn- anonymize-fixture
-  "Read fixture, anonymize the identifiers, write it back out again."
+  "Read a fixture, anonymize the identifiers, write it back out again."
   [fixture]
   (let [filename (fixture->filename fixture ".sql")]
     (spit (str "test/resources/" filename)

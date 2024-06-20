@@ -29,13 +29,13 @@
   #{:duplicate-scopes})
 
 (defn- fixture-analysis [fixture]
-  (some-> fixture (ct/fixture->filename ".analysis.edn") io/resource slurp read-string))
+  (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
 
 (defn- fixture-renames [fixture]
-  (some-> fixture (ct/fixture->filename ".renames.edn") io/resource slurp read-string))
+  (some-> fixture (ct/fixture->filename "acceptance" ".renames.edn") io/resource slurp read-string))
 
 (defn- fixture-rewritten [fixture]
-  (some-> fixture (ct/fixture->filename ".rewritten.sql") io/resource slurp))
+  (some-> fixture (ct/fixture->filename "acceptance" ".rewritten.sql") io/resource slurp))
 
 
 (defn- get-component [cs k]
@@ -73,7 +73,7 @@
 (defn find-fixtures
   "Find all the fixture symbols within our test resources."
   []
-  (->> (io/resource "resources")
+  (->> (io/resource "acceptance")
        io/file
        file-seq
        (keep #(when (.isFile ^File %)
@@ -101,4 +101,6 @@
  (doseq [[sym ns-var] (ns-interns *ns*)]
    (when (:test (meta ns-var))
      (ns-unmap *ns* sym)))
+
+ (test-fixture :compound/cte)
  )
