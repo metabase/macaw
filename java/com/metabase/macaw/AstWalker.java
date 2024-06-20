@@ -625,7 +625,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     @Override
     public void visit(ExpressionList<?> expressionList) {
         for (Expression expression : expressionList) {
-            expression.accept(this);
+            // The use of a wildcard within a function means "nothing".
+            if (!(expression instanceof AllColumns)) {
+                expression.accept(this);
+            }
         }
     }
 

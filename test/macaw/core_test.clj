@@ -563,7 +563,7 @@ from foo")
 (deftest count-field-test
   (testing "COUNT(*) does not actually read any columns"
     (is (empty? (columns "SELECT COUNT(*) FROM users")))
-    #_(is (false? (has-wildcard? "SELECT COUNT(*) FROM users")))
+    (is (false? (has-wildcard? "SELECT COUNT(*) FROM users")))
     (is (empty? (table-wcs "SELECT COUNT(*) FROM users"))))
   (testing "COUNT(1) does not actually read any columns"
     (is (empty? (columns "SELECT COUNT(1) FROM users")))
@@ -640,4 +640,11 @@ from foo")
  (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
+
  )
+
+;; Useful for stepping through debugger on save.
+#_(let [sql "SELECT COUNT(*) FROM bar"
+        ;; sql (query-fixture :duplicate-scopes)
+        q   (m/parsed-query sql)]
+    (components q))
