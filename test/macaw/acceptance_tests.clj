@@ -10,6 +10,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def broken-queries
+  "The DANGER ZONE
+  This map gives a pattern in exception message we expect to receive when trying to analyze the given fixture."
+  {:broken/between  #"Encountered unexpected token: \"BETWEEN\""
+   :broken/reserved #"Encountered unexpected token: \"final\" \"FINAL\""})
+
 (def expectation-exceptions
   "The SADNESS ZONE
   These are overrides to the correct expectations in the fixture EDN files, where we still need to fix things.
@@ -52,15 +58,20 @@
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)]
-    (when-let [cs (testing (str prefix " analysis does not throw")
-                    (is (ct/components sql)))]
-      (doseq [[ck cv] expected-cs]
-        (testing (str prefix " analysis is correct: " (name ck))
-          (let [actual-cv (get-component cs ck)
-                expected  (get-in expectation-exceptions [fixture ck] cv)]
-            (if (vector? cv)
-              (is (= expected (ct/sorted actual-cv)))
-              (is (= expected actual-cv)))))))
+    (if-let [expected-msg (broken-queries fixture)]
+      (testing (str prefix " analysis cannot be parsed")
+        (is (thrown-with-msg? Exception
+                              expected-msg
+                              (ct/components sql))))
+      (when-let [cs (testing (str prefix " analysis does not throw")
+                      (is (ct/components sql)))]
+        (doseq [[ck cv] expected-cs]
+          (testing (str prefix " analysis is correct: " (name ck))
+            (let [actual-cv (get-component cs ck)
+                  expected  (get-in expectation-exceptions [fixture ck] cv)]
+              (if (vector? cv)
+                (is (= expected (ct/sorted actual-cv)))
+                (is (= expected actual-cv))))))))
     (when renames
       (let [rewritten (testing (str prefix " rewriting does not throw")
                         (is (m/replace-names sql renames)))]
