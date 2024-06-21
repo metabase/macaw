@@ -16,11 +16,6 @@
   {:broken/between  #"Encountered unexpected token: \"BETWEEN\""
    :broken/reserved #"Encountered unexpected token: \"final\" \"FINAL\""})
 
-(def broken-rename?
-  "MOAR SADNESS
-  Remove fixtures from here as we fix them."
-  #{:duplicate-scopes})
-
 (defn- fixture-analysis [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
 
@@ -60,11 +55,12 @@
                 (is (= expected (ct/sorted actual-cv)))
                 (is (= expected actual-cv))))))))
     (when renames
-      (let [rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql renames)))]
+      (let [broken?   (:broken? renames)
+            rewritten (testing (str prefix " rewriting does not throw")
+                        (is (m/replace-names sql (dissoc renames :broken?))))]
         (when expected-rw
           (testing (str prefix " rewritten SQL is correct")
-            (if (broken-rename? fixture)
+            (if broken?
               (is (not= expected-rw rewritten))
               (is (= expected-rw rewritten)))))))))
 
