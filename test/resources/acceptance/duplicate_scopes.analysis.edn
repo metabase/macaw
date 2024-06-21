@@ -1,0 +1,9 @@
+;; These are actually the two sub-select columns, the scope labels are misleading.
+;; NOTE: these scope ids are volatile and change is possible.
+{:columns-with-scope [{:component {:table "a", :column "x"}, :scope ["SELECT" 8]}
+                      {:component {:table "a", :column "x"}, :scope ["SELECT" 3]}
+                      ;; And here are the top-level result-columns.
+                      {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" 18]}
+                      {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" 18]}]
+ :tables             [{:table "a"}]
+ :source-columns     [{:table "a", :column "x"}]}

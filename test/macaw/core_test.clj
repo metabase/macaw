@@ -38,7 +38,7 @@
        x))
    m))
 
-(defn- contexts->scopes
+(defn contexts->scopes
   "Replace full context stack with a reference to the local scope, only."
   [m]
   (walk/prewalk
@@ -480,15 +480,32 @@ from foo")
   (let [prefix (str seq-type "_")]
     (rest (iterate (fn [_] (str (gensym prefix))) nil))))
 
-(defn- fixture->filename [fixture]
-  (-> (->> ((juxt namespace name) fixture)
-           (remove nil?)
-           (str/join "__"))
-      (str/replace "-" "_")
-      (str ".sql")))
+(defn fixture->filename
+  ([fixture suffix]
+   (fixture->filename fixture nil suffix))
+  ([fixture path suffix]
+   (as-> fixture %
+         [(namespace %) (name %)]
+         (remove nil? %)
+         (str/join "__" %)
+         (str/replace % "-" "_")
+         (if path (str path "/" %) %)
+         (str % suffix))))
 
-(defn- query-fixture [fixture]
-  (slurp (io/resource (fixture->filename fixture))))
+(defn stem->fixture [stem]
+  (let [[x y] (map #(str/replace % "_" "-") (str/split stem #"__"))]
+    (if y
+      (keyword x y)
+      (keyword x))))
+
+(def ^:private fixture-paths
+  #{nil "acceptance"})
+
+(defn query-fixture
+  ([fixture]
+   (let [paths (map #(fixture->filename fixture % ".sql") fixture-paths)]
+     (when-let [r (some io/resource paths)]
+       (slurp r)))))
 
 (defn- anonymize-query [query]
   (let [m (components query)
@@ -503,9 +520,9 @@ from foo")
                      {:allow-unused? true})))
 
 (defn- anonymize-fixture
-  "Read fixture, anonymize the identifiers, write it back out again."
+  "Read a fixture, anonymize the identifiers, write it back out again."
   [fixture]
-  (let [filename (fixture->filename fixture)]
+  (let [filename (fixture->filename fixture ".sql")]
     (spit (str "test/resources/" filename)
           (anonymize-query (query-fixture fixture)))))
 
@@ -554,30 +571,10 @@ from foo")
            (m/replace-names sub-select-query
                             {:columns {{:table "employees", :column "favorite_language"} "first_language"}})))))
 
-(deftest large-snowflake-test
-  (testing "We are able to parse a complex Snowflake queries"
-    ;; Start with the smaller example
-    (components (query-fixture :snowflakelet))
-    (components (query-fixture :snowflake))))
-
 (defn sorted
   "A transformation to help write tests, where hawk would face limitations on predicates within sets."
   [element-set]
   (sort-by (comp (juxt :schema :table :column :scope) #(:component % %)) element-set))
-
-(deftest duplicate-scopes-test
-  ;; These are actually the two sub-select columns, the scope labels are misleading.
-  ;; NOTE: these scope ids are volatile and change is possible.
-  ;; It would be nice to use a =?/unique wrapper if we add that to hawk, and fix our hawk linting woes.
-  (is (= [{:component {:table "a", :column "x"}, :scope ["SELECT" 8]}
-          {:component {:table "a", :column "x"}, :scope ["SELECT" 3]}
-          ;; And here are the top-level columns, i.e. the result-columns.
-          {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" 18]}
-          {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" 18]}]
-         (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
-
-(deftest no-source-columns-test
-  (is (empty? (source-columns (query-fixture :no-source-columns)))))
 
 (deftest count-field-test
   (testing "COUNT(*) does not actually read any columns"
@@ -595,49 +592,6 @@ from foo")
     (is (= #{{:table "users" :column "id"}}
            (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
-(deftest compound-subselect-test
-  (is (= [{:table "employees", :column "department"}
-          {:table "employees", :column "salary"}]
-         (sorted (source-columns (query-fixture :compound/subselect))))))
-
-(deftest compound-cte-test
-  (is (= [{:table "employees" :column "department"}
-          {:table "employees" :column "salary"}]
-         (sorted (source-columns (query-fixture :compound/cte))))))
-
-(deftest compound-union-test
-  (is (= [{:table "employees", :column "department"}
-          {:table "employees", :column "salary"}]
-         (sorted (source-columns (query-fixture :compound/union))))))
-
-(deftest compound-correlated-subquery-test
-  (is (= [{:table "employees", :column "department"}
-          {:table "employees", :column "salary"}]
-         (sorted (source-columns (query-fixture :compound/correlated-subquery))))))
-
-(deftest phantom-tables-test
-  (is (= #{{:table "a"}}
-         (tables (query-fixture :duplicate-scopes))))
-  (is (= #{{:table "a", :column "x"}}
-         (source-columns (query-fixture :duplicate-scopes)))))
-
-(deftest shadow-subselect-test
-  ;; TODO this case is just a total mess right now
-  #_(is (= #{{:table "departments" :column "id"}
-             {:table "departments" :column "name"}
-             {:table "employees" :column "id"}
-             {:table "employees" :column "first_name"}
-             {:table "employees" :column "last_name"}
-             {:table "employees" :column "department_id"}}
-           (source-columns (query-fixture :shadow/subselect)))))
-
-(deftest cycle-cte-test
-  ;; TODO this case is just a total mess right now
-  #_(is (= #{{:table "a" :column "x"}
-             {:table "a" :column "y"}
-             {:table "a" :column "z"}}
-           (source-columns (query-fixture :cycle/cte)))))
-
 (comment
  (require 'hashp.core)
  (require 'virgil)
@@ -649,9 +603,3 @@ from foo")
  (anonymize-fixture :snowflakelet)
 
  )
-
-;; Useful for stepping through debugger on save.
-#_(let [sql "SELECT COUNT(*) FROM bar"
-        ;; sql (query-fixture :duplicate-scopes)
-        q   (m/parsed-query sql)]
-    (components q))
