@@ -261,6 +261,10 @@ from foo")
       (is (= #{{:column "amount" :table "orders"}}
              (source-columns "SELECT cost FROM (SELECT amount AS cost FROM orders)"))))))
 
+(deftest infer-from-schema-test
+  (is (= #{{:schema "public" :table "towns"}}
+         (tables "select public.towns.id from towns"))))
+
 (deftest mutation-test
   (is (= #{"alter-sequence"}
          (mutations "ALTER SEQUENCE serial RESTART WITH 42")))
