@@ -16,22 +16,6 @@
   {:broken/between  #"Encountered unexpected token: \"BETWEEN\""
    :broken/reserved #"Encountered unexpected token: \"final\" \"FINAL\""})
 
-(def expectation-exceptions
-  "The SADNESS ZONE
-  These are overrides to the correct expectations in the fixture EDN files, where we still need to fix things.
-  The reason for putting these here, rather than via comments in the EDN files, is to give central visibility."
-  {
-   ;; TODO We are missing report_card's id, and know for certain that we read created_at for both tables.
-   :compound/cte-pun {:source-columns [{:column "created_at"}
-                                       {:column "card_id", :table "report_dashboardcard"}]}
-   ;; TODO currently all the sources get cancelled out with the derived columns due to analysis having flat scope.
-   :cycle/cte        {:source-columns #{}}
-   ;; TODO We are missing some fields and some table qualifiers.
-   :shadow/subselect {:source-columns #{{:table "departments" :column "id"}
-                                        {:table "departments" :column "name"}
-                                        {:column "first_name"}
-                                        {:column "last_name"}}}})
-
 (def broken-rename?
   "MOAR SADNESS
   Remove fixtures from here as we fix them."
@@ -68,10 +52,10 @@
                               (ct/components sql))))
       (when-let [cs (testing (str prefix " analysis does not throw")
                       (is (ct/components sql)))]
-        (doseq [[ck cv] expected-cs]
+        (doseq [[ck cv] (dissoc expected-cs :overrides)]
           (testing (str prefix " analysis is correct: " (name ck))
             (let [actual-cv (get-component cs ck)
-                  expected  (get-in expectation-exceptions [fixture ck] cv)]
+                  expected  (get-in expected-cs [:overrides ck] cv)]
               (if (vector? cv)
                 (is (= expected (ct/sorted actual-cv)))
                 (is (= expected actual-cv))))))))

@@ -5,4 +5,10 @@
                    {:table "employees" :column "id"}
                    {:table "employees" :column "first_name"}
                    {:table "employees" :column "last_name"}
-                   {:table "employees" :column "department_id"}}}
+                   {:table "employees" :column "department_id"}}
+
+ :overrides
+ {:source-columns #{{:table "departments" :column "id"}
+                    {:table "departments" :column "name"}
+                    {:column "first_name"}
+                    {:column "last_name"}}}}
