@@ -1,0 +1,6 @@
+{:tables         [{:table "report_card"} {:table "report_dashboardcard"}]
+ :source-columns [{:table "report_card",          :column "created_at"} ;; from where
+                  {:table "report_card",          :column "id"}
+                  {:table "report_dashboardcard", :column "card_id"}
+                  {:table "report_dashboardcard", :column "created_at"} ;; from outer select
+                  ]}
