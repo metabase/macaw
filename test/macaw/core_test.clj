@@ -7,7 +7,7 @@
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
    [macaw.walk :as mw]
-   [mb.hawk.assert-exprs.approximately-equal :as =?])
+   [mb.hawk.assert-exprs.approximately-equal])
   (:import
    (clojure.lang ExceptionInfo)
    (net.sf.jsqlparser.schema Table)))
@@ -566,13 +566,15 @@ from foo")
   (sort-by (comp (juxt :schema :table :column :scope) #(:component % %)) element-set))
 
 (deftest duplicate-scopes-test
-  ;; TODO Fix kondo linting of =?/same
-  ^:clj-kondo/ignore
-  (is (=? [{:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-1)]}
-           {:component {:table "a", :column "x"}, :scope ["SELECT" (=?/same :subselect-2)]}
-           {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}
-           {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" (=?/same :top-level)]}]
-          (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
+  ;; These are actually the two sub-select columns, the scope labels are misleading.
+  ;; NOTE: these scope ids are volatile and change is possible.
+  ;; It would be nice to use a =?/unique wrapper if we add that to hawk, and fix our hawk linting woes.
+  (is (= [{:component {:table "a", :column "x"}, :scope ["SELECT" 8]}
+          {:component {:table "a", :column "x"}, :scope ["SELECT" 3]}
+          ;; And here are the top-level columns, i.e. the result-columns.
+          {:component {:table "b", :column "x"}, :scope ["SUB_SELECT" 18]}
+          {:component {:table "c", :column "x"}, :scope ["SUB_SELECT" 18]}]
+         (sorted (contexts->scopes (:columns (components (query-fixture :duplicate-scopes))))))))
 
 (deftest no-source-columns-test
   (is (empty? (source-columns (query-fixture :no-source-columns)))))
