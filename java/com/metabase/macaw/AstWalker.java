@@ -169,7 +169,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         COLUMN,
         COLUMN_QUALIFIER,
         MUTATION_COMMAND,
-        TABLE;
+        TABLE,
+        PSEUDO_TABLES;
 
         public String toString() {
             return name().toLowerCase();
@@ -231,7 +232,8 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         SELECT,
         SUB_SELECT,
         UPDATE,
-        WHERE;
+        WHERE,
+        WITH_ITEM;
 
         private final String value;
 
@@ -340,16 +342,22 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(WithItem withItem) {
+        pushContext(WITH_ITEM);
+        invokeCallback(PSEUDO_TABLES, withItem.getAlias());
         withItem.getSelect().accept((SelectVisitor) this);
     }
 
     @Override
     public void visit(ParenthesedSelect selectBody) {
         pushContext(SUB_SELECT);
+        Alias alias = selectBody.getAlias();
+        if (alias != null) {
+            invokeCallback(PSEUDO_TABLES, alias);
+        }
         List<WithItem> withItemsList = selectBody.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
-                withItem.accept((SelectVisitor) this);
+                this.visit(withItem);
             }
         }
         selectBody.getSelect().accept((SelectVisitor) this);
