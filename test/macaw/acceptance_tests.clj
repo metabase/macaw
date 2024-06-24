@@ -12,7 +12,7 @@
 
 (def broken-queries
   "The DANGER ZONE
-  This map gives a pattern in exception message we expect to receive when trying to analyze the given fixture."
+  This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
   {:broken/between  #"Encountered unexpected token: \"BETWEEN\""
    :broken/reserved #"Encountered unexpected token: \"final\" \"FINAL\""})
 

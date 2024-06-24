@@ -592,6 +592,18 @@ from foo")
     (is (= #{{:table "users" :column "id"}}
            (source-columns "SELECT COUNT(DISTINCT(id)) FROM users")))))
 
+(deftest reserved-word-test
+  (testing "We can opt-out of reserving specific keywords"
+    (is (= #{{:schema "serial" :table "limit" :column "final"}}
+           (source-columns "SELECT limit.final FROM serial.limit" :non-reserved-words [:final :serial :limit]))))
+  (testing "We can replace with and from non-reserved keywords"
+    (is (= "SELECT y FROM final")
+        (m/replace-names "SELECT final FROM x"
+                         {:tables  {{:table "x"} "final"}
+                          :columns {{:table "x" :column "final"} "y"}}
+                         {:non-reserved-words [:final]
+                          :allow-unused?      true}))))
+
 (comment
  (require 'hashp.core)
  (require 'virgil)
