@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- ^String escape-keywords [sql keywords]
+(defn- escape-keywords ^String [sql keywords]
   (reduce
    (fn [sql k]
      (str/replace sql (re-pattern (str "(?i)\\b(" (name k) ")\\b")) "$1____escaped____"))
@@ -70,6 +70,6 @@
                                    x))
                                renames)
         parsed (parsed-query sql' opts)]
-    (-> (rewrite/replace-names sql' parsed renames opts')
+    (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
