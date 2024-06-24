@@ -62,14 +62,14 @@
   ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
   ;; Currently, we use a more complex and expensive sanitization method, so that it's reversible.
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
-  (let [sql'   (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
-        opts'  (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
+  (let [sql'     (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
+        opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
         renames' (walk/prewalk (fn [x]
                                  (if (string? x)
                                    (escape-keywords x (:non-reserved-words opts))
                                    x))
                                renames)
-        parsed (parsed-query sql' opts)]
+        parsed   (parsed-query sql' opts)]
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))

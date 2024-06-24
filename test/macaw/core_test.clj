@@ -601,8 +601,7 @@ from foo")
            (m/replace-names "SELECT final FROM x"
                             {:tables  {{:table "x"} "final"}
                              :columns {{:table "x" :column "final"} "y"}}
-                            {:non-reserved-words [:final]
-                             :allow-unused?      true})))))
+                            {:non-reserved-words [:final]})))))
 
 (comment
  (require 'hashp.core)
