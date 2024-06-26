@@ -1,6 +1,7 @@
 (ns macaw.core
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
@@ -8,15 +9,28 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- escape-keywords ^String [sql keywords]
+  (reduce
+   (fn [sql k]
+     (str/replace sql (re-pattern (str "(?i)\\b(" (name k) ")\\b")) "$1____escaped____"))
+   sql
+   keywords))
+
+(defn- unescape-keywords [sql _keywords]
+  (str/replace sql "____escaped____" ""))
+
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
-  [^String query]
+  [^String query & {:as opts}]
   ;; Dialects like SQLite and Databricks treat consecutive blank lines as implicit semicolons.
   ;; JSQLParser, as a polyglot parser, always has this behavior, and there is no option to disable it.
   ;; For Metabase, we are always dealing with single queries, so there's no point ever having this behavior.
   ;; TODO When JSQLParser 4.10 is released, move to the more robust [[CCJSqlParserUtil.sanitizeSingleSql]] helper.
   ;; See https://github.com/JSQLParser/JSqlParser/issues/1988
-  (CCJSqlParserUtil/parse (str/replace query #"\n{2,}" "\n")))
+  (-> query
+      (str/replace #"\n{2,}" "\n")
+      (escape-keywords (:non-reserved-words opts))
+      (CCJSqlParserUtil/parse)))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
@@ -27,7 +41,11 @@
   ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behavior.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
-  (collect/query->components statement (merge {:preserve-identifiers? true} opts)))
+  (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
+       (walk/prewalk (fn [x]
+                       (if (string? x)
+                         (unescape-keywords x (:non-reserved-words opts))
+                         x)))))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
@@ -42,9 +60,16 @@
   - quotes-preserve-case: whether quoted identifiers should override the previous option."
   [sql renames & {:as opts}]
   ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
-  ;; Currently we use a more complex and expensive sanitization method, so that it's reversible.
-  ;; If we decide that it's OK to normalize whitespace etc. during replacement then we can use the same helper.
-  (let [sql' (str/replace sql #"(?m)^\n" " \n")
-        opts' (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])]
-    (str/replace (rewrite/replace-names sql' (parsed-query sql') renames opts')
-                 #"(?m)^ \n" "\n")))
+  ;; Currently, we use a more complex and expensive sanitization method, so that it's reversible.
+  ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
+  (let [sql'     (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
+        opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
+        renames' (walk/prewalk (fn [x]
+                                 (if (string? x)
+                                   (escape-keywords x (:non-reserved-words opts))
+                                   x))
+                               renames)
+        parsed   (parsed-query sql' opts)]
+    (-> (rewrite/replace-names sql' parsed renames' opts')
+        (str/replace #"(?m)^ \n" "\n")
+        (unescape-keywords (:non-reserved-words opts)))))
