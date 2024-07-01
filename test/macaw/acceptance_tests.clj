@@ -13,8 +13,7 @@
 (def broken-queries
   "The DANGER ZONE
   This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
-  {:broken/between  #"Encountered unexpected token: \"BETWEEN\""
-   :broken/reserved #"Encountered unexpected token: \"final\" \"FINAL\""})
+  {:broken/between  #"Encountered unexpected token: \"BETWEEN\""})
 
 (defn- fixture-analysis [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
@@ -39,14 +38,15 @@
         sql         (ct/query-fixture fixture)
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
-        expected-rw (fixture-rewritten fixture)]
+        expected-rw (fixture-rewritten fixture)
+        opts        {:non-reserved-words [:final]}]
     (if-let [expected-msg (broken-queries fixture)]
       (testing (str prefix " analysis cannot be parsed")
         (is (thrown-with-msg? Exception
                               expected-msg
-                              (ct/components sql))))
+                              (ct/components sql opts))))
       (when-let [cs (testing (str prefix " analysis does not throw")
-                      (is (ct/components sql)))]
+                      (is (ct/components sql opts)))]
         (doseq [[ck cv] (dissoc expected-cs :overrides)]
           (testing (str prefix " analysis is correct: " (name ck))
             (let [actual-cv (get-component cs ck)
@@ -57,7 +57,7 @@
     (when renames
       (let [broken?   (:broken? renames)
             rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql (dissoc renames :broken?))))]
+                        (is (m/replace-names sql (dissoc renames :broken?) opts)))]
         (when expected-rw
           (testing (str prefix " rewritten SQL is correct")
             (if broken?
