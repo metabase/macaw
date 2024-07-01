@@ -13,7 +13,8 @@
 (def broken-queries
   "The DANGER ZONE
   This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
-  {:broken/between  #"Encountered unexpected token: \"BETWEEN\""})
+  {:broken/between      #"Encountered unexpected token: \"BETWEEN\""
+   :broken/filter-where #"Encountered unexpected token: \"\(\""})
 
 (defn- fixture-analysis [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
@@ -97,4 +98,5 @@
      (ns-unmap *ns* sym)))
 
  (test-fixture :compound/cte)
- )
+
+ (test-fixture :broken/filter-where))
