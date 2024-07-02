@@ -1,0 +1,4 @@
+{:tables         [{:table "employees"}]
+ :source-columns [{:table "employees", :column "id"}
+                  {:table "employees", :column "manager_id"}
+                  {:table "employees", :column "name"}]}
