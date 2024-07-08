@@ -604,6 +604,16 @@ from foo")
                              :columns {{:table "x" :column "final"} "y"}}
                             {:non-reserved-words [:final]})))))
 
+(deftest square-bracket-test
+  (testing "We can opt into allowing square brackets to quote things"
+    (is (=? {:tables  #{{:schema "s" :table "t"}}
+             :columns #{{:schema "s" :table "t" :column "f"}}}
+            (update-vals
+             (components "SELECT [f] FROM [s].[t]"
+                         {:features              {:square-bracket-quotes true}
+                          :preserve-identifiers? false})
+             raw-components)))))
+
 (comment
  (require 'hashp.core)
  (require 'virgil)
