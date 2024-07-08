@@ -19,7 +19,9 @@
     (every? true? xs)
     false))
 
-(def components     (comp m/query->components m/parsed-query))
+(defn components [sql & {:as opts}]
+  (m/query->components (m/parsed-query sql opts) opts))
+
 (def raw-components #(let [xs (empty %)] (into xs (keep :component) %)))
 (def columns        (comp raw-components :columns components))
 (def source-columns (comp :source-columns components))
@@ -87,7 +89,6 @@ from foo")
   (testing "Sub-selects"
     (is (= #{{:table "core_user"}}
            (tables "SELECT * FROM (SELECT DISTINCT email FROM core_user) q;")))))
-
 
 (deftest tables-with-complex-aliases-issue-14-test
   (testing "With an alias that is also a table name"
@@ -314,8 +315,8 @@ from foo")
 
 (deftest complicated-mutations-test
   ;; https://github.com/metabase/macaw/issues/18
-  #_  (is (= #{"delete" "insert"}
-             (mutations "WITH outdated_orders AS (
+  #_(is (= #{"delete" "insert"}
+           (mutations "WITH outdated_orders AS (
                        DELETE FROM orders
                        WHERE
                          date <= '2018-01-01'
