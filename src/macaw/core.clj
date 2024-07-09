@@ -36,7 +36,8 @@
 (defn- ->parser-fn ^Consumer [opts]
   (reify Consumer
     (accept [_this parser]
-      (.withFeature ^CCJSqlParser parser Feature/timeOut (:timeout opts (* default-timeout-seconds 1000)))
+      (let [timeout-ms ^long (:timeout opts (* default-timeout-seconds 1000))]
+        (.withFeature ^CCJSqlParser parser Feature/timeOut timeout-ms))
       (doseq [[f ^boolean v] (:features opts)]
         (.withFeature ^CCJSqlParser parser (->Feature f) v)))))
 
