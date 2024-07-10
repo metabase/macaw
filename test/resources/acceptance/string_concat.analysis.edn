@@ -1,0 +1,5 @@
+{:tables         [{:table "t"}]
+ :source-columns [{:table "t" :column "x"}
+                  {:table "t" :column "y"}]
+ :columns        [{:table "t" :column "x" :alias "z"}
+                  {:table "t" :column "y" :alias "z"}]}
