@@ -47,12 +47,14 @@
 
 ;;; tables
 
-(def ^:private quotes (map str [\` \"]))
+(def ^:private quotes (map str "`\"["))
+
+(def ^:private closing {"[" "]"})
 
 (defn- quoted? [s]
   (some (fn [q]
           (and (str/starts-with? s q)
-               (str/ends-with? s q)))
+               (str/ends-with? s (closing q q))))
         quotes))
 
 (defn- strip-quotes [s]

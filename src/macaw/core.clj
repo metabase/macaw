@@ -5,7 +5,9 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
-   (net.sf.jsqlparser.parser CCJSqlParserUtil)))
+   (java.util.function Consumer)
+   (net.sf.jsqlparser.parser CCJSqlParser CCJSqlParserUtil)
+   (net.sf.jsqlparser.parser.feature Feature)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +21,22 @@
 (defn- unescape-keywords [sql _keywords]
   (str/replace sql "____escaped____" ""))
 
+(def ^:private features
+  {:backslash-escape-char  Feature/allowBackslashEscapeCharacter
+   :complex-parsing        Feature/allowComplexParsing
+   :postgres-syntax        Feature/allowPostgresSpecificSyntax
+   :square-bracket-quotes  Feature/allowSquareBracketQuotation
+   :unsupported-statements Feature/allowUnsupportedStatements})
+
+(defn- ->Feature ^Feature [k]
+  (get features k))
+
+(defn- ->parser-fn ^Consumer [opts]
+  (reify Consumer
+    (accept [_this parser]
+      (doseq [[f ^boolean v] (:features opts)]
+        (.withFeature ^CCJSqlParser parser (->Feature f) v)))))
+
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
   [^String query & {:as opts}]
@@ -30,7 +48,7 @@
   (-> query
       (str/replace #"\n{2,}" "\n")
       (escape-keywords (:non-reserved-words opts))
-      (CCJSqlParserUtil/parse)))
+      (CCJSqlParserUtil/parse (->parser-fn opts))))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
