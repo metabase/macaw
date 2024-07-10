@@ -294,7 +294,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      * Fold the given `statement`, using the callbacks to update the accumulator as appropriate.
      */
     public Acc fold(Statement statement) {
-        statement.accept(this);
+        maybeAcceptThis(statement);
         return this.acc;
     }
 
@@ -762,6 +762,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     private void maybeAcceptThis(Expression expression) {
         if (expression != null) {
             expression.accept(this);
+        }
+    }
+
+    private void maybeAcceptThis(Statement statement) {
+        if (statement != null) {
+            statement.accept(this);
         }
     }
 
