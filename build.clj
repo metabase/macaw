@@ -12,14 +12,24 @@
 (def github-url "https://github.com/metabase/macaw")
 (def scm-url    "git@github.com:metabase/macaw.git")
 
-(def major-minor-version "0.1")
+(def version-template (str/trim (slurp "VERSION")))
+(assert (re-matches #"\d+\.\d+\.x" version-template))
+
+(def major-minor-version (str/replace version-template #"\.x$" ""))
+
+(defn sh [& args]
+  (let [{:keys [exit out]} (apply sh/sh args)]
+    (assert (zero? exit))
+    (str/trim out)))
+
+(defn- commits-since-version-changed []
+  (let [last-sha (sh "git" "log" "-1" "--format=%H" "--" "VERSION")]
+    (parse-long (sh "git" "rev-list" "--count" (str last-sha "..HEAD")))))
 
 (defn commit-number []
-  (or (-> (sh/sh "git" "rev-list" "HEAD" "--count")
-          :out
-          str/trim
-          parse-long)
-      "9999-SNAPSHOT"))
+  (if (= "master" (sh "git" "rev-parse" "--abbrev-ref" "HEAD"))
+    (str major-minor-version "." (commits-since-version-changed))
+    "9999-SNAPSHOT"))
 
 (def sha
   (or (not-empty (System/getenv "GITHUB_SHA"))
@@ -44,7 +54,9 @@
      [:url "http://www.eclipse.org/legal/epl-v10.html"]]]
    [:developers
     [:developer
-     [:name "Tim Macdonald"]]]
+     [:name "Tim Macdonald"]]
+    [:developer
+     [:name "Chris Truter"]]]
    [:scm
     [:url github-url]
     [:connection (str "scm:git:" scm-url)]
