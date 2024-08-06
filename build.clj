@@ -28,7 +28,7 @@
 
 (defn commit-number []
   (if (= "master" (sh "git" "rev-parse" "--abbrev-ref" "HEAD"))
-    (str major-minor-version "." (commits-since-version-changed))
+    (commits-since-version-changed)
     "9999-SNAPSHOT"))
 
 (def sha
