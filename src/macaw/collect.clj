@@ -159,7 +159,7 @@
 
 (defn- literal? [{:keys [column]}]
   ;; numbers and strings are already handled by JSQLParser
-  (#{"true" "false"} (str/lower-case #p column)))
+  (#{"true" "false"} (str/lower-case column)))
 
 (defn- remove-redundant-columns
   "Remove any unqualified references that would resolve to an alias or qualified reference"
