@@ -1,4 +1,4 @@
-(ns macaw.acceptance-tests
+(ns macaw.acceptance-test
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -24,7 +24,6 @@
 
 (defn- fixture-rewritten [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".rewritten.sql") io/resource slurp))
-
 
 (defn- get-component [cs k]
   (case k
@@ -98,5 +97,8 @@
      (ns-unmap *ns* sym)))
 
  (test-fixture :compound/cte)
+ (test-fixture :compound/cte-nonambiguous)
+ (test-fixture :literal/with-table)
+ (test-fixture :literal/without-table)
 
  (test-fixture :broken/filter-where))

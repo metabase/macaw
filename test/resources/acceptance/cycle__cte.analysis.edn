@@ -3,6 +3,7 @@
                    {:table "a" :column "y"}
                    {:table "a" :column "z"}}
 
+ ;; See https://github.com/metabase/metabase/issues/42586
  :overrides
  ;; TODO currently all the sources get cancelled out with the derived columns due to analysis having flat scope.
  {:source-columns #{}}}

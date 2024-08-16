@@ -1,0 +1,12 @@
+{:tables         [{:table "t1"} {:table "t2"}]
+ :source-columns [{:table "t1", :column "x"}  ;; from cte
+                  {:table "t2", :column "y"}] ;; from outer select
+
+ ;; See https://github.com/metabase/metabase/issues/42586
+ :overrides
+                   ;; We are not taking into account that x is introduced with only t1 in scope.
+                   ;; We are not taking into account that x must not be an ambiguous reference in
+                   ;; the top-level query.
+ {:source-columns [{:column "x"}
+                   ;; We are not excluding the CTE, whose outputs are known, as a source for y.
+                   {:column "y"}]}}

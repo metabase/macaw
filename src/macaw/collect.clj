@@ -157,6 +157,10 @@
     (cond-> (merge a b)
       cs-a (update-in [:component :instances] into cs-a))))
 
+(defn- literal? [{:keys [column]}]
+  ;; numbers and strings are already handled by JSQLParser
+  (#{"true" "false"} (str/lower-case column)))
+
 (defn- remove-redundant-columns
   "Remove any unqualified references that would resolve to an alias or qualified reference"
   [alias? column-set]
@@ -217,6 +221,7 @@
         strip-alias               (fn [c] (dissoc c :alias))
         source-columns            (->> (map :component all-columns)
                                        (remove-redundant-columns alias?)
+                                       (remove literal?)
                                        (into #{}
                                              (comp (remove (comp pseudo-table-names :table))
                                                    (remove :internal?)

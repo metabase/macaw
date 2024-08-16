@@ -4,6 +4,7 @@
                   {:table "report_dashboardcard", :column "card_id"}
                   {:table "report_dashboardcard", :column "created_at"}] ;; from outer select
 
+ ;; See https://github.com/metabase/metabase/issues/42586
  :overrides
  ;; TODO We are missing some fields and some table qualifiers.
  {:source-columns [{:column "created_at"}

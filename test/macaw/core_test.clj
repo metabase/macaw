@@ -620,6 +620,8 @@ from foo")
  (require 'clojure.tools.namespace.repl)
  (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all)
 
+ (source-columns "WITH cte AS (SELECT x FROM t1) SELECT x, y FROM t2")
+
  (anonymize-query "SELECT x FROM a")
  (anonymize-fixture :snowflake)
  (anonymize-fixture :snowflakelet)
