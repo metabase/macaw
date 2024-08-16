@@ -50,8 +50,15 @@
         (doseq [[ck cv] (dissoc expected-cs :overrides)]
           (testing (str prefix " analysis is correct: " (name ck))
             (let [actual-cv (get-component cs ck)
-                  expected  (get-in expected-cs [:overrides ck] cv)]
-              (if (vector? cv)
+                  override  (get-in expected-cs [:overrides ck])
+                  expected  (or override cv)]
+
+              (when override
+                (if (vector? cv)
+                  (is (not= cv (ct/sorted actual-cv)) "Override is still needed")
+                  (is (not= cv actual-cv) "Override is still needed")))
+
+              (if (vector? expected)
                 (is (= expected (ct/sorted actual-cv)))
                 (is (= expected actual-cv))))))))
     (when renames

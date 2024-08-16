@@ -1,0 +1,8 @@
+{:tables         [{:table "t1"} {:table "t2"}]
+ :source-columns [{:table "t1", :column "x"}
+                  {:table "t2", :column "y"}]
+
+ :overrides
+ ;; Missing x completely!
+ ;; See https://github.com/metabase/metabase/issues/42586
+ {:source-columns [{:column "y"}]}}
