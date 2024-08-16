@@ -7,6 +7,7 @@
                    {:table "employees" :column "last_name"}
                    {:table "employees" :column "department_id"}}
 
+ ;; See https://github.com/metabase/metabase/issues/42586
  :overrides
  {:source-columns #{{:table "departments" :column "id"}
                     {:table "departments" :column "name"}

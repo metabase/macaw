@@ -1,0 +1,10 @@
+;; If we decide to perform "dead scope" elimination, t1 would not be listed as a source either.
+{:tables         [{:table "t1"} {:table "t2"}]
+ :source-columns [{:table "t2", :column "x"}  ;; from cte
+                  {:table "t2", :column "y"}] ;; from outer select
+
+ ;; See https://github.com/metabase/metabase/issues/42586
+ :overrides
+ ;; We are not taking into account the t1 (via cte) is not in-scope in the top-level SELECT.
+ {:source-columns [{:column "x"}
+                   {:column "y"}]}}
