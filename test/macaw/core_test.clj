@@ -615,7 +615,6 @@ from foo")
              raw-components)))))
 
 (comment
- (require 'hashp.core)
  (require 'virgil)
  (require 'clojure.tools.namespace.repl)
  (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all)
