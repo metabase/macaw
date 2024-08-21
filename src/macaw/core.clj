@@ -65,9 +65,9 @@
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
   (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
        (walk/postwalk (fn [x]
-                       (if (string? x)
-                         (unescape-keywords x (:non-reserved-words opts))
-                         x)))))
+                        (if (string? x)
+                          (unescape-keywords x (:non-reserved-words opts))
+                          x)))))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
@@ -87,10 +87,10 @@
   (let [sql'     (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
         opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
         renames' (walk/postwalk (fn [x]
-                                 (if (string? x)
-                                   (escape-keywords x (:non-reserved-words opts))
-                                   x))
-                               renames)
+                                  (if (string? x)
+                                    (escape-keywords x (:non-reserved-words opts))
+                                    x))
+                                renames)
         parsed   (parsed-query sql' opts)]
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")

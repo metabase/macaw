@@ -615,29 +615,29 @@ from foo")
              raw-components)))))
 
 (comment
- (require '[clj-async-profiler.core :as prof])
- (prof/serve-ui 8080)
+  (require 'user) ;; kondo, really
+  (require '[clj-async-profiler.core :as prof])
+  (prof/serve-ui 8080)
 
+  (defn- simple-benchmark []
+    (source-columns "SELECT x FROM t"))
 
- (defn- simple-benchmark []
-   (source-columns "SELECT x FROM t"))
+  (defn- complex-benchmark []
+    (count
+     (source-columns
+      (query-fixture :snowflake))))
 
- (defn- complex-benchmark []
-   (count
-    (source-columns
-     (query-fixture :snowflake))))
+  (user/time+ (simple-benchmark))
+  (prof/profile {:event :alloc}
+    (dotimes [_ 1000] (simple-benchmark)))
 
- (user/time+ (simple-benchmark))
- (prof/profile {:event :alloc}
-   (dotimes [_ 1000] (simple-benchmark)))
+  (user/time+ (complex-benchmark))
+  (prof/profile {:event :alloc}
+    (dotimes [_ 100] (complex-benchmark)))
 
- (user/time+ (complex-benchmark))
- (prof/profile {:event :alloc}
-   (dotimes [_ 100] (complex-benchmark)))
+  (anonymize-query "SELECT x FROM a")
+  (anonymize-fixture :snowflakelet)
 
- (anonymize-query "SELECT x FROM a")
- (anonymize-fixture :snowflakelet)
-
- (require 'virgil)
- (require 'clojure.tools.namespace.repl)
- (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all))
+  (require 'virgil)
+  (require 'clojure.tools.namespace.repl)
+  (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all))
