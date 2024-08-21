@@ -64,10 +64,10 @@
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
   (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
-       (walk/prewalk (fn [x]
-                       (if (string? x)
-                         (unescape-keywords x (:non-reserved-words opts))
-                         x)))))
+       (walk/postwalk (fn [x]
+                        (if (string? x)
+                          (unescape-keywords x (:non-reserved-words opts))
+                          x)))))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
@@ -86,11 +86,11 @@
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
   (let [sql'     (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
         opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
-        renames' (walk/prewalk (fn [x]
-                                 (if (string? x)
-                                   (escape-keywords x (:non-reserved-words opts))
-                                   x))
-                               renames)
+        renames' (walk/postwalk (fn [x]
+                                  (if (string? x)
+                                    (escape-keywords x (:non-reserved-words opts))
+                                    x))
+                                renames)
         parsed   (parsed-query sql' opts)]
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
