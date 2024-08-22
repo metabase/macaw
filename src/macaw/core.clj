@@ -5,6 +5,7 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
+   (com.metabase.macaw AstWalker$Scope)
    (java.util.function Consumer)
    (net.sf.jsqlparser.parser CCJSqlParser CCJSqlParserUtil)
    (net.sf.jsqlparser.parser.feature Feature)))
@@ -53,6 +54,16 @@
       (str/replace #"\n{2,}" "\n")
       (escape-keywords (:non-reserved-words opts))
       (CCJSqlParserUtil/parse (->parser-fn opts))))
+
+(defn scope-id
+  "A unique identifier for the given scope."
+  [^AstWalker$Scope s]
+  (.getId s))
+
+(defn scope-label
+  "The type of scope we're talking about e.g., a top-level SELECT."
+  [^AstWalker$Scope s]
+  (.getLabel s))
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
