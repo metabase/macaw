@@ -2,6 +2,7 @@ package com.metabase.macaw;
 
 // Borrows substantially from JSqlParser's TablesNamesFinder
 
+import clojure.lang.Cons;
 import clojure.lang.IFn;
 
 import java.util.ArrayDeque;
@@ -10,6 +11,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import clojure.lang.ISeq;
+import clojure.lang.PersistentList;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseAnd;
@@ -250,7 +253,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
-    private final Deque<Scope> contextStack;
+    private ISeq contextStack = PersistentList.EMPTY;
     private long nextScopeId = 1;
 
     /**
@@ -262,7 +265,6 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public AstWalker(Map<CallbackKey, IFn> rawCallbacks, Acc val) {
         this.acc = val;
         this.callbacks = new EnumMap<>(rawCallbacks);
-        this.contextStack = new ArrayDeque<>();
     }
 
     /**
@@ -273,21 +275,21 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         IFn callback = this.callbacks.get(key);
         if (callback != null) {
             //noinspection unchecked
-            this.acc = (Acc) callback.invoke(acc, visitedItem, this.contextStack.toArray());
+            this.acc = (Acc) callback.invoke(acc, visitedItem, this.contextStack);
         }
     }
 
     private void pushContext(QueryScopeLabel label) {
-        this.contextStack.push(Scope.fromLabel(nextScopeId++, label));
+        this.contextStack = new Cons(Scope.fromLabel(nextScopeId++, label), this.contextStack);
     }
 
     private void pushContext(@SuppressWarnings("SameParameterValue") String type, String label) {
-        this.contextStack.push(Scope.other(nextScopeId++, type, label));
+        this.contextStack = new Cons(Scope.other(nextScopeId++, type, label), this.contextStack);
     }
 
     // This is pure sugar, but it's nice to be symmetrical with pushContext
     private void popContext() {
-        this.contextStack.pop();
+        this.contextStack = this.contextStack.more();
     }
 
     /**
