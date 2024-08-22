@@ -19,10 +19,7 @@
   ([key-name xf]
    (fn item-conjer [results component context]
      (update results key-name conj {:component (xf component)
-                                    :context   (mapv
-                                                 (fn [^AstWalker$Scope x]
-                                                   [(keyword (.getType x)) (.getLabel x) (.getId x)])
-                                                 context)}))))
+                                    :context   context}))))
 
 (defn- query->raw-components
   [^Statement parsed-ast]
@@ -78,7 +75,7 @@
             relax-case (when-not (and quotes-preserve-case? quoted)
                          (setting->relax-case opts))]
         (cond-> s
-          quoted     strip-quotes
+          quoted strip-quotes
           relax-case relax-case)))))
 
 (defn- find-table [{:keys [alias->table name->table keep-internal-tables?] :as opts} ^Table t]
@@ -124,22 +121,23 @@
     (when (and (= (count name->table) 1) (not (alias? (.getColumnName c))))
       (:component (val (first name->table))))))
 
+(defn- scope-type [^AstWalker$Scope s] (keyword (.getType s)))
+
 (defn- make-column [aliases opts ^Column c ctx]
   (let [{:keys [schema table]} (maybe-column-table aliases opts c)]
     (u/strip-nils
      {:schema    schema
       :table     table
       :column    (normalize-reference (.getColumnName c) opts)
-      :alias     (let [[k y] (first ctx)]
-                   (when (= k :alias) y))
+      :alias     (when-let [s (first ctx)]
+                   (when (= :alias (scope-type s))
+                     (.getLabel ^AstWalker$Scope s)))
       :instances (when (:with-instance opts) [c])})))
 
 ;;; get them together
 
 (defn- only-query-context [ctx]
-  (into [] (comp (filter #(= (first %) :query))
-                 (map (comp vec rest)))
-    ctx))
+  (filter #(= (scope-type %) :query) ctx))
 
 (def ^:private strip-non-query-contexts
   (map #(update % :context only-query-context)))

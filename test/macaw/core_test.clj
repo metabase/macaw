@@ -36,9 +36,12 @@
   (walk/prewalk
    (fn [x]
      (if (:context x)
-       (update x :context (partial mapv first))
+       (update x :context (partial mapv m/scope-label))
        x))
    m))
+
+(defn scope->vec [s]
+  [(m/scope-label s) (m/scope-id s)])
 
 (defn contexts->scopes
   "Replace full context stack with a reference to the local scope, only."
@@ -46,7 +49,7 @@
   (walk/prewalk
    (fn [x]
      (if-let [context (:context x)]
-       (-> x (dissoc :context) (assoc :scope (first context)))
+       (-> x (dissoc :context) (assoc :scope (scope->vec (first context))))
        x))
    m))
 
