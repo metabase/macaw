@@ -121,21 +121,23 @@
     (when (and (= (count name->table) 1) (not (alias? (.getColumnName c))))
       (:component (val (first name->table))))))
 
+(defn- scope-type [^AstWalker$Scope s] (keyword (.getType s)))
+
 (defn- make-column [aliases opts ^Column c ctx]
   (let [{:keys [schema table]} (maybe-column-table aliases opts c)]
     (u/strip-nils
      {:schema    schema
       :table     table
       :column    (normalize-reference (.getColumnName c) opts)
-      :alias     (when-let [^AstWalker$Scope s (first ctx)]
-                   (when (= :alias (keyword (.getType s)))
-                     (.getLabel s)))
+      :alias     (when-let [s (first ctx)]
+                   (when (= :alias (scope-type s))
+                     (.getLabel ^AstWalker$Scope s)))
       :instances (when (:with-instance opts) [c])})))
 
 ;;; get them together
 
 (defn- only-query-context [ctx]
-  (filter #(= (keyword (.getType ^AstWalker$Scope %)) :query) ctx))
+  (filter #(= (scope-type %) :query) ctx))
 
 (def ^:private strip-non-query-contexts
   (map #(update % :context only-query-context)))
