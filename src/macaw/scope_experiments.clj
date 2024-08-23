@@ -74,11 +74,13 @@
                         #{table-name}
                         (scope->nested-tables scope-id))])))))
 
+(defn- ->vec [x]
+  (mapv x [:schema :table :column]))
+
 (defn fields-to-search
   "Get a set of qualified columns. Where the qualification was uncertain, we enumerate all possibilities"
   [f->ts]
-  (into (sorted-set)
+  (into (sorted-set-by (fn [x y] (compare (->vec x) (->vec y))))
         (mapcat (fn [[[_ column-name] table-names]]
-                  (map #(vector :table % :column column-name) table-names)))
-
+                  (map #(hash-map :table % :column column-name) table-names)))
         f->ts))

@@ -1,4 +1,4 @@
-(ns macaw.scope-experiments
+(ns macaw.scope-experiments-test
   (:require
    [clojure.test :refer :all]
    [macaw.scope-experiments :as mse]))
@@ -57,13 +57,29 @@
   ;; like source-columns, but understands scope
   (is (= (mse/fields-to-search
           (mse/fields->tables-in-scope "select x from t, u, v left join w on w.a = v.a where t.b = u.b and u.c = v.c limit 3"))
-         #{[:table "t" :column "b"]
-           [:table "t" :column "x"]
-           [:table "u" :column "b"]
-           [:table "u" :column "c"]
-           [:table "u" :column "x"]
-           [:table "v" :column "a"]
-           [:table "v" :column "c"]
-           [:table "v" :column "x"]
-           [:table "w" :column "a"]
-           [:table "w" :column "x"]})))
+         #{{:table "t" :column "b"}
+           {:table "t" :column "x"}
+           {:table "u" :column "b"}
+           {:table "u" :column "c"}
+           {:table "u" :column "x"}
+           {:table "v" :column "a"}
+           {:table "v" :column "c"}
+           {:table "v" :column "x"}
+           {:table "w" :column "a"}
+           {:table "w" :column "x"}}))
+
+  (is (= (mse/fields-to-search
+          (mse/fields->tables-in-scope
+           "with b as (select x, * from a),
+                 c as (select y, * from b)
+            select z from c;"))
+         ;; getting there - needs to unwrap cte aliases to the tables that they come from
+         #{{:table "a" :column "x"}
+           {:table "b" :column "y"}
+           {:table "c" :column "z"}}))
+
+  (is (= (mse/fields-to-search
+          (mse/fields->tables-in-scope
+           "select x, y, (select z from u) from t"))
+         ;; totally loses x and y :-(
+         #{{:table "u" :column "z"}})))
