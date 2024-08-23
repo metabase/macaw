@@ -644,13 +644,15 @@ from foo")
 
   (defn- node->clj [node]
     (cond
-      (instance? Column node) [:column (.getColumnName node)]
+      (instance? Column node) [:column
+                               (some-> (.getTable node) .getName)
+                               (.getColumnName node)]
       (instance? Table node) [:table (.getName node)]
       :else [(type node) node]))
 
   (mw/fold-query (m/parsed-query
                   ;"select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3"
-                  "select a,b,c,d from t"
+                  "select t.a,b,c,d from t"
                   )
                  {:every-node (fn [acc node ctx]
                                 (let [id (m/scope-id (first ctx))
