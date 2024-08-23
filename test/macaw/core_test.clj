@@ -648,7 +648,10 @@ from foo")
       (instance? Table node) [:table (.getName node)]
       :else [(type node) node]))
 
-  (mw/fold-query (m/parsed-query "select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3")
+  (mw/fold-query (m/parsed-query
+                  ;"select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3"
+                  "select a,b,c,d from t"
+                  )
                  {:every-node (fn [acc node ctx]
                                 (let [id (m/scope-id (first ctx))
                                       node (node->clj node)]
@@ -658,8 +661,16 @@ from foo")
                                                    (-> scope
                                                        (update :path #(or % (mapv m/scope-label (reverse ctx))))
                                                        (update :children (fnil conj []) node))))
+                                      ((fn [acc']
+                                         (if-let [parent-id (some-> (second ctx) m/scope-id)]
+                                           (-> acc'
+                                               (update :parents assoc id parent-id)
+                                               (update :children assoc parent-id id))
+                                           acc')))
                                       (update :sequence (fnil conj []) [id node]))))}
                  {:scopes   {}                              ;; id -> {:path [labels], :children [nodes]}
+                  :parents  {}                              ;;
+                  :children {}
                   :sequence []})                            ;; [scope-id, node]
 
   (require 'virgil)
