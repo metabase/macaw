@@ -1,4 +1,6 @@
 {:source-columns [{:table "invoice" :column "amount_paid_cents"}
                   {:table "invoice" :column "id"}
                   {:table "invoice" :column "is_deleted"}]
- :tables [{:table "invoice"}]}
+ :tables [{:table "invoice"}]
+ :overrides
+ {:basic-select :macaw.error/unsupported-expression}}
