@@ -674,6 +674,7 @@ from foo")
                   :sequence []})                            ;; [scope-id, node]
 
   ;"select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3"
+  ;
   ;{:scopes {1 {:path ["SELECT"], :children [[:column "x"]]},
   ;          2 {:path ["SELECT" "FROM"], :children [[:table "t"]]},
   ;          4 {:path ["SELECT" "JOIN" "FROM"], :children [[:table "u"]]},
@@ -711,12 +712,13 @@ from foo")
 
 
   ;"select a,b,c,d from t"
+  ;
   ;{:scopes {1 {:path ["SELECT"], :children [[:column "a"] [:column "b"] [:column "c"] [:column "d"]]},
   ;          2 {:path ["SELECT" "FROM"], :children [[:table "t"]]}},
   ; :parents {2 1},
   ; :children {1 #{2}},
   ; :sequence [[1 [:column "a"]] [1 [:column "b"]] [1 [:column "c"]] [1 [:column "d"]] [2 [:table "t"]]]}
-  
+
   (require 'virgil)
   (require 'clojure.tools.namespace.repl)
   (virgil/watch-and-recompile ["java"] :post-hook clojure.tools.namespace.repl/refresh-all))
