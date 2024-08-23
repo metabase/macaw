@@ -10,7 +10,7 @@
    [mb.hawk.assert-exprs.approximately-equal])
   (:import
    (clojure.lang ExceptionInfo)
-   (net.sf.jsqlparser.schema Table)))
+   (net.sf.jsqlparser.schema Column Table)))
 
 (set! *warn-on-reflection* true)
 
@@ -640,6 +640,26 @@ from foo")
 
   (anonymize-query "SELECT x FROM a")
   (anonymize-fixture :snowflakelet)
+
+  (defn- node->clj [node]
+    (cond
+      (instance? Column node) [:column (.getColumnName node)]
+      (instance? Table node) [:table (.getName node)]
+      :else [(type node) node]))
+
+  (mw/fold-query (m/parsed-query "select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3")
+                 {:every-node (fn [acc node ctx]
+                                (let [id (m/scope-id (first ctx))
+                                      node (node->clj node)]
+                                  (-> acc
+                                      (update-in [:scopes id]
+                                                 (fn [scope]
+                                                   (-> scope
+                                                       (update :path #(or % (mapv m/scope-label (reverse ctx))))
+                                                       (update :children (fnil conj []) node))))
+                                      (update :sequence (fnil conj []) [id node]))))}
+                 {:scopes   {}                              ;; id -> {:path [labels], :children [nodes]}
+                  :sequence []})                            ;; [scope-id, node]
 
   (require 'virgil)
   (require 'clojure.tools.namespace.repl)
