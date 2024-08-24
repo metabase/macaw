@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [macaw.scope-experiments :as mse]))
 
-(deftest semantic-map-test
+(deftest ^:parallel semantic-map-test
   (is (= (mse/semantic-map "select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3")
          {:scopes   {1 {:path ["SELECT"], :children [[:column nil "x"]]},
                      2 {:path ["SELECT" "FROM"], :children [[:table "t"]]},
@@ -53,7 +53,7 @@
                      [1 [:column nil "d"]]
                      [2 [:table "t"]]]})))
 
-(deftest fields-to-search-test
+(deftest ^:parallel fields-to-search-test
   ;; like source-columns, but understands scope
   (is (= (mse/fields-to-search
           (mse/fields->tables-in-scope "select x from t, u, v left join w on w.a = v.a where t.b = u.b and u.c = v.c limit 3"))
