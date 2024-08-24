@@ -3,10 +3,26 @@
    [macaw.core :as m]
    [macaw.walk :as mw])
   (:import
-   (net.sf.jsqlparser.schema Column Table)))
+   (com.metabase.macaw SimpleParser)
+   (java.util List Map)
+   (net.sf.jsqlparser.schema Column Table)
+   (net.sf.jsqlparser.statement.select SelectItem)))
+
+(defn- java->clj
+  "Recursively converts Java ArrayList and HashMap to Clojure vector and map."
+  [java-obj]
+  (condp instance? java-obj
+    List (mapv java->clj java-obj)
+    Map (into {} (for [[k v] java-obj]
+                   [(keyword k) (java->clj v)]))
+    java-obj))
+
+(defn query-map [sql]
+  (java->clj (SimpleParser/maybeParse (m/parsed-query sql))))
 
 (defn- node->clj [node]
   (cond
+    (instance? SelectItem node) [:select-item (.getAlias node) (.getExpression node)]
     (instance? Column node) [:column
                              (some-> (.getTable node) .getName)
                              (.getColumnName node)]
@@ -32,7 +48,7 @@
                                                (update :parents assoc id parent-id)
                                                (update-in [:children parent-id] (fnil conj #{}) id))
                                            acc')))
-                                      (update :sequence (fnil conj []) [id node]))))}
+                                      (update :sequence (fnil conj []) [id node #_(mapv m/scope-label (reverse ctx))]))))}
                  {:scopes   {}                              ;; id -> {:path [labels], :children [nodes]}
                   :parents  {}                              ;; what scope is this inside?
                   :children {}                              ;; what scopes are inside?
