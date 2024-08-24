@@ -3,6 +3,31 @@
    [clojure.test :refer :all]
    [macaw.scope-experiments :as mse]))
 
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel query-map-test
+  (is (= (mse/query-map "SELECT x FROM t")
+         {:select [{:column "x", :type "column"}]
+          :from   [{:table "t"}]}))
+
+  (is (= (mse/query-map "SELECT x FROM t WHERE y = 1")
+         {:select [{:column "x", :type "column"}]
+          :from   [{:table "t"}]
+          :where  [:=
+                   {:column "y", :type "column"}
+                   1]}))
+
+  (is (= (mse/query-map "SELECT x, z FROM t WHERE y = 1 GROUP BY z ORDER BY x DESC LIMIT 1")
+         {:select   [{:column "x", :type "column"} {:column "z", :type "column"}],
+          :from     [{:table "t"}],
+          :where    [:= {:column "y", :type "column"} 1]
+          :group-by [{:column "z", :type "column"}],
+          :order-by [{:column "x", :type "column"}],
+          :limit    1,}))
+
+  (is (= (mse/query-map "SELECT x FROM t1, t2")
+         {:select [{:column "x", :type "column"}], :from [{:table "t1"} {:table "t2"}]})))
+
 (deftest ^:parallel semantic-map-test
   (is (= (mse/semantic-map "select x from t, u, v left join w on w.id = v.id where t.id = u.id and u.id = v.id limit 3")
          {:scopes   {1 {:path ["SELECT"], :children [[:column nil "x"]]},
