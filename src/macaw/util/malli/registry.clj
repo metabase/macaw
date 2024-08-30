@@ -10,7 +10,7 @@
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
-  with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
+  with [[macaw.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
   it.
 
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
@@ -95,7 +95,7 @@
    ([type the-schema]
     `(register! ~type ~the-schema))
    ([type docstring the-schema]
-    `(metabase.util.malli.registry/def ~type
+    `(macaw.util.malli.registry/def ~type
        (-with-doc ~the-schema ~docstring))))
 
 (defn resolve-schema

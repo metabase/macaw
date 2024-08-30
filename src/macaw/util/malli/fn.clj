@@ -112,12 +112,12 @@
     parsed))
 
 (defn fn-schema
-  "Implementation for [[fn]] and [[metabase.util.malli.defn/defn]]. Given an unparsed parametered fn tail, extract the
+  "Implementation for [[fn]] and [[macaw.util.malli.defn/defn]]. Given an unparsed parametered fn tail, extract the
   annotations and return a `:=>` or `:function` schema.
 
   `options` can contain `:target` which is either
 
-  * `:target/metadata`: generate the schema to attach to the metadata for a [[metabase.util.malli.defn/defn]]. For
+  * `:target/metadata`: generate the schema to attach to the metadata for a [[macaw.util.malli.defn/defn]]. For
     key-value varargs like `& {:as kvs}` get a schema like `[:* :any]` in this case since the args aren't parsed to a
     map yet
 
@@ -154,7 +154,7 @@
     body))
 
 (defn deparameterized-fn-form
-  "Impl for [[metabase.util.malli.fn/fn]] and [[metabase.util.malli.defn/defn]]. Given a parsed `fn` tail (as parsed
+  "Impl for [[macaw.util.malli.fn/fn]] and [[macaw.util.malli.defn/defn]]. Given a parsed `fn` tail (as parsed
   by [[parsed-fn-tail]]), return a [[clojure.core.fn]] form with the parameters stripped out.
 
     (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
@@ -164,8 +164,7 @@
   `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
-  "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
-  use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
+  "Whether [[validate-input]] and [[validate-output]] should validate things or not."
   true)
 
 (defn- validate [error-context schema value error-type]
@@ -188,13 +187,13 @@
                           details)))))))
 
 (defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  "Impl for [[macaw.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
   explainer and throws an exception if the check fails."
   [error-context schema value]
   (validate error-context schema value ::invalid-input))
 
 (defn validate-output
-  "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
+  "Impl for [[macaw.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
   and throws an exception if the check fails. Returns validated value."
   [error-context schema value]
   (validate error-context schema value ::invalid-output)
@@ -332,14 +331,10 @@
         (validate-input {} :int a)
         (validate-output {} :int (&f a))))
 
-  The map arg here is additional error context; for something like [[metabase.util.malli/defn]], it will be something
+  The map arg here is additional error context; for something like [[macaw.util.malli/defn]], it will be something
   like
 
     {:fn-name 'metabase.lib.field/resolve-field-id}
-
-  for [[metabase.util.malli/defmethod]] it will be something like
-
-    {:fn-name 'whatever/my-multimethod, :dispatch-value :field}
 
   If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla
   clojure.core/fn form.
