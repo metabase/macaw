@@ -1,5 +1,5 @@
 (ns macaw.util.malli.registry
-  (:refer-clojure :exclude [declare def])
+  (:refer-clojure :exclude [declare def type])
   (:require
    [malli.core :as mc]
    [malli.experimental.time :as malli.time]
@@ -76,29 +76,29 @@
 (defn -with-doc
   "Add a `:doc/message` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
   indirection."
-  [schema docstring]
+  [the-schema docstring]
   (cond
-    (and (vector? schema)
-         (map? (second schema)))
-    (let [[tag opts & args] schema]
+    (and (vector? the-schema)
+         (map? (second the-schema)))
+    (let [[tag opts & args] the-schema]
       (into [tag (assoc opts :doc/message docstring)] args))
 
-    (vector? schema)
-    (let [[tag & args] schema]
+    (vector? the-schema)
+    (let [[tag & args] the-schema]
       (into [tag {:doc/message docstring}] args))
 
     :else
-    [:schema {:doc/message docstring} schema]))
+    [:schema {:doc/message docstring} the-schema]))
 
 (defmacro def
    "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
-   ([type schema]
-    `(register! ~type ~schema))
-   ([type docstring schema]
+   ([type the-schema]
+    `(register! ~type ~the-schema))
+   ([type docstring the-schema]
     `(metabase.util.malli.registry/def ~type
-       (-with-doc ~schema ~docstring))))
+       (-with-doc ~the-schema ~docstring))))
 
 (defn resolve-schema
   "For REPL/test usage: get the definition of a registered schema from the registry."
-  [schema]
-  (mc/deref-all (mc/schema schema)))
+  [the-schema]
+  (mc/deref-all (mc/schema the-schema)))

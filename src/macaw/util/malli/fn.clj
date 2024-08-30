@@ -183,8 +183,8 @@
                        error-context)]
         (when-not (config/is-prod?)
           (throw (ex-info (case error-type
-                            ::invalid-input  "Invalid input: {0}"
-                            ::invalid-output "Invalid output: {0}")
+                            ::invalid-input  (format "Invalid input: %s" (pr-str humanized))
+                            ::invalid-output (format "Invalid output: %s" (pr-str humanized)))
                           details)))))))
 
 (defn validate-input
