@@ -19,9 +19,9 @@
 
  :aliases
  {:dev
-  {:extra-deps ;; some used for tests as well
-   {io.github.metabase/hawk     {:sha "ac3c663b22114d99303b8da88d982248da391780"} ; Test runner
-    virgil/virgil               {:mvn/version "0.3.0"} ; Makes it easier to recompile Java files
+  {:extra-deps
+   {io.github.metabase/hawk     {:mvn/version "1.0.0"}
+    virgil/virgil               {:mvn/version "0.3.0"}
     org.clojure/tools.namespace {:mvn/version "1.4.5"}}
 
    :extra-paths
