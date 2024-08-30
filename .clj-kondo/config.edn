@@ -39,7 +39,10 @@
   :macaw/validate-deftest {:level :warning}}
 
  :lint-as
- {}
+ {macaw.util.malli/defn       schema.core/defn
+  macaw.util.malli/defn-      schema.core/defn
+  macaw.util.malli.defn/defn  schema.core/defn
+  macaw.util.malli.defn/defn- schema.core/defn}
 
  :hooks
  {:analyze-call
