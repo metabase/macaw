@@ -4,8 +4,7 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [macaw.util.malli.fn :as mu.fn]
-   [malli.destructure]
-   [net.cgrand.macrovich :as macros]))
+   [malli.destructure]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,21 +12,14 @@
 (core/defn- deparameterized-arglist [{:keys [args]}]
   (-> (malli.destructure/parse args)
       :arglist
-      (with-meta (macros/case
-                   :cljs
-                   (meta args)
-
-                   ;; make sure we resolve classnames e.g. `java.sql.Connection` intstead of `Connection`, otherwise the
-                   ;; tags won't work if you use them in another namespace that doesn't import that class. (Clj only)
-                   :clj
-                   (let [args-meta    (meta args)
-                         tag          (:tag args-meta)
-                         resolved-tag (when (symbol? tag)
-                                        (let [resolved (ns-resolve *ns* tag)]
-                                          (when (class? resolved)
-                                            (symbol (.getName ^Class resolved)))))]
-                     (cond-> args-meta
-                       resolved-tag (assoc :tag resolved-tag)))))))
+      (with-meta (let [args-meta    (meta args)
+                       tag          (:tag args-meta)
+                       resolved-tag (when (symbol? tag)
+                                      (let [resolved (ns-resolve *ns* tag)]
+                                        (when (class? resolved)
+                                          (symbol (.getName ^Class resolved)))))]
+                   (cond-> args-meta
+                     resolved-tag (assoc :tag resolved-tag))))))
 
 (core/defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
   (let [[arities-type arities-value] arities]
@@ -76,10 +68,8 @@
          ~(mu.fn/deparameterized-fn-form parsed cosmetic-name))
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
-         ~(macros/case
-            :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))
-            :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))))))
+         ~(let [error-context {:fn-name (list 'quote fn-name)}]
+            (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))))))
 
 (defmacro defn-
   "Same as defn, but creates a private def."
