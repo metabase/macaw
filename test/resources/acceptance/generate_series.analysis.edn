@@ -1,0 +1,5 @@
+{:tables         []
+ :source-columns []
+
+ :overrides
+ {:source-columns [{:table "t", :column "day"}]}}
