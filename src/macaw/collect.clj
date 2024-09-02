@@ -170,6 +170,16 @@
                         :column))
           unqualified)))
 
+(defn- remove-phantom-table-columns
+  "If a column reference is qualified by a table that we don't know about, its probably
+   not a real field.
+   See the `:generate_series` fixture."
+  [table-map columns]
+  (let [known-table-name? (into #{} (map (comp :table :component val)) table-map)]
+    (filter (fn [{s :schema, t :table}]
+              (or (nil? t) (some? s) (known-table-name? t)))
+            columns)))
+
 (defn- infer-table-schema [columns node]
   (update node :component
           #(let [{:keys [schema table] :as element} %]
@@ -220,6 +230,7 @@
         source-columns            (->> (map :component all-columns)
                                        (remove-redundant-columns alias?)
                                        (remove literal?)
+                                       (remove-phantom-table-columns table-map)
                                        (into #{}
                                              (comp (remove (comp pseudo-table-names :table))
                                                    (remove :internal?)
