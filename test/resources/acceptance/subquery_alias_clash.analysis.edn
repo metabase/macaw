@@ -1,0 +1,23 @@
+{:tables         #{{:table "addresses"}
+                   {:table "customers"}
+                   {:table "orders"}}
+ :source-columns #{{:table "addresses" :column "country"}
+                   {:table "addresses" :column "organization_id"}
+                   {:table "addresses" :column "region"}
+                   {:table "customers" :column "country"}
+                   {:table "customers" :column "id"}
+                   {:table "customers" :column "state"}
+                   {:table "orders" :column "customer_id"}
+                   {:table "orders" :column "organization_id"}}
+
+ ;; In the same general category as https://github.com/metabase/metabase/issues/42586
+ :overrides
+ {:source-columns #{{:table "addresses" :column "country"}
+                    {:table "addresses" :column "organization_id"}
+                    {:table "addresses" :column "region"}
+                    {:table "addresses" :column "state"}
+                    {:table "customers" :column "country"}
+                    {:table "customers" :column "id"}
+                    {:table "customers" :column "state"}
+                    {:table "orders" :column "customer_id"}
+                    {:table "orders" :column "organization_id"}}}}
