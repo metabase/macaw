@@ -7,7 +7,7 @@
    [macaw.core :as m]
    [macaw.test.util :refer [ws=]]
    [macaw.walk :as mw]
-   [mb.hawk.assert-exprs.approximately-equal])
+   [mb.hawk.assert-exprs])
   (:import
    (clojure.lang ExceptionInfo)
    (net.sf.jsqlparser.schema Table)))
@@ -355,8 +355,6 @@ from foo")
   (is (= #{{:table "foo"}}
          (table-wcs "SELECT f.* FROM orders o JOIN foo f ON orders.id = foo.order_id"))))
 
-;; TODO Fix kondo linting of =? (strangely enough I don't need this locally)
-^:clj-kondo/ignore
 (deftest context-test
   (testing "Sub-select with outer wildcard"
     ;; TODO we should test the source and result columns too

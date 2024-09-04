@@ -14,6 +14,10 @@
    clojure.core/prn      {:message "Use clojure.tools.logging instead."}
    clojure.pprint/pprint {:message "Use clojure.tools.logging instead."}}
 
+  :unresolved-symbol
+  {:exclude
+   [(clojure.test/is [=? malli=])]}
+
   :refer
   {:level   :warning
    :exclude [clojure.test
