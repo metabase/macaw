@@ -1,0 +1,9 @@
+{:tables         [{:table "a"}, {:table "b"}]
+ :source-columns #{{:table "b" :column "x"}
+                   {:table "a" :column "y"}}
+
+ ;; See https://github.com/metabase/metabase/issues/42586
+ :overrides
+ ;; TODO currently each table gets hidden by the other CTE
+ {:tables          []
+  :source-columns  []}}
