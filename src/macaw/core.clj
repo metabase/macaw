@@ -80,6 +80,17 @@
                           (unescape-keywords x (:non-reserved-words opts))
                           x)))))
 
+(defn- raw-components [xs]
+  (into (empty xs) (keep :component) xs))
+
+(defn query->tables
+  "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
+  [statement & {:keys [mode] :as opts}]
+  (case mode
+    :ast-walker-1 (raw-components (:tables (query->components statement opts)))
+    ;; Jank so we can get acceptance tests written
+    :basic-select (recur statement (assoc opts :mode :ast-walker-1))))
+
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
 
