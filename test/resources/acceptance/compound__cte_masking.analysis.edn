@@ -4,6 +4,7 @@
 
  ;; See https://github.com/metabase/metabase/issues/42586
  :overrides
- ;; TODO currently each table gets hidden by the other CTE
- {:tables          []
-  :source-columns  []}}
+ {:ast-walker-1
+  ;; TODO currently each table gets hidden by the other CTE
+  {:tables         []
+   :source-columns []}}}

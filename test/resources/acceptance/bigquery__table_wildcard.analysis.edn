@@ -3,7 +3,7 @@
 
  :overrides
  {:basic-select
-  ;; do not allow wilcard selects
+  ;; do not allow wildcard selects
   {:tables :macaw.error/illegal-expression}
 
   ;; Just plain old whacky
