@@ -49,6 +49,10 @@
       (is (= expected (ct/sorted actual)))
       (is (= expected actual)))))
 
+(defn- get-override [expected-cs mode ck]
+  (or (get-in expected-cs [:overrides mode ck])
+      (get-in expected-cs [:overrides ck])))
+
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
   [fixture]
@@ -66,13 +70,14 @@
         (doseq [m test-modes]
           (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m))))))
       (do
-        (let [opts (opts-mode :ast-walker-1)]
+        (let [m    :ast-walker-1
+              opts (opts-mode m)]
           (when-let [cs (testing (str prefix " analysis does not throw")
                           (is (ct/components sql opts)))]
             (doseq [[ck cv] (dissoc expected-cs :overrides)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
-                      override  (get-in expected-cs [:overrides ck])]
+                      override  (get-override expected-cs m ck)]
                   (validate-analysis cv override actual-cv))))))
 
         (doseq [m test-modes]
@@ -83,8 +88,7 @@
                 (is (= :macaw.error/not-implemented ts)))
               (when-let [correct (get expected-cs :tables)]
                 (testing (str prefix " table analysis is correct for mode " m)
-                  (let [override (or (get-in expected-cs [:overrides m :tables])
-                                     (get-in expected-cs [:overrides :tables]))]
+                  (let [override (get-override expected-cs m :tables)]
                     (validate-analysis correct override ts)))))))))
 
     (when renames
