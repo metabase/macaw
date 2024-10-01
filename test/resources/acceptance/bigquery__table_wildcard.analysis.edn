@@ -1,0 +1,12 @@
+{:source-columns []
+ :tables         ::not-sure-what-we-should-do-if-we-continue-supporting-this
+
+ :overrides
+ {:basic-select
+  ;; do not allow wilcard selects
+  {:tables :macaw.error/illegal-expression}
+
+  ;; Just plain old whacky
+  :source-columns [{:table "`project_id.dataset_id.table_*`", :column "_TABLE_SUFFIX"}]
+  ;; Kinda makes sense, but very raw, and Metabase won't handle it.
+  :tables [{:table "`project_id.dataset_id.table_*`"}]}}

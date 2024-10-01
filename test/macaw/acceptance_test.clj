@@ -13,8 +13,11 @@
 (def broken-queries
   "The DANGER ZONE
   This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
-  {:broken/between      #"Encountered unexpected token: \"BETWEEN\""
-   :broken/filter-where #"Encountered unexpected token: \"\(\""})
+  {:broken/between       #"Encountered unexpected token: \"BETWEEN\""
+   :broken/filter-where  #"Encountered unexpected token: \"\(\""
+   :sqlserver/execute    #"Not supported yet"
+   :sqlserver/executesql #"Not supported yet"
+   :oracle/open-for      #"Encountered unexpected token: \"OPEN\""})
 
 (defn- fixture-analysis [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
@@ -68,7 +71,8 @@
       (testing (str prefix " analysis cannot be parsed")
         (is (thrown-with-msg? Exception expected-msg (ct/components sql base-opts)))
         (doseq [m test-modes]
-          (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m))))))
+          (when-not (not-implemented? m)
+            (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m)))))))
       (do
         (let [m    :ast-walker-1
               opts (opts-mode m)]
