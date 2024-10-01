@@ -88,8 +88,7 @@
   [statement & {:keys [mode] :as opts}]
   (case mode
     :ast-walker-1 (raw-components (:tables (query->components statement opts)))
-    ;; Jank so we can get acceptance tests written
-    :basic-select (recur statement (assoc opts :mode :ast-walker-1))))
+    :basic-select :macaw.error/not-implemented))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.

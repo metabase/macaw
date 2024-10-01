@@ -35,6 +35,9 @@
   #{:ast-walker-1
     :basic-select})
 
+(def ^:private not-implemented?
+  #{:basic-select})
+
 (defn- validate-analysis [correct override actual]
   (let [expected (or override correct)]
     (when override
@@ -54,35 +57,40 @@
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)
-        opts        {:non-reserved-words [:final]}
-        opts-mode   (fn [mode] (assoc opts :mode mode))]
+        base-opts   {:non-reserved-words [:final]}
+        opts-mode   (fn [mode] (assoc base-opts :mode mode))]
+
     (if-let [expected-msg (broken-queries fixture)]
       (testing (str prefix " analysis cannot be parsed")
-        (is (thrown-with-msg? Exception expected-msg (ct/components sql opts)))
+        (is (thrown-with-msg? Exception expected-msg (ct/components sql base-opts)))
         (doseq [m test-modes]
           (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m))))))
       (do
-        (when-let [cs (testing (str prefix " analysis does not throw")
-                        (is (ct/components sql opts)))]
-          (doseq [[ck cv] (dissoc expected-cs :overrides)]
-            (testing (str prefix " analysis is correct: " (name ck))
-              (let [actual-cv (get-component cs ck)
-                    override  (get-in expected-cs [:overrides ck])]
-                (validate-analysis cv override actual-cv)))))
+        (let [opts (opts-mode :ast-walker-1)]
+          (when-let [cs (testing (str prefix " analysis does not throw")
+                          (is (ct/components sql opts)))]
+            (doseq [[ck cv] (dissoc expected-cs :overrides)]
+              (testing (str prefix " analysis is correct: " (name ck))
+                (let [actual-cv (get-component cs ck)
+                      override  (get-in expected-cs [:overrides ck])]
+                  (validate-analysis cv override actual-cv))))))
 
         (doseq [m test-modes]
           (when-let [ts (testing (str prefix " table analysis does not throw for mode " m)
                           (is (ct/tables sql (opts-mode m))))]
-            (when-let [correct (get expected-cs :tables)]
-              (testing (str prefix " table analysis is correct for mode " m)
-                (let [override (or (get-in expected-cs [:overrides m :tables])
-                                   (get-in expected-cs [:overrides :tables]))]
-                  (validate-analysis correct override ts))))))))
+            (if (not-implemented? m)
+              (testing (str m " is not implemented yet")
+                (is (= :macaw.error/not-implemented ts)))
+              (when-let [correct (get expected-cs :tables)]
+                (testing (str prefix " table analysis is correct for mode " m)
+                  (let [override (or (get-in expected-cs [:overrides m :tables])
+                                     (get-in expected-cs [:overrides :tables]))]
+                    (validate-analysis correct override ts)))))))))
 
     (when renames
       (let [broken?   (:broken? renames)
             rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql (dissoc renames :broken?) opts)))]
+                        (is (m/replace-names sql (dissoc renames :broken?) base-opts)))]
         (when expected-rw
           (testing (str prefix " rewritten SQL is correct")
             (if broken?
