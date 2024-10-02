@@ -67,6 +67,8 @@
         base-opts   {:non-reserved-words [:final]}
         opts-mode   (fn [mode] (assoc base-opts :mode mode))]
 
+    (assert sql "Fixture exists")
+
     (if-let [expected-msg (broken-queries fixture)]
       (testing (str prefix " analysis cannot be parsed")
         (is (thrown-with-msg? Exception expected-msg (ct/components sql base-opts)))

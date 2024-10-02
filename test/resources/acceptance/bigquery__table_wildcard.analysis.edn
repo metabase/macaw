@@ -6,7 +6,7 @@
   ;; do not allow wildcard selects
   {:tables :macaw.error/illegal-expression}
 
-  ;; Just plain old whacky
+  ;; Just plain old wacky
   :source-columns [{:table "`project_id.dataset_id.table_*`", :column "_TABLE_SUFFIX"}]
   ;; Kinda makes sense, but very raw, and Metabase won't handle it.
   :tables [{:table "`project_id.dataset_id.table_*`"}]}}

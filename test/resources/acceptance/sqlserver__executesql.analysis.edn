@@ -1,1 +1,2 @@
-{:tables ::should-not-succeed}
+{:tables   :macaw.error/illegal-expression
+ :override :macaw.error/unable-to-parse}

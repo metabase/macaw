@@ -1,2 +1,3 @@
-{:source-columns []
+{:has-wildcard?  true
+ :source-columns []
  :tables         [{:table "t"}]}
