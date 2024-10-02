@@ -9,12 +9,12 @@
   https://ask.clojure.org/index.php/12319/can-group-by-be-generalized"
   [kf rf coll]
   (persistent!
-    (reduce
-      (fn [ret x]
-        (let [k (kf x)]
-          (assoc! ret k (rf (get ret k) x))))
-      (transient {})
-      coll)))
+   (reduce
+    (fn [ret x]
+      (let [k (kf x)]
+        (assoc! ret k (rf (get ret k) x))))
+    (transient {})
+    coll)))
 
 (defn seek
   "Like (first (filter ... )), but doesn't realize chunks of the sequence. Returns the first item in `coll` for which

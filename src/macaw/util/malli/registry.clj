@@ -91,12 +91,12 @@
     [:schema {:doc/message docstring} the-schema]))
 
 (defmacro def
-   "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
-   ([type the-schema]
-    `(register! ~type ~the-schema))
-   ([type docstring the-schema]
-    `(macaw.util.malli.registry/def ~type
-       (-with-doc ~the-schema ~docstring))))
+  "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
+  ([type the-schema]
+   `(register! ~type ~the-schema))
+  ([type docstring the-schema]
+   `(macaw.util.malli.registry/def ~type
+      (-with-doc ~the-schema ~docstring))))
 
 (defn resolve-schema
   "For REPL/test usage: get the definition of a registered schema from the registry."
