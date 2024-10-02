@@ -80,6 +80,16 @@
                           (unescape-keywords x (:non-reserved-words opts))
                           x)))))
 
+(defn- raw-components [xs]
+  (into (empty xs) (keep :component) xs))
+
+(defn query->tables
+  "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
+  [statement & {:keys [mode] :as opts}]
+  (case mode
+    :ast-walker-1 (raw-components (:tables (query->components statement opts)))
+    :basic-select :macaw.error/not-implemented))
+
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
 

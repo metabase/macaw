@@ -22,12 +22,15 @@
 (defn components [sql & {:as opts}]
   (m/query->components (m/parsed-query sql opts) opts))
 
+(defn tables [sql & {:as opts}]
+  (let [opts (update opts :mode #(or % :ast-walker-1))]
+    (m/query->tables (m/parsed-query sql opts) opts)))
+
 (def raw-components #(let [xs (empty %)] (into xs (keep :component) %)))
 (def columns        (comp raw-components :columns components))
 (def source-columns (comp :source-columns components))
 (def has-wildcard?  (comp non-empty-and-truthy raw-components :has-wildcard? components))
 (def mutations      (comp raw-components :mutation-commands components))
-(def tables         (comp raw-components :tables components))
 (def table-wcs      (comp raw-components :table-wildcards components))
 
 (defn- strip-context-ids

@@ -31,6 +31,28 @@
     :columns-with-scope (ct/contexts->scopes (get cs :columns))
     (ct/raw-components (get cs k))))
 
+(def ^:private test-modes
+  #{:ast-walker-1
+    :basic-select})
+
+(def ^:private not-implemented?
+  #{:basic-select})
+
+(defn- validate-analysis [correct override actual]
+  (let [expected (or override correct)]
+    (when override
+      (if (vector? correct)
+        (is (not= correct (ct/sorted actual)) "Override is still needed")
+        (is (not= correct actual) "Override is still needed")))
+
+    (if (vector? expected)
+      (is (= expected (ct/sorted actual)))
+      (is (= expected actual)))))
+
+(defn- get-override [expected-cs mode ck]
+  (or (get-in expected-cs [:overrides mode ck])
+      (get-in expected-cs [:overrides ck])))
+
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
   [fixture]
@@ -39,32 +61,40 @@
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)
-        opts        {:non-reserved-words [:final]}]
+        base-opts   {:non-reserved-words [:final]}
+        opts-mode   (fn [mode] (assoc base-opts :mode mode))]
+
     (if-let [expected-msg (broken-queries fixture)]
       (testing (str prefix " analysis cannot be parsed")
-        (is (thrown-with-msg? Exception
-                              expected-msg
-                              (ct/components sql opts))))
-      (when-let [cs (testing (str prefix " analysis does not throw")
-                      (is (ct/components sql opts)))]
-        (doseq [[ck cv] (dissoc expected-cs :overrides)]
-          (testing (str prefix " analysis is correct: " (name ck))
-            (let [actual-cv (get-component cs ck)
-                  override  (get-in expected-cs [:overrides ck])
-                  expected  (or override cv)]
+        (is (thrown-with-msg? Exception expected-msg (ct/components sql base-opts)))
+        (doseq [m test-modes]
+          (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m))))))
+      (do
+        (let [m    :ast-walker-1
+              opts (opts-mode m)]
+          (when-let [cs (testing (str prefix " analysis does not throw")
+                          (is (ct/components sql opts)))]
+            (doseq [[ck cv] (dissoc expected-cs :overrides)]
+              (testing (str prefix " analysis is correct: " (name ck))
+                (let [actual-cv (get-component cs ck)
+                      override  (get-override expected-cs m ck)]
+                  (validate-analysis cv override actual-cv))))))
 
-              (when override
-                (if (vector? cv)
-                  (is (not= cv (ct/sorted actual-cv)) "Override is still needed")
-                  (is (not= cv actual-cv) "Override is still needed")))
+        (doseq [m test-modes]
+          (when-let [ts (testing (str prefix " table analysis does not throw for mode " m)
+                          (is (ct/tables sql (opts-mode m))))]
+            (if (not-implemented? m)
+              (testing (str m " is not implemented yet")
+                (is (= :macaw.error/not-implemented ts)))
+              (when-let [correct (get expected-cs :tables)]
+                (testing (str prefix " table analysis is correct for mode " m)
+                  (let [override (get-override expected-cs m :tables)]
+                    (validate-analysis correct override ts)))))))))
 
-              (if (vector? expected)
-                (is (= expected (ct/sorted actual-cv)))
-                (is (= expected actual-cv))))))))
     (when renames
       (let [broken?   (:broken? renames)
             rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql (dissoc renames :broken?) opts)))]
+                        (is (m/replace-names sql (dissoc renames :broken?) base-opts)))]
         (when expected-rw
           (testing (str prefix " rewritten SQL is correct")
             (if broken?
