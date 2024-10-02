@@ -362,42 +362,42 @@ from foo")
   (testing "Sub-select with outer wildcard"
     ;; TODO we should test the source and result columns too
     (is (=? {:columns
-            #{{:component {:column "total" :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component {:column "id"    :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
-            :has-wildcard?     #{{:component true, :context ["SELECT"]}},
-            :mutation-commands #{},
-            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
-            :table-wildcards   #{}}
-           (strip-context-ids (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10")))))
+             #{{:component {:column "total" :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+               {:component {:column "id"    :table "orders"}, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+               {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+             :has-wildcard?     #{{:component true, :context ["SELECT"]}},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+             :table-wildcards   #{}}
+            (strip-context-ids (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10")))))
   (testing "Sub-select with inner wildcard"
     (is (=? {:columns
-            #{{:component {:column "id"    :table "orders"}, :context ["SELECT"]}
-              {:component {:column "total" :table "orders"}, :context ["SELECT"]}
-              {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
-            :has-wildcard?     #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
-            :mutation-commands #{},
-            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
-            :table-wildcards   #{}}
-           (strip-context-ids (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10")))))
+             #{{:component {:column "id"    :table "orders"}, :context ["SELECT"]}
+               {:component {:column "total" :table "orders"}, :context ["SELECT"]}
+               {:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
+             :has-wildcard?     #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+             :table-wildcards   #{}}
+            (strip-context-ids (components "SELECT id, total FROM (SELECT * FROM orders) WHERE total > 10")))))
   (testing "Sub-select with dual wildcards"
     (is (=? {:columns           #{{:component {:column "total" :table "orders"}, :context ["WHERE" "JOIN" "FROM" "SELECT"]}},
-            :has-wildcard?
-            #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
-              {:component true, :context ["SELECT"]}},
-            :mutation-commands #{},
-            :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
-            :table-wildcards   #{}}
-           (strip-context-ids (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10")))))
+             :has-wildcard?
+             #{{:component true, :context ["SELECT" "SUB_SELECT" "FROM" "SELECT"]}
+               {:component true, :context ["SELECT"]}},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "orders"}, :context ["FROM" "SELECT" "SUB_SELECT" "FROM" "SELECT"]}},
+             :table-wildcards   #{}}
+            (strip-context-ids (components "SELECT * FROM (SELECT * FROM orders) WHERE total > 10")))))
   (testing "Join; table wildcard"
     (is (=? {:columns           #{{:component {:column "order_id" :table "foo"}, :context ["JOIN" "SELECT"]}
-                                 {:component {:column "id" :table "orders"}, :context ["JOIN" "SELECT"]}},
-            :has-wildcard?     #{},
-            :mutation-commands #{},
-            :tables            #{{:component {:table "foo"}, :context ["FROM" "JOIN" "SELECT"]}
-                                 {:component {:table "orders"}, :context ["FROM" "SELECT"]}},
-            :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
-           (strip-context-ids (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id"))))))
+                                  {:component {:column "id" :table "orders"}, :context ["JOIN" "SELECT"]}},
+             :has-wildcard?     #{},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "foo"}, :context ["FROM" "JOIN" "SELECT"]}
+                                  {:component {:table "orders"}, :context ["FROM" "SELECT"]}},
+             :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
+            (strip-context-ids (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id"))))))
 
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
@@ -418,9 +418,9 @@ from foo")
   ;; qualified targets would allow us to infer such changes. Partial qualification could also work fine where there
   ;; is no ambiguity - even if this is just a nice convenience for testing.
   #_(is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
-         (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                          {:columns {{:schema "public" :table "a" :column "x"}
-                                     {:table "aa" :column "xx"}}})))
+           (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                            {:columns {{:schema "public" :table "a" :column "x"}
+                                       {:table "aa" :column "xx"}}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
@@ -461,10 +461,10 @@ from foo")
 (deftest replace-schema-test
   ;; Somehow we broke renaming the `x` in the WHERE clause.
   #_(is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
-         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
-                          {:schemas {"public" "totally_private"}
-                           :tables  {{:schema "public" :table "orders"} "purchases"}
-                           :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
+           (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                            {:schemas {"public" "totally_private"}
+                             :tables  {{:schema "public" :table "orders"} "purchases"}
+                             :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
 
 (deftest allow-unused-test
   (is (thrown-with-msg?
@@ -490,12 +490,12 @@ from foo")
    (fixture->filename fixture nil suffix))
   ([fixture path suffix]
    (as-> fixture %
-         [(namespace %) (name %)]
-         (remove nil? %)
-         (str/join "__" %)
-         (str/replace % "-" "_")
-         (if path (str path "/" %) %)
-         (str % suffix))))
+     [(namespace %) (name %)]
+     (remove nil? %)
+     (str/join "__" %)
+     (str/replace % "-" "_")
+     (if path (str path "/" %) %)
+     (str % suffix))))
 
 (defn stem->fixture [stem]
   (let [[x y] (map #(str/replace % "_" "-") (str/split stem #"__"))]
@@ -633,11 +633,11 @@ from foo")
 
   (user/time+ (simple-benchmark))
   (prof/profile {:event :alloc}
-    (dotimes [_ 1000] (simple-benchmark)))
+                (dotimes [_ 1000] (simple-benchmark)))
 
   (user/time+ (complex-benchmark))
   (prof/profile {:event :alloc}
-    (dotimes [_ 100] (complex-benchmark)))
+                (dotimes [_ 100] (complex-benchmark)))
 
   (anonymize-query "SELECT x FROM a")
   (anonymize-fixture :snowflakelet)

@@ -58,12 +58,12 @@
                         (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
                               idx-range (node->idx-range ast-node sql)
                               node-text (->text visitable)]
-                         [idx-range node-text]))
+                          [idx-range node-text]))
         replace-name  (fn [->text]
-                       (fn [acc visitable _ctx]
-                         (cond-> acc
-                           (updated-node? visitable)
-                           (conj (replacement ->text visitable)))))]
+                        (fn [acc visitable _ctx]
+                          (cond-> acc
+                            (updated-node? visitable)
+                            (conj (replacement ->text visitable)))))]
     (splice-replacements
      sql
      (mw/fold-query
