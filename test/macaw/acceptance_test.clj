@@ -58,7 +58,9 @@
       (get-in expected-cs [:overrides mode :error])
       (get-in expected-cs [:overrides :error])
       (get-in expected-cs [:overrides mode ck])
-      (get-in expected-cs [:overrides ck])))
+      (get-in expected-cs [:overrides ck])
+      (get-in expected-cs [:overrides mode])
+      (get-in expected-cs [:overrides])))
 
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
