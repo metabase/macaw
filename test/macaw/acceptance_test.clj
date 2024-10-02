@@ -76,6 +76,7 @@
     (doseq [m test-modes
             :let [opts (opts-mode m)]]
       (if (= m :ast-walker-1)
+        ;; Legacy testing path for `components`, which only supports the original walker, and throws exceptions.
         (if-let [expected-msg (broken-queries fixture)]
           (testing (str prefix " analysis cannot be parsed")
             (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
@@ -86,9 +87,10 @@
                 (let [actual-cv (get-component cs ck)
                       override  (get-override expected-cs m ck)]
                   (validate-analysis cv override actual-cv))))))
-        ;; non ast-walker-1 modes
+        ;; Testing path for newer modes.
         (let [correct  (:error expected-cs (:tables expected-cs))
               override (get-override expected-cs m :tables)
+              ;; For now we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
           (testing (str prefix " table analysis is correct for mode " m)
