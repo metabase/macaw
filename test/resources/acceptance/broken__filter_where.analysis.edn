@@ -1,0 +1,5 @@
+{:source-columns [{:table "execution" :column "error"}
+                  {:table "execution" :column "instance_id"}
+                  {:table "execution" :column "running_time"}]
+ :tables         [{:table "execution"}]
+ :overrides      :macaw.error/unable-to-parse}

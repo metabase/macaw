@@ -1,0 +1,2 @@
+{:error     :macaw.error/illegal-expression
+ :overrides :macaw.error/unable-to-parse}

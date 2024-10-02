@@ -12,7 +12,4 @@
  {:source-columns #{{:table "departments" :column "id"}
                     {:table "departments" :column "name"}
                     {:column "first_name"}
-                    {:column "last_name"}}
-
-  :basic-select
-  {:tables       ::not-implemented}}}
+                    {:column "last_name"}}}}
