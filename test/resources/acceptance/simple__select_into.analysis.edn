@@ -1,0 +1,5 @@
+{:source-columns [{:table "user" :column "id"}
+                  {:table "user" :column "name"}]
+ :tables         [{:table "user"}]
+ :overrides
+ {:basic-select :macaw.error/illegal-expression}}

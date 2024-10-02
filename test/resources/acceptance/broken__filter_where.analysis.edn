@@ -2,4 +2,4 @@
                   {:table "execution" :column "instance_id"}
                   {:table "execution" :column "running_time"}]
  :tables         [{:table "execution"}]
- :override       :macaw.error/unable-to-parse}
+ :overrides      :macaw.error/unable-to-parse}

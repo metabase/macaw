@@ -2,4 +2,4 @@
                   {:table "usage-stats" :column "month_started"}
                   {:table "usage-stats" :column "instance_finished"}]
  :tables         [{:table "usage_stats"}]
- :override       :macaw.error/unable-to-parse}
+ :overrides      :macaw.error/unable-to-parse}

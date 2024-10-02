@@ -51,7 +51,12 @@
 
     (if (and (vector? expected) (not (keyword actual)))
       (is (= expected (ct/sorted actual)))
-      (is (= expected actual)))))
+      (when (not= expected actual)
+        (is (= expected actual))))))
+
+(defn- when-keyword [x]
+  (when (keyword? x)
+    x))
 
 (defn- get-override [expected-cs mode ck]
   (or (get global-overrides mode)
@@ -59,8 +64,8 @@
       (get-in expected-cs [:overrides :error])
       (get-in expected-cs [:overrides mode ck])
       (get-in expected-cs [:overrides ck])
-      (get-in expected-cs [:overrides mode])
-      (get-in expected-cs [:overrides])))
+      (when-keyword (get-in expected-cs [:overrides mode]))
+      (when-keyword (get-in expected-cs [:overrides]))))
 
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
@@ -82,7 +87,7 @@
             (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
           (let [cs (testing (str prefix " analysis does not throw")
                      (is (ct/components sql opts)))]
-            (doseq [[ck cv] (dissoc expected-cs :overrides)]
+            (doseq [[ck cv] (dissoc expected-cs :overrides :error)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
                       override  (get-override expected-cs m ck)]
@@ -90,7 +95,7 @@
         ;; Testing path for newer modes.
         (let [correct  (:error expected-cs (:tables expected-cs))
               override (get-override expected-cs m :tables)
-              ;; For now we only support (and test) :tables
+              ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
           (testing (str prefix " table analysis is correct for mode " m)
