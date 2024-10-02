@@ -4,7 +4,7 @@
  :overrides
  {:basic-select
   ;; do not allow wildcard selects
-  {:tables :macaw.error/illegal-expression}
+  {:error :macaw.error/illegal-expression}
 
   ;; Just plain old wacky
   :source-columns [{:table "`project_id.dataset_id.table_*`", :column "_TABLE_SUFFIX"}]

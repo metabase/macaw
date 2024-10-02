@@ -85,9 +85,12 @@
 
 (defn query->tables
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
-  [statement & {:keys [mode] :as opts}]
+  [sql & {:keys [mode] :as opts}]
   (case mode
-    :ast-walker-1 (raw-components (:tables (query->components statement opts)))
+    :ast-walker-1 (-> (parsed-query sql)
+                      (query->components opts)
+                      :tables
+                      raw-components)
     :basic-select :macaw.error/not-implemented))
 
 (defn replace-names

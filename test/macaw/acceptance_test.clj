@@ -38,22 +38,26 @@
   #{:ast-walker-1
     :basic-select})
 
-(def ^:private not-implemented?
-  #{:basic-select})
+(def global-overrides
+  {:basic-select :macaw.error/not-implemented})
 
 (defn- validate-analysis [correct override actual]
   (let [expected (or override correct)]
     (when override
-      (if (vector? correct)
-        (is (not= correct (ct/sorted actual)) "Override is still needed")
-        (is (not= correct actual) "Override is still needed")))
+      (testing "Override is still needed"
+        (if (and (vector? correct) (not (keyword actual)))
+          (is (not= correct (ct/sorted actual)))
+          (is (not= correct actual)))))
 
-    (if (vector? expected)
+    (if (and (vector? expected) (not (keyword actual)))
       (is (= expected (ct/sorted actual)))
       (is (= expected actual)))))
 
 (defn- get-override [expected-cs mode ck]
-  (or (get-in expected-cs [:overrides mode ck])
+  (or (get global-overrides mode)
+      (get-in expected-cs [:overrides mode :error])
+      (get-in expected-cs [:overrides :error])
+      (get-in expected-cs [:overrides mode ck])
       (get-in expected-cs [:overrides ck])))
 
 (defn- test-fixture
@@ -66,36 +70,27 @@
         expected-rw (fixture-rewritten fixture)
         base-opts   {:non-reserved-words [:final]}
         opts-mode   (fn [mode] (assoc base-opts :mode mode))]
-
     (assert sql "Fixture exists")
-
-    (if-let [expected-msg (broken-queries fixture)]
-      (testing (str prefix " analysis cannot be parsed")
-        (is (thrown-with-msg? Exception expected-msg (ct/components sql base-opts)))
-        (doseq [m test-modes]
-          (when-not (not-implemented? m)
-            (is (thrown-with-msg? Exception expected-msg (ct/tables sql (opts-mode m)))))))
-      (do
-        (let [m    :ast-walker-1
-              opts (opts-mode m)]
-          (when-let [cs (testing (str prefix " analysis does not throw")
-                          (is (ct/components sql opts)))]
+    (doseq [m test-modes
+            :let [opts (opts-mode m)]]
+      (if (= m :ast-walker-1)
+        (if-let [expected-msg (broken-queries fixture)]
+          (testing (str prefix " analysis cannot be parsed")
+            (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
+          (let [cs (testing (str prefix " analysis does not throw")
+                     (is (ct/components sql opts)))]
             (doseq [[ck cv] (dissoc expected-cs :overrides)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
                       override  (get-override expected-cs m ck)]
                   (validate-analysis cv override actual-cv))))))
-
-        (doseq [m test-modes]
-          (when-let [ts (testing (str prefix " table analysis does not throw for mode " m)
-                          (is (ct/tables sql (opts-mode m))))]
-            (if (not-implemented? m)
-              (testing (str m " is not implemented yet")
-                (is (= :macaw.error/not-implemented ts)))
-              (when-let [correct (get expected-cs :tables)]
-                (testing (str prefix " table analysis is correct for mode " m)
-                  (let [override (get-override expected-cs m :tables)]
-                    (validate-analysis correct override ts)))))))))
+        ;; non ast-walker-1 modes
+        (let [correct  (:error expected-cs (:tables expected-cs))
+              override (get-override expected-cs m :tables)
+              tables   (testing (str prefix " table analysis does not throw for mode " m)
+                         (is (ct/tables sql opts)))]
+          (testing (str prefix " table analysis is correct for mode " m)
+            (validate-analysis correct override tables)))))
 
     (when renames
       (let [broken?   (:broken? renames)
@@ -134,14 +129,14 @@
 (create-fixture-tests!)
 
 (comment
- ;; Unload all the tests, useful for flushing stale fixture tests
- (doseq [[sym ns-var] (ns-interns *ns*)]
-   (when (:test (meta ns-var))
-     (ns-unmap *ns* sym)))
+  ;; Unload all the tests, useful for flushing stale fixture tests
+  (doseq [[sym ns-var] (ns-interns *ns*)]
+    (when (:test (meta ns-var))
+      (ns-unmap *ns* sym)))
 
- (test-fixture :compound/cte)
- (test-fixture :compound/cte-nonambiguous)
- (test-fixture :literal/with-table)
- (test-fixture :literal/without-table)
+  (test-fixture :compound/cte)
+  (test-fixture :compound/cte-nonambiguous)
+  (test-fixture :literal/with-table)
+  (test-fixture :literal/without-table)
 
- (test-fixture :broken/filter-where))
+  (test-fixture :broken/filter-where))
