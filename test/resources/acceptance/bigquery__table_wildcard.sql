@@ -1,7 +1,0 @@
-SELECT
-  *
-FROM
-  `project_id.dataset_id.table_*`
-WHERE
-  _TABLE_SUFFIX BETWEEN '20230101' AND '20230131'
-LIMIT 1000;
