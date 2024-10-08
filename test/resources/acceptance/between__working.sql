@@ -1,3 +1,0 @@
-SELECT count(*)
-FROM t
-WHERE CAST(created_at AS date) BETWEEN DATE '2021-08-01' AND DATE '2021-09-30';

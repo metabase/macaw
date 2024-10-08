@@ -1,6 +1,7 @@
 (ns macaw.acceptance-test
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [macaw.core :as m]
@@ -26,7 +27,7 @@
   (some-> fixture (ct/fixture->filename "acceptance" ".renames.edn") io/resource slurp read-string))
 
 (defn- fixture-rewritten [fixture]
-  (some-> fixture (ct/fixture->filename "acceptance" ".rewritten.sql") io/resource slurp))
+  (some-> fixture (ct/fixture->filename "acceptance" ".rewritten.sql") io/resource slurp str/trim))
 
 (defn- get-component [cs k]
   (case k
@@ -40,6 +41,17 @@
 
 (def global-overrides
   {:basic-select :macaw.error/not-implemented})
+
+(def ^:private merged-fixtures-file "test/resources/acceptance/queries.sql")
+
+(defn- merged-fixtures []
+  "The fixtures in merged fixtures file, mapped by their identifiers."
+  (->> (str/split (slurp merged-fixtures-file) #"-- FIXTURE: ")
+       (keep (fn [named-query]
+               (when-not (str/blank? named-query)
+                 (let [[nm qry] (.split ^String named-query "\n" 2)]
+                   [(keyword nm) (str/trim qry)]))))
+       (into {})))
 
 (defn- validate-analysis [correct override actual]
   (let [expected (or override correct)]
@@ -71,7 +83,8 @@
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
   [fixture]
   (let [prefix      (str "(fixture: " (subs (str fixture) 1) ")")
-        sql         (ct/query-fixture fixture)
+        merged      (merged-fixtures)
+        sql         (or (ct/query-fixture fixture) (get merged fixture))
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)
@@ -104,15 +117,15 @@
     (when renames
       (let [broken?   (:broken? renames)
             rewritten (testing (str prefix " rewriting does not throw")
-                        (is (m/replace-names sql (dissoc renames :broken?) base-opts)))]
+                        (is (str/trim (m/replace-names sql (dissoc renames :broken?) base-opts))))]
         (when expected-rw
           (testing (str prefix " rewritten SQL is correct")
             (if broken?
               (is (not= expected-rw rewritten))
               (is (= expected-rw rewritten)))))))))
 
-(defn find-fixtures
-  "Find all the fixture symbols within our test resources."
+(defn isolated-fixtures
+  "Find all the fixture symbols for stand-alone sql files within our test resources."
   []
   (->> (io/resource "acceptance")
        io/file
@@ -122,13 +135,21 @@
                   (when (.endsWith n ".sql")
                     (str/replace n #"\.sql$" "")))))
        (remove #(.contains ^String % "."))
+       (remove #{"queries"})
        (map ct/stem->fixture)
        (sort-by str)))
+
+(defn- all-fixtures []
+  (let [isolated (isolated-fixtures)
+        merged   (keys (merged-fixtures))]
+    (assert (empty? (set/intersection (set isolated) (set merged)))
+            "No fixtures should be in both the isolated and merged files")
+    (sort-by str (distinct (concat isolated merged)))))
 
 (defmacro create-fixture-tests!
   "Find all the fixture files and for each of them run all the tests we can construct from the related files."
   []
-  (let [fixtures (find-fixtures)]
+  (let [fixtures (all-fixtures)]
     (cons 'do
           (for [f fixtures
                 :let [test-name (symbol (str/replace (ct/fixture->filename f "-test") #"(?<!_)_(?!_)" "-"))]]
@@ -142,6 +163,19 @@
   (doseq [[sym ns-var] (ns-interns *ns*)]
     (when (:test (meta ns-var))
       (ns-unmap *ns* sym)))
+
+  (merged-fixtures)
+  ;; Append all the isolated fixtures to the merged file.
+  ;; For now, we keep the stress-testing fixtures separate, because OH LAWDY they HUGE.
+  (spit merged-fixtures-file
+        (str/join "\n\n"
+                  (for [fixture (isolated-fixtures)]
+                    (str "-- FIXTURE: "
+                         (when-let [ns (namespace fixture)] (str ns "/"))
+                         (name fixture) "\n"
+                         (str/trim
+                          (ct/query-fixture fixture))))))
+
 
   (test-fixture :compound/cte)
   (test-fixture :compound/cte-nonambiguous)
