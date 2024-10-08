@@ -44,8 +44,9 @@
 
 (def ^:private merged-fixtures-file "test/resources/acceptance/queries.sql")
 
-(defn- merged-fixtures []
+(defn- merged-fixtures
   "The fixtures in merged fixtures file, mapped by their identifiers."
+  []
   (->> (str/split (slurp merged-fixtures-file) #"-- FIXTURE: ")
        (keep (fn [named-query]
                (when-not (str/blank? named-query)
@@ -171,7 +172,8 @@
         (str/join "\n\n"
                   (for [fixture (isolated-fixtures)]
                     (str "-- FIXTURE: "
-                         (when-let [ns (namespace fixture)] (str ns "/"))
+                         (when-let [nms (namespace fixture)]
+                           (str nms "/"))
                          (name fixture) "\n"
                          (str/trim
                           (ct/query-fixture fixture))))))
