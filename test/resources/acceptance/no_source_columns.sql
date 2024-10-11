@@ -1,2 +1,0 @@
-WITH cte AS (SELECT COUNT(*) AS a FROM foo)
-SELECT a AS b FROM bar
