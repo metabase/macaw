@@ -267,6 +267,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         this.callbacks = new EnumMap<>(rawCallbacks);
     }
 
+    public Acc getAcc() {
+        return this.acc;
+    }
+
     /**
      * Safely invoke the given callback by name.
      */
@@ -1252,6 +1256,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     public void visit(ArrayExpression array) {
         array.getObjExpression().accept(this);
         if (array.getStartIndexExpression() != null) {
+            // TODO: ^is this a bug? doesn't match body
             array.getIndexExpression().accept(this);
         }
         if (array.getStartIndexExpression() != null) {

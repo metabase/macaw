@@ -77,6 +77,7 @@
         expected-rw (fixture-rewritten fixture)
         base-opts   {:non-reserved-words [:final]}
         opts-mode   (fn [mode] (assoc base-opts :mode mode))]
+    (println "Testing actually: " fixture)
     (assert sql "Fixture exists")
     (doseq [m test-modes
             :let [opts (opts-mode m)]]
@@ -98,6 +99,9 @@
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
+          (println {:correct  correct
+                    :override override
+                    :actual   tables})
           (testing (str prefix " table analysis is correct for mode " m)
             (validate-analysis correct override tables)))))
 
@@ -132,8 +136,9 @@
     (cons 'do
           (for [f fixtures
                 :let [test-name (symbol (str/replace (ct/fixture->filename f "-test") #"(?<!_)_(?!_)" "-"))]]
-            `(deftest ~test-name
-               (test-fixture ~f))))))
+            (do (println "testing: " f)
+                `(deftest ~test-name
+                   (test-fixture ~f)))))))
 
 (create-fixture-tests!)
 

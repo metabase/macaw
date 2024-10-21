@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [macaw.util :as u]
+   [macaw.table-walk :as tw]
    [macaw.walk :as mw])
   (:import
    (com.metabase.macaw AstWalker$Scope)
@@ -20,6 +21,12 @@
    (fn item-conjer [results component context]
      (update results key-name conj {:component (xf component)
                                     :context   context}))))
+
+(defn- query->raw-tables
+  [^Statement parsed-ast]
+  (tw/fold-query parsed-ast
+                 {:table (conj-to :tables)}
+                 {:tables #{}}))
 
 (defn- query->raw-components
   [^Statement parsed-ast]
@@ -252,3 +259,9 @@
                               (comp strip-non-query-contexts
                                     (update-components (partial resolve-table-name opts)))
                               table-wildcards)}))
+
+(defn query->tables
+  "Temporary fn to get the tables out"
+  [^Statement parsed-ast & {:as _opts}]
+  (update-vals (query->raw-tables parsed-ast)
+               #(into #{} (map (fn [{:keys [^Table component context]} ] (.getName component)) %))))

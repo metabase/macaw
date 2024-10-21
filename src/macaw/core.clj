@@ -80,6 +80,17 @@
                           (unescape-keywords x (:non-reserved-words opts))
                           x)))))
 
+(defn query->raw-tables
+  "Given a parsed query (i.e., a [subclass of] `Statement`) return its tables"
+  [statement & {:as opts}]
+  {:tables :macaw.error/not-implemented #_#{"quux"}}
+  #_
+  (->> (collect/query->tables statement (merge {:preserve-identifiers? true} opts))
+       (walk/postwalk (fn [x]
+                        (if (string? x)
+                          (unescape-keywords x (:non-reserved-words opts))
+                          x)))))
+
 (defn- raw-components [xs]
   (into (empty xs) (keep :component) xs))
 
@@ -91,7 +102,9 @@
                       (query->components opts)
                       :tables
                       raw-components)
-    :basic-select :macaw.error/not-implemented))
+    :basic-select (-> (parsed-query sql)
+                      (query->raw-tables opts)
+                      :tables)))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
@@ -119,3 +132,11 @@
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
+
+(comment
+
+(query->tables "select * from foo" {:mode :basic-select})
+
+
+
+)
