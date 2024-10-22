@@ -167,6 +167,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
        SelectItemVisitor, StatementVisitor, GroupByVisitor {
 
     public enum CallbackKey {
+        EVERY_NODE,
         ALIAS,
         ALL_COLUMNS,
         ALL_TABLE_COLUMNS,
@@ -276,6 +277,10 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (callback != null) {
             //noinspection unchecked
             this.acc = (Acc) callback.invoke(acc, visitedItem, this.contextStack);
+        }
+
+        if (key != EVERY_NODE) {
+            invokeCallback(EVERY_NODE, visitedItem);
         }
     }
 

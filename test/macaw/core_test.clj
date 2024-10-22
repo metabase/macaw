@@ -10,7 +10,7 @@
    [mb.hawk.assert-exprs])
   (:import
    (clojure.lang ExceptionInfo)
-   (net.sf.jsqlparser.schema Table)))
+   (net.sf.jsqlparser.schema Column Table)))
 
 (set! *warn-on-reflection* true)
 
@@ -619,7 +619,7 @@ from foo")
              raw-components)))))
 
 (comment
-  (require 'user) ;; kondo, really
+  (require 'user)                                           ;; kondo, really
   (require '[clj-async-profiler.core :as prof])
   (prof/serve-ui 8080)
 
@@ -641,6 +641,7 @@ from foo")
 
   (anonymize-query "SELECT x FROM a")
   (anonymize-fixture :snowflakelet)
+
 
   (require 'virgil)
   (require 'clojure.tools.namespace.repl)
