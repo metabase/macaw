@@ -294,3 +294,26 @@ EXEC sp_executesql @SQL
 
 -- FIXTURE: string-concat
 SELECT x || y AS z FROM t
+
+-- FIXTURE: mutation/alter-table
+ALTER TABLE users
+ADD COLUMN email VARCHAR(255);
+
+-- FIXTURE: mutation/drop-table
+DROP TABLE IF EXISTS users;
+
+-- FIXTURE: mutation/truncate-table
+TRUNCATE TABLE users;
+
+-- FIXTURE: mutation/insert
+INSERT INTO users (name, email)
+VALUES ('Alice', 'alice@example.com');
+
+-- FIXTURE: mutation/update
+UPDATE users
+SET email = 'newemail@example.com'
+WHERE name = 'Alice';
+
+-- FIXTURE: mutation/delete
+DELETE FROM users
+WHERE name = 'Alice';
