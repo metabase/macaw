@@ -40,7 +40,12 @@
     :basic-select})
 
 (def global-overrides
-  {:basic-select :macaw.error/not-implemented})
+  {})
+
+(def ns-overrides
+  {:basic-select {"compound" :macaw.error/unsupported-expression
+                  "mutation" :macaw.error/invalid-query
+                  "dynamic"  :macaw.error/invalid-query}})
 
 (def ^:private merged-fixtures-file "test/resources/acceptance/queries.sql")
 
@@ -71,8 +76,9 @@
   (when (keyword? x)
     x))
 
-(defn- get-override [expected-cs mode ck]
+(defn- get-override [expected-cs mode fixture ck]
   (or (get global-overrides mode)
+      (get-in ns-overrides [mode (namespace fixture)])
       (get-in expected-cs [:overrides mode :error])
       (get-in expected-cs [:overrides :error])
       (get-in expected-cs [:overrides mode ck])
@@ -104,16 +110,17 @@
             (doseq [[ck cv] (dissoc expected-cs :overrides :error)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
-                      override  (get-override expected-cs m ck)]
+                      override  (get-override expected-cs m fixture ck)]
                   (validate-analysis cv override actual-cv))))))
         ;; Testing path for newer modes.
         (let [correct  (:error expected-cs (:tables expected-cs))
-              override (get-override expected-cs m :tables)
+              override (get-override expected-cs m fixture :tables)
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
-          (testing (str prefix " table analysis is correct for mode " m)
-            (validate-analysis correct override tables)))))
+          (when-not (and (nil? correct) (nil? override))
+            (testing (str prefix " table analysis is correct for mode " m)
+              (validate-analysis correct override tables))))))
 
     (when renames
       (let [broken?   (:broken? renames)
@@ -178,6 +185,7 @@
                          (str/trim
                           (ct/query-fixture fixture))))))
 
+  (test-fixture :dynamic/generate-series)
 
   (test-fixture :compound/cte)
   (test-fixture :compound/cte-nonambiguous)

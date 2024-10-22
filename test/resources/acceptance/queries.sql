@@ -160,7 +160,7 @@ FROM employees
 WHERE salary > 60000
 GROUP BY department;
 
--- FIXTURE: cycle/cte
+-- FIXTURE: compound/cycle-cte
 -- we eventually want to check that the fields are cycled twice in the attribution of the final outputs.
 WITH b AS (
     SELECT
@@ -182,7 +182,7 @@ SELECT
     z
 FROM c;
 
--- FIXTURE: duplicate-scopes
+-- FIXTURE: compound/duplicate-scopes
 -- This is a minimal example to illustrate why we need to put an id on each scope.
 -- As we add more complex compound query tests this will become redundant, and we can then delete it
 -- we eventually want to check that the fields are cycled twice in the attribution of the final outputs.
@@ -193,7 +193,7 @@ SELECT
     c.x
 FROM b, c;
 
--- FIXTURE: generate-series
+-- FIXTURE: dynamic/generate-series
 SELECT t.day::date AS date
 FROM generate_series(timestamp '2021-01-01', now(), interval '1 day') AS t(day)
 
@@ -225,7 +225,7 @@ with final as (
 
  select * from final
 
--- FIXTURE: shadow/subselect
+-- FIXTURE: compound/shadow-subselect
 SELECT
     e.id,
     e.name,
@@ -240,7 +240,7 @@ FROM (
     GROUP BY first_name, last_name, department_id
 ) e JOIN departments d ON d.id = e.department_id;
 
--- FIXTURE: simple/select-into
+-- FIXTURE: mutation/select-into
 SELECT id, name
 INTO new_user_summary
 FROM user;
@@ -294,3 +294,26 @@ EXEC sp_executesql @SQL
 
 -- FIXTURE: string-concat
 SELECT x || y AS z FROM t
+
+-- FIXTURE: mutation/alter-table
+ALTER TABLE users
+ADD COLUMN email VARCHAR(255);
+
+-- FIXTURE: mutation/drop-table
+DROP TABLE IF EXISTS users;
+
+-- FIXTURE: mutation/truncate-table
+TRUNCATE TABLE users;
+
+-- FIXTURE: mutation/insert
+INSERT INTO users (name, email)
+VALUES ('Alice', 'alice@example.com');
+
+-- FIXTURE: mutation/update
+UPDATE users
+SET email = 'newemail@example.com'
+WHERE name = 'Alice';
+
+-- FIXTURE: mutation/delete
+DELETE FROM users
+WHERE name = 'Alice';
