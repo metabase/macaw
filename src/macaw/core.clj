@@ -98,7 +98,7 @@
                              str/lower-case
                              (str/replace #"_" "-"))))
 
-(defmacro kw-or-tables [expr]
+(defmacro ^:private kw-or-tables [expr]
   `(try (map table->identifier ~expr)
         (catch BasicTableExtractor$AnalysisError e#
           (->macaw-error e#))
