@@ -1,4 +1,4 @@
-(ns ^:parallel macaw.acceptance-test
+(ns macaw.acceptance-test
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -178,7 +178,7 @@
     (cons 'do
           (for [f fixtures
                 :let [test-name (symbol (str/replace (ct/fixture->filename f "-test") #"(?<!_)_(?!_)" "-"))]]
-            `(deftest ~test-name
+            `(deftest ^:parallel ~test-name
                (test-fixture ~f))))))
 
 (create-fixture-tests!)
@@ -202,7 +202,7 @@
                          (str/trim
                           (ct/query-fixture fixture))))))
 
-  (deftest single-test
+  (deftest ^:parallel single-test
     (test-fixture :compound/nested-cte-sneaky))
 
   (test-fixture :compound/cte)
