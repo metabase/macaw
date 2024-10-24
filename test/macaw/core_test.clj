@@ -24,7 +24,7 @@
 
 (defn tables [sql & {:as opts}]
   (let [opts (update opts :mode #(or % :ast-walker-1))]
-    (m/query->tables sql opts)))
+    (:tables (m/query->tables sql opts))))
 
 (def raw-components #(let [xs (empty %)] (into xs (keep :component) %)))
 (def columns        (comp raw-components :columns components))

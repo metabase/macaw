@@ -103,6 +103,10 @@
    (get-in expected-cs [:overrides ck])
    (when-keyword (get expected-cs :overrides))))
 
+(defn- tables-or-error [result]
+  (or (:error result)
+      (:tables result)))
+
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
   [fixture]
@@ -134,7 +138,7 @@
               override (get-override expected-cs m fixture :tables)
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
-                         (is (ct/tables sql opts)))]
+                         (is (tables-or-error (ct/tables sql opts))))]
           (when-not (and (nil? correct) (nil? override))
             (testing (str prefix " table analysis is correct for mode " m)
               (validate-analysis correct override tables))))))
