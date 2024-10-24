@@ -23,8 +23,10 @@
   (m/query->components (m/parsed-query sql opts) opts))
 
 (defn tables [sql & {:as opts}]
-  (let [opts (update opts :mode #(or % :ast-walker-1))]
-    (m/query->tables sql opts)))
+  (let [opts   (update opts :mode #(or % :ast-walker-1))
+        result (m/query->tables sql opts)]
+    (or (:error result)
+        (:tables result))))
 
 (def raw-components #(let [xs (empty %)] (into xs (keep :component) %)))
 (def columns        (comp raw-components :columns components))
