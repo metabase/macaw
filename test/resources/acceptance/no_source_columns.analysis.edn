@@ -1,5 +1,4 @@
-{:tables #{{:table "foo"}
-           {:table "bar"}}
+{:tables         #{{:table "foo"}}
  :source-columns #{}
  :overrides
  {:basic-select {:error :macaw.error/unsupported-expression}}}

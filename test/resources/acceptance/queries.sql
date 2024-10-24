@@ -182,6 +182,49 @@ SELECT
     z
 FROM c;
 
+-- FIXTURE: compound/nested-cte
+WITH c AS (
+    WITH b AS (
+        SELECT
+           x as y,
+           y as z,
+           z as x
+        FROM a
+    )
+    SELECT
+       x as y,
+       y as z,
+       z as x
+    FROM b
+)
+SELECT
+    x,
+    y,
+    z
+FROM c;
+
+-- FIXTURE: compound/nested-cte-sneaky
+WITH c AS (
+    WITH b AS (
+        SELECT
+           x as y,
+           y as z,
+           z as x
+        FROM a
+    )
+    SELECT
+       x as y,
+       y as z,
+       z as x
+    FROM b
+)
+SELECT
+    x,
+    y,
+    z
+-- NOTE that this is NOT c, we're checking that it knows that the b-alias is out of scope, and this is a real table.
+FROM b;
+
 -- FIXTURE: compound/duplicate-scopes
 -- This is a minimal example to illustrate why we need to put an id on each scope.
 -- As we add more complex compound query tests this will become redundant, and we can then delete it
@@ -205,7 +248,7 @@ SELECT FALSE, 'str', 1
 
 -- FIXTURE: no-source-columns
 WITH cte AS (SELECT COUNT(*) AS a FROM foo)
-SELECT a AS b FROM bar
+SELECT a AS b FROM cte
 
 -- FIXTURE: oracle/open-for
 OPEN ccur FOR
