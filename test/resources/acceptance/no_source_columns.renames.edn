@@ -1,2 +1,2 @@
 {:tables {{:table "foo"} "oof"
-          {:table "bar"} "rab"}}
+          {:table "cte"} "etc"}}

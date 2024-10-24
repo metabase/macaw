@@ -5,7 +5,7 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite])
   (:import
-   (com.metabase.macaw AstWalker$Scope BasicTableExtractor BasicTableExtractor$AnalysisError)
+   (com.metabase.macaw AstWalker$Scope BasicTableExtractor AnalysisError CompoundTableExtractor)
    (java.util.function Consumer)
    (net.sf.jsqlparser JSQLParserException)
    (net.sf.jsqlparser.parser CCJSqlParser CCJSqlParserUtil)
@@ -93,14 +93,14 @@
      :table  (.getName t)}
     {:table (.getName t)}))
 
-(defn- ->macaw-error [^BasicTableExtractor$AnalysisError analysis-error]
+(defn- ->macaw-error [^AnalysisError analysis-error]
   (keyword "macaw.error" (-> (.-errorType analysis-error)
                              str/lower-case
                              (str/replace #"_" "-"))))
 
 (defmacro ^:private kw-or-tables [expr]
-  `(try (map table->identifier ~expr)
-        (catch BasicTableExtractor$AnalysisError e#
+  `(try (set (map table->identifier ~expr))
+        (catch AnalysisError e#
           (->macaw-error e#))
         (catch JSQLParserException _e#
           :macaw.error/unable-to-parse)))
@@ -108,14 +108,13 @@
 (defn query->tables
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
   [sql & {:keys [mode] :as opts}]
-  (case mode
-    :ast-walker-1 (-> (parsed-query sql opts)
-                      (query->components opts)
-                      :tables
-                      raw-components)
-    :basic-select (->> (parsed-query sql opts)
-                       (BasicTableExtractor/getTables)
-                       kw-or-tables)))
+  ;; We delay parsing so that kw-or-tables is able to catch exceptions.
+  ;; This will no longer be necessary when we update :ast-walker-1 to catch exceptions too.
+  (let [query (delay (parsed-query sql opts))]
+    (case mode
+      :ast-walker-1 (-> (query->components @query opts) :tables raw-components)
+      :basic-select (-> (BasicTableExtractor/getTables @query) kw-or-tables)
+      :compound-select (-> (CompoundTableExtractor/getTables @query) kw-or-tables))))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
