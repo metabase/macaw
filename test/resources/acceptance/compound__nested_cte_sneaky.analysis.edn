@@ -1,0 +1,12 @@
+{:tables         [{:table "b"}]
+ :source-columns #{{:table "b" :column "x"}
+                   {:table "b" :column "y"}
+                   {:table "b" :column "z"}}
+
+ ;; See https://github.com/metabase/metabase/issues/42586
+ :overrides
+ ;; TODO currently all the sources get cancelled out with the derived columns due to analysis having flat scope.
+ {:ast-walker-1    {:source-columns #{}
+                    :tables         [{:table "a"}]}
+  :compound-select {:tables [{:table "a"}                   ;; not smark enough to shake the tree (this is unused)
+                             {:table "b"}]}}}

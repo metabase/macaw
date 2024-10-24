@@ -203,7 +203,7 @@
                           (ct/query-fixture fixture))))))
 
   (deftest single-test
-    (test-fixture :compound/subselect))
+    (test-fixture :compound/nested-cte-sneaky))
 
   (test-fixture :compound/cte)
   (test-fixture :compound/cte-nonambiguous)
