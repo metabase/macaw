@@ -1,4 +1,4 @@
-(ns macaw.acceptance-test
+(ns ^:parallel macaw.acceptance-test
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
