@@ -15,7 +15,7 @@
   "The DANGER ZONE
   This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
   {:broken/between       #"Encountered unexpected token: \"BETWEEN\""
-   :broken/filter-where   #"Encountered unexpected token: \"\(\""
+   :broken/filter-where  #"Encountered unexpected token: \"\(\""
    :sqlserver/execute    #"Not supported yet"
    :sqlserver/executesql #"Not supported yet"
    :oracle/open-for      #"Encountered unexpected token: \"OPEN\""})
@@ -203,7 +203,7 @@
                           (ct/query-fixture fixture))))))
 
   (deftest single-test
-      (test-fixture :compound/subselect))
+    (test-fixture :compound/subselect))
 
   (test-fixture :compound/cte)
   (test-fixture :compound/cte-nonambiguous)
