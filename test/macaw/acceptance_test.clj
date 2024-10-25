@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [macaw.core :as m]
-   [macaw.core-test :as ct])
+   [macaw.core-test :as ct]
+   [macaw.types])
   (:import
    (java.io File)))
 
@@ -27,9 +28,7 @@
     (ct/raw-components (get cs k))))
 
 (def ^:private test-modes
-  #{:ast-walker-1
-    :basic-select
-    :compound-select})
+  (set (macaw.types/modes)))
 
 (def override-hierarchy
   (-> (make-hierarchy)
