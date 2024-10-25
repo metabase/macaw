@@ -77,10 +77,11 @@ from foo")
 (deftest three-or-more-line-breaks-test
   (doseq [f [identity ->windows]
           :let [query (f implicit-semicolon)]]
-    (is (= (-> query (str/replace "id" "pk") (str/replace "foo" "bar"))
-           (m/replace-names query
-                            {:columns {{:table "foo" :column "id"} "pk"}
-                             :tables  {{:table "foo"} "bar"}})))))
+    (testing (if (= ->windows f) "windows" "unix")
+      (is (= (-> query (str/replace "id" "pk") (str/replace "foo" "bar"))
+             (m/replace-names query
+                              {:columns {{:table "foo" :column "id"} "pk"}
+                               :tables  {{:table "foo"} "bar"}}))))))
 
 (deftest query->tables-test
   (testing "Simple queries"

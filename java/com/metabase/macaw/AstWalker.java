@@ -12,69 +12,14 @@ import java.util.Map;
 import clojure.lang.ISeq;
 import clojure.lang.PersistentList;
 import net.sf.jsqlparser.expression.*;
-import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
-import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseAnd;
-import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseLeftShift;
-import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseOr;
-import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseRightShift;
-import net.sf.jsqlparser.expression.operators.arithmetic.BitwiseXor;
-import net.sf.jsqlparser.expression.operators.arithmetic.Concat;
-import net.sf.jsqlparser.expression.operators.arithmetic.Division;
-import net.sf.jsqlparser.expression.operators.arithmetic.IntegerDivision;
-import net.sf.jsqlparser.expression.operators.arithmetic.Modulo;
-import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
-import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
+import net.sf.jsqlparser.expression.operators.arithmetic.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.conditional.XorExpression;
-import net.sf.jsqlparser.expression.operators.relational.Between;
-import net.sf.jsqlparser.expression.operators.relational.ContainedBy;
-import net.sf.jsqlparser.expression.operators.relational.Contains;
-import net.sf.jsqlparser.expression.operators.relational.DoubleAnd;
-import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
-import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
-import net.sf.jsqlparser.expression.operators.relational.FullTextSearch;
-import net.sf.jsqlparser.expression.operators.relational.GeometryDistance;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.InExpression;
-import net.sf.jsqlparser.expression.operators.relational.IsBooleanExpression;
-import net.sf.jsqlparser.expression.operators.relational.IsDistinctExpression;
-import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
-import net.sf.jsqlparser.expression.operators.relational.JsonOperator;
-import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
-import net.sf.jsqlparser.expression.operators.relational.Matches;
-import net.sf.jsqlparser.expression.operators.relational.MemberOfExpression;
-import net.sf.jsqlparser.expression.operators.relational.MinorThan;
-import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.RegExpMatchOperator;
-import net.sf.jsqlparser.expression.operators.relational.SimilarToExpression;
-import net.sf.jsqlparser.expression.operators.relational.TSQLLeftJoin;
-import net.sf.jsqlparser.expression.operators.relational.TSQLRightJoin;
+import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.Block;
-import net.sf.jsqlparser.statement.Commit;
-import net.sf.jsqlparser.statement.CreateFunctionalStatement;
-import net.sf.jsqlparser.statement.DeclareStatement;
-import net.sf.jsqlparser.statement.DescribeStatement;
-import net.sf.jsqlparser.statement.ExplainStatement;
-import net.sf.jsqlparser.statement.IfElseStatement;
-import net.sf.jsqlparser.statement.PurgeObjectType;
-import net.sf.jsqlparser.statement.PurgeStatement;
-import net.sf.jsqlparser.statement.ResetStatement;
-import net.sf.jsqlparser.statement.RollbackStatement;
-import net.sf.jsqlparser.statement.SavepointStatement;
-import net.sf.jsqlparser.statement.SetStatement;
-import net.sf.jsqlparser.statement.ShowColumnsStatement;
-import net.sf.jsqlparser.statement.ShowStatement;
-import net.sf.jsqlparser.statement.StatementVisitor;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.Statements;
-import net.sf.jsqlparser.statement.UnsupportedStatement;
-import net.sf.jsqlparser.statement.UseStatement;
+import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.Alter;
 import net.sf.jsqlparser.statement.alter.AlterSession;
 import net.sf.jsqlparser.statement.alter.AlterSystemStatement;
@@ -96,26 +41,7 @@ import net.sf.jsqlparser.statement.grant.Grant;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.merge.Merge;
 import net.sf.jsqlparser.statement.refresh.RefreshMaterializedViewStatement;
-import net.sf.jsqlparser.statement.select.AllColumns;
-import net.sf.jsqlparser.statement.select.AllTableColumns;
-import net.sf.jsqlparser.statement.select.GroupByElement;
-import net.sf.jsqlparser.statement.select.GroupByVisitor;
-import net.sf.jsqlparser.statement.select.FromItemVisitor;
-import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.LateralSubSelect;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.ParenthesedFromItem;
-import net.sf.jsqlparser.statement.select.ParenthesedSelect;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SelectItemVisitor;
-import net.sf.jsqlparser.statement.select.SelectVisitor;
-import net.sf.jsqlparser.statement.select.SetOperationList;
-import net.sf.jsqlparser.statement.select.TableFunction;
-import net.sf.jsqlparser.statement.select.TableStatement;
-import net.sf.jsqlparser.statement.select.Values;
-import net.sf.jsqlparser.statement.select.WithItem;
+import net.sf.jsqlparser.statement.select.*;
 import net.sf.jsqlparser.statement.show.ShowIndexStatement;
 import net.sf.jsqlparser.statement.show.ShowTablesStatement;
 import net.sf.jsqlparser.statement.truncate.Truncate;
@@ -123,7 +49,6 @@ import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.upsert.Upsert;
 
 import static com.metabase.macaw.AstWalker.CallbackKey.*;
-
 import static com.metabase.macaw.AstWalker.QueryScopeLabel.*;
 
 /**
@@ -161,8 +86,8 @@ import static com.metabase.macaw.AstWalker.QueryScopeLabel.*;
  * the conventional visitor pattern, providing instead the `callbacks` map. This lets Clojure code use a normal Clojure
  * map and functions to implement the necessary behavior; no `reify` necessary.
  */
-public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, ExpressionVisitor,
-       SelectItemVisitor, StatementVisitor, GroupByVisitor {
+public class AstWalker<Acc, T> implements SelectVisitor<T>, FromItemVisitor<T>, ExpressionVisitor<T>,
+       SelectItemVisitor<T>, StatementVisitor<T>, GroupByVisitor<T> {
 
     public enum CallbackKey {
         ALIAS,
@@ -305,24 +230,38 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     @Override
-    public void visit(Select select) {
+    public <S> T visit(Select select, S context) {
         // No pushContext(SELECT) since it's handled by the ParenthesedSelect and PlainSelect methods
         List<WithItem> withItemsList = select.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor) this, context);
             }
         }
-        select.accept((SelectVisitor) this);
+        select.accept((SelectVisitor) this, context);
+        return null;
+    }
+
+    @Override
+    public void visit(Select select) {
+        // We need to override all these default methods, as they are inherited from multiple interfaces.
+        // Since their implementation is consistent, it doesn't matter which version we pick.
+        ExpressionVisitor.super.visit(select);
+    }
+
+    @Override
+    public <S> T visit(TranscodingFunction transcodingFunction, S context) {
+        transcodingFunction.getExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(TranscodingFunction transcodingFunction) {
-        transcodingFunction.getExpression().accept(this);
+        ExpressionVisitor.super.visit(transcodingFunction);
     }
 
     @Override
-    public void visit(TrimFunction trimFunction) {
+    public <S> T visit(TrimFunction trimFunction, S context) {
         if (trimFunction.getExpression() != null) {
             trimFunction.getExpression().accept(this);
         }
@@ -331,23 +270,41 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             trimFunction.getFromExpression().accept(this);
             popContext(); // FROM
         }
+        return null;
+    }
+
+    @Override
+    public void visit(TrimFunction trimFunction) {
+        ExpressionVisitor.super.visit(trimFunction);
+    }
+
+    @Override
+    public <S> T visit(RangeExpression rangeExpression, S context) {
+        rangeExpression.getStartExpression().accept(this);
+        rangeExpression.getEndExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(RangeExpression rangeExpression) {
-        rangeExpression.getStartExpression().accept(this);
-        rangeExpression.getEndExpression().accept(this);
+        ExpressionVisitor.super.visit(rangeExpression);
+    }
+
+    @Override
+    public <S> T visit(WithItem withItem, S context) {
+        pushContext(WITH_ITEM);
+        invokeCallback(PSEUDO_TABLES, withItem.getAlias());
+        withItem.getSelect().accept((SelectVisitor) this, context);
+        return null;
     }
 
     @Override
     public void visit(WithItem withItem) {
-        pushContext(WITH_ITEM);
-        invokeCallback(PSEUDO_TABLES, withItem.getAlias());
-        withItem.getSelect().accept((SelectVisitor) this);
+        SelectVisitor.super.visit(withItem);
     }
 
     @Override
-    public void visit(ParenthesedSelect selectBody) {
+    public <S> T visit(ParenthesedSelect selectBody, S context) {
         pushContext(SUB_SELECT);
         Alias alias = selectBody.getAlias();
         if (alias != null) {
@@ -359,22 +316,28 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
                 this.visit(withItem);
             }
         }
-        selectBody.getSelect().accept((SelectVisitor) this);
+        selectBody.getSelect().accept((SelectVisitor<T>) this, context);
         popContext(); // SUB_SELECT
+        return null;
     }
 
     @Override
-    public void visit(PlainSelect plainSelect) {
+    public void visit(ParenthesedSelect parenthesedSelect) {
+        SelectVisitor.super.visit(parenthesedSelect);
+    }
+
+    @Override
+    public <S> T visit(PlainSelect plainSelect, S context) {
         pushContext(SELECT);
         List<WithItem> withItemsList = plainSelect.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor<T>) this, context);
             }
         }
         if (plainSelect.getSelectItems() != null) {
             for (SelectItem<?> item : plainSelect.getSelectItems()) {
-                item.accept(this);
+                item.accept(this, context);
             }
         }
 
@@ -403,14 +366,26 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
         if (plainSelect.getGroupBy() != null) {
             // contextStack handled in visit()
-            plainSelect.getGroupBy().accept(this);
+            plainSelect.getGroupBy().accept(this, context);
         }
         popContext(); // SELECT
+        return null;
     }
 
     @Override
-    public void visit(Table table) {
+    public void visit(PlainSelect plainSelect) {
+        SelectVisitor.super.visit(plainSelect);
+    }
+
+    @Override
+    public <S> T visit(Table table, S context) {
         invokeCallback(TABLE, table);
+        return null;
+    }
+
+    @Override
+    public void visit(Table tableName) {
+        FromItemVisitor.super.visit(tableName);
     }
 
     // Could be an alias, could be a real table
@@ -419,30 +394,54 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     @Override
+    public <S> T visit(Addition addition, S context) {
+        visitBinaryExpression(addition, context);
+        return null;
+    }
+
+    @Override
     public void visit(Addition addition) {
-        visitBinaryExpression(addition);
+        ExpressionVisitor.super.visit(addition);
+    }
+
+    @Override
+    public <S> T visit(AndExpression andExpression, S context) {
+        visitBinaryExpression(andExpression, context);
+        return null;
     }
 
     @Override
     public void visit(AndExpression andExpression) {
-        visitBinaryExpression(andExpression);
+        ExpressionVisitor.super.visit(andExpression);
+    }
+
+    @Override
+    public <S> T visit(Between between, S context) {
+        between.getLeftExpression().accept(this);
+        between.getBetweenExpressionStart().accept(this);
+        between.getBetweenExpressionEnd().accept(this);
+        return null;
     }
 
     @Override
     public void visit(Between between) {
-        between.getLeftExpression().accept(this);
-        between.getBetweenExpressionStart().accept(this);
-        between.getBetweenExpressionEnd().accept(this);
+        ExpressionVisitor.super.visit(between);
+    }
+
+    @Override
+    public <S> T visit(OverlapsCondition overlapsCondition, S context) {
+        overlapsCondition.getLeft().accept(this);
+        overlapsCondition.getRight().accept(this);
+        return null;
     }
 
     @Override
     public void visit(OverlapsCondition overlapsCondition) {
-        overlapsCondition.getLeft().accept(this);
-        overlapsCondition.getRight().accept(this);
+        ExpressionVisitor.super.visit(overlapsCondition);
     }
 
     @Override
-    public void visit(Column tableColumn) {
+    public <S> T visit(Column tableColumn, S context) {
         invokeCallback(COLUMN, tableColumn);
 
         Table table = tableColumn.getTable();
@@ -452,206 +451,442 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             // However, for query rewriting it is necessary.
             visitColumnQualifier(table);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(Column column) {
+        ExpressionVisitor.super.visit(column);
+    }
+
+    @Override
+    public <S> T visit(Division division, S context) {
+        visitBinaryExpression(division, context);
+        return null;
     }
 
     @Override
     public void visit(Division division) {
-        visitBinaryExpression(division);
+        ExpressionVisitor.super.visit(division);
     }
 
     @Override
-    public void visit(IntegerDivision division) {
-        visitBinaryExpression(division);
+    public <S> T visit(IntegerDivision division, S context) {
+        visitBinaryExpression(division, context);
+        return null;
+    }
+
+    @Override
+    public void visit(IntegerDivision integerDivision) {
+        ExpressionVisitor.super.visit(integerDivision);
+    }
+
+    @Override
+    public <S> T visit(DoubleValue doubleValue, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(DoubleValue doubleValue) {
+        ExpressionVisitor.super.visit(doubleValue);
+    }
 
+    @Override
+    public <S> T visit(EqualsTo equalsTo, S context) {
+        visitBinaryExpression(equalsTo, context);
+        return null;
     }
 
     @Override
     public void visit(EqualsTo equalsTo) {
-        visitBinaryExpression(equalsTo);
+        ExpressionVisitor.super.visit(equalsTo);
     }
 
     @Override
-    public void visit(Function function) {
+    public <S> T visit(Function function, S context) {
         ExpressionList<?> exprList = function.getParameters();
         if (exprList != null) {
             visit(exprList);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(Function function) {
+        ExpressionVisitor.super.visit(function);
+    }
+
+    @Override
+    public <S> T visit(GreaterThan greaterThan, S context) {
+        visitBinaryExpression(greaterThan, context);
+        return null;
     }
 
     @Override
     public void visit(GreaterThan greaterThan) {
-        visitBinaryExpression(greaterThan);
+        ExpressionVisitor.super.visit(greaterThan);
+    }
+
+    @Override
+    public <S> T visit(GreaterThanEquals greaterThanEquals, S context) {
+        visitBinaryExpression(greaterThanEquals, context);
+        return null;
     }
 
     @Override
     public void visit(GreaterThanEquals greaterThanEquals) {
-        visitBinaryExpression(greaterThanEquals);
+        ExpressionVisitor.super.visit(greaterThanEquals);
+    }
+
+    @Override
+    public <S> T visit(InExpression inExpression, S context) {
+        inExpression.getLeftExpression().accept(this);
+        inExpression.getRightExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(InExpression inExpression) {
-        inExpression.getLeftExpression().accept(this);
-        inExpression.getRightExpression().accept(this);
+        ExpressionVisitor.super.visit(inExpression);
+    }
+
+    @Override
+    public <S> T visit(IncludesExpression includesExpression, S s) {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public void visit(IncludesExpression includesExpression) {
+        ExpressionVisitor.super.visit(includesExpression);
+    }
+
+    @Override
+    public <S> T visit(ExcludesExpression excludesExpression, S s) {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public void visit(ExcludesExpression excludesExpression) {
+        ExpressionVisitor.super.visit(excludesExpression);
+    }
+
+    @Override
+    public <S> T visit(FullTextSearch fullTextSearch, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(FullTextSearch fullTextSearch) {
+        ExpressionVisitor.super.visit(fullTextSearch);
+    }
 
+    @Override
+    public <S> T visit(SignedExpression signedExpression, S context) {
+        signedExpression.getExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(SignedExpression signedExpression) {
-        signedExpression.getExpression().accept(this);
+        ExpressionVisitor.super.visit(signedExpression);
+    }
+
+    @Override
+    public <S> T visit(IsNullExpression isNullExpression, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(IsNullExpression isNullExpression) {
+        ExpressionVisitor.super.visit(isNullExpression);
+    }
 
+    @Override
+    public <S> T visit(IsBooleanExpression isBooleanExpression, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(IsBooleanExpression isBooleanExpression) {
+        ExpressionVisitor.super.visit(isBooleanExpression);
+    }
 
+    @Override
+    public <S> T visit(JdbcParameter jdbcParameter, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(JdbcParameter jdbcParameter) {
+        ExpressionVisitor.super.visit(jdbcParameter);
+    }
 
+    @Override
+    public <S> T visit(LikeExpression likeExpression, S context) {
+        visitBinaryExpression(likeExpression, context);
+        return null;
     }
 
     @Override
     public void visit(LikeExpression likeExpression) {
-        visitBinaryExpression(likeExpression);
+        ExpressionVisitor.super.visit(likeExpression);
+    }
+
+    @Override
+    public <S> T visit(ExistsExpression existsExpression, S context) {
+        existsExpression.getRightExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(ExistsExpression existsExpression) {
-        existsExpression.getRightExpression().accept(this);
+        ExpressionVisitor.super.visit(existsExpression);
+    }
+
+    @Override
+    public <S> T visit(MemberOfExpression memberOfExpression, S context) {
+        memberOfExpression.getLeftExpression().accept(this);
+        memberOfExpression.getRightExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(MemberOfExpression memberOfExpression) {
-        memberOfExpression.getLeftExpression().accept(this);
-        memberOfExpression.getRightExpression().accept(this);
+        ExpressionVisitor.super.visit(memberOfExpression);
+    }
+
+    @Override
+    public <S> T visit(LongValue longValue, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(LongValue longValue) {
+        ExpressionVisitor.super.visit(longValue);
+    }
 
+    @Override
+    public <S> T visit(MinorThan minorThan, S context) {
+        visitBinaryExpression(minorThan, context);
+        return null;
     }
 
     @Override
     public void visit(MinorThan minorThan) {
-        visitBinaryExpression(minorThan);
+        ExpressionVisitor.super.visit(minorThan);
+    }
+
+    @Override
+    public <S> T visit(MinorThanEquals minorThanEquals, S context) {
+        visitBinaryExpression(minorThanEquals, context);
+        return null;
     }
 
     @Override
     public void visit(MinorThanEquals minorThanEquals) {
-        visitBinaryExpression(minorThanEquals);
+        ExpressionVisitor.super.visit(minorThanEquals);
+    }
+
+    @Override
+    public <S> T visit(Multiplication multiplication, S context) {
+        visitBinaryExpression(multiplication, context);
+        return null;
     }
 
     @Override
     public void visit(Multiplication multiplication) {
-        visitBinaryExpression(multiplication);
+        ExpressionVisitor.super.visit(multiplication);
+    }
+
+    @Override
+    public <S> T visit(NotEqualsTo notEqualsTo, S context) {
+        visitBinaryExpression(notEqualsTo, context);
+        return null;
     }
 
     @Override
     public void visit(NotEqualsTo notEqualsTo) {
-        visitBinaryExpression(notEqualsTo);
+        ExpressionVisitor.super.visit(notEqualsTo);
+    }
+
+    @Override
+    public <S> T visit(DoubleAnd doubleAnd, S context) {
+        visitBinaryExpression(doubleAnd, context);
+        return null;
     }
 
     @Override
     public void visit(DoubleAnd doubleAnd) {
-        visitBinaryExpression(doubleAnd);
+        ExpressionVisitor.super.visit(doubleAnd);
+    }
+
+    @Override
+    public <S> T visit(Contains contains, S context) {
+        visitBinaryExpression(contains, context);
+        return null;
     }
 
     @Override
     public void visit(Contains contains) {
-        visitBinaryExpression(contains);
+        ExpressionVisitor.super.visit(contains);
+    }
+
+    @Override
+    public <S> T visit(ContainedBy containedBy, S context) {
+        visitBinaryExpression(containedBy, context);
+        return null;
     }
 
     @Override
     public void visit(ContainedBy containedBy) {
-        visitBinaryExpression(containedBy);
+        ExpressionVisitor.super.visit(containedBy);
+    }
+
+    @Override
+    public <S> T visit(NullValue nullValue, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(NullValue nullValue) {
+        ExpressionVisitor.super.visit(nullValue);
+    }
 
+    @Override
+    public <S> T visit(OrExpression orExpression, S context) {
+        visitBinaryExpression(orExpression, context);
+        return null;
     }
 
     @Override
     public void visit(OrExpression orExpression) {
-        visitBinaryExpression(orExpression);
+        ExpressionVisitor.super.visit(orExpression);
+    }
+
+    @Override
+    public <S> T visit(XorExpression xorExpression, S context) {
+        visitBinaryExpression(xorExpression, context);
+        return null;
     }
 
     @Override
     public void visit(XorExpression xorExpression) {
-        visitBinaryExpression(xorExpression);
+        ExpressionVisitor.super.visit(xorExpression);
     }
 
     @Override
-    public void visit(Parenthesis parenthesis) {
-        parenthesis.getExpression().accept(this);
+    public <S> T visit(StringValue stringValue, S context) {
+        return null;
     }
 
     @Override
     public void visit(StringValue stringValue) {
+        ExpressionVisitor.super.visit(stringValue);
+    }
 
+    @Override
+    public <S> T visit(Subtraction subtraction, S context) {
+        visitBinaryExpression(subtraction, context);
+        return null;
     }
 
     @Override
     public void visit(Subtraction subtraction) {
-        visitBinaryExpression(subtraction);
+        ExpressionVisitor.super.visit(subtraction);
     }
 
     @Override
-    public void visit(NotExpression notExpr) {
+    public <S> T visit(NotExpression notExpr, S context) {
         notExpr.getExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(BitwiseRightShift expr) {
-        visitBinaryExpression(expr);
+    public void visit(NotExpression notExpression) {
+        ExpressionVisitor.super.visit(notExpression);
     }
 
     @Override
-    public void visit(BitwiseLeftShift expr) {
-        visitBinaryExpression(expr);
+    public <S> T visit(BitwiseRightShift expr, S context) {
+        visitBinaryExpression(expr, context);
+        return null;
     }
 
-    public void visitBinaryExpression(BinaryExpression binaryExpression) {
+    @Override
+    public void visit(BitwiseRightShift bitwiseRightShift) {
+        ExpressionVisitor.super.visit(bitwiseRightShift);
+    }
+
+    @Override
+    public <S> T visit(BitwiseLeftShift expr, S context) {
+        visitBinaryExpression(expr, context);
+        return null;
+    }
+
+    @Override
+    public void visit(BitwiseLeftShift bitwiseLeftShift) {
+        ExpressionVisitor.super.visit(bitwiseLeftShift);
+    }
+
+    public <S> T visitBinaryExpression(BinaryExpression binaryExpression, S context) {
         binaryExpression.getLeftExpression().accept(this);
         binaryExpression.getRightExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(ExpressionList<?> expressionList) {
+    public <S> T visit(ExpressionList<?> expressionList, S context) {
         for (Expression expression : expressionList) {
             // The use of a wildcard within a function means "nothing".
             if (!(expression instanceof AllColumns)) {
                 expression.accept(this);
             }
         }
+        return null;
+    }
+
+    @Override
+    public void visit(ExpressionList<? extends Expression> expressionList) {
+        ExpressionVisitor.super.visit(expressionList);
+    }
+
+    @Override
+    public <S> T visit(DateValue dateValue, S context) {
+        return null;
     }
 
     @Override
     public void visit(DateValue dateValue) {
+        ExpressionVisitor.super.visit(dateValue);
+    }
 
+    @Override
+    public <S> T visit(TimestampValue timestampValue, S context) {
+        return null;
     }
 
     @Override
     public void visit(TimestampValue timestampValue) {
+        ExpressionVisitor.super.visit(timestampValue);
+    }
 
+    @Override
+    public <S> T visit(TimeValue timeValue, S context) {
+        return null;
     }
 
     @Override
     public void visit(TimeValue timeValue) {
-
+        ExpressionVisitor.super.visit(timeValue);
     }
 
     /*
@@ -661,7 +896,7 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      * CaseExpression)
      */
     @Override
-    public void visit(CaseExpression caseExpression) {
+    public <S> T visit(CaseExpression caseExpression, S context) {
         if (caseExpression.getSwitchExpression() != null) {
             caseExpression.getSwitchExpression().accept(this);
         }
@@ -673,6 +908,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (caseExpression.getElseExpression() != null) {
             caseExpression.getElseExpression().accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(CaseExpression caseExpression) {
+        ExpressionVisitor.super.visit(caseExpression);
     }
 
     /*
@@ -682,57 +923,111 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
      * net.sf.jsqlparser.expression.ExpressionVisitor#visit(net.sf.jsqlparser.expression.WhenClause)
      */
     @Override
-    public void visit(WhenClause whenClause) {
+    public <S> T visit(WhenClause whenClause, S context) {
         if (whenClause.getWhenExpression() != null) {
             whenClause.getWhenExpression().accept(this);
         }
         if (whenClause.getThenExpression() != null) {
             whenClause.getThenExpression().accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(WhenClause whenClause) {
+        ExpressionVisitor.super.visit(whenClause);
+    }
+
+    @Override
+    public <S> T visit(AnyComparisonExpression anyComparisonExpression, S context) {
+        anyComparisonExpression.getSelect().accept((ExpressionVisitor) this);
+        return null;
     }
 
     @Override
     public void visit(AnyComparisonExpression anyComparisonExpression) {
-        anyComparisonExpression.getSelect().accept((ExpressionVisitor) this);
+        ExpressionVisitor.super.visit(anyComparisonExpression);
+    }
+
+    @Override
+    public <S> T visit(Concat concat, S context) {
+        visitBinaryExpression(concat, context);
+        return null;
     }
 
     @Override
     public void visit(Concat concat) {
-        visitBinaryExpression(concat);
+        ExpressionVisitor.super.visit(concat);
+    }
+
+    @Override
+    public <S> T visit(Matches matches, S context) {
+        visitBinaryExpression(matches, context);
+        return null;
     }
 
     @Override
     public void visit(Matches matches) {
-        visitBinaryExpression(matches);
+        ExpressionVisitor.super.visit(matches);
+    }
+
+    @Override
+    public <S> T visit(BitwiseAnd bitwiseAnd, S context) {
+        visitBinaryExpression(bitwiseAnd, context);
+        return null;
     }
 
     @Override
     public void visit(BitwiseAnd bitwiseAnd) {
-        visitBinaryExpression(bitwiseAnd);
+        ExpressionVisitor.super.visit(bitwiseAnd);
+    }
+
+    @Override
+    public <S> T visit(BitwiseOr bitwiseOr, S context) {
+        visitBinaryExpression(bitwiseOr, context);
+        return null;
     }
 
     @Override
     public void visit(BitwiseOr bitwiseOr) {
-        visitBinaryExpression(bitwiseOr);
+        ExpressionVisitor.super.visit(bitwiseOr);
+    }
+
+    @Override
+    public <S> T visit(BitwiseXor bitwiseXor, S context) {
+        visitBinaryExpression(bitwiseXor, context);
+        return null;
     }
 
     @Override
     public void visit(BitwiseXor bitwiseXor) {
-        visitBinaryExpression(bitwiseXor);
+        ExpressionVisitor.super.visit(bitwiseXor);
     }
 
     @Override
-    public void visit(CastExpression cast) {
+    public <S> T visit(CastExpression cast, S context) {
         cast.getLeftExpression().accept(this);
+        return null;
+    }
+
+    @Override
+    public void visit(CastExpression castExpression) {
+        ExpressionVisitor.super.visit(castExpression);
+    }
+
+    @Override
+    public <S> T visit(Modulo modulo, S context) {
+        visitBinaryExpression(modulo, context);
+        return null;
     }
 
     @Override
     public void visit(Modulo modulo) {
-        visitBinaryExpression(modulo);
+        ExpressionVisitor.super.visit(modulo);
     }
 
     @Override
-    public void visit(AnalyticExpression analytic) {
+    public <S> T visit(AnalyticExpression analytic, S context) {
         maybeAcceptThis(analytic.getExpression());
         maybeAcceptThis(analytic.getDefaultValue());
         maybeAcceptThis(analytic.getOffset());
@@ -755,6 +1050,12 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
                 maybeAcceptThis(offset.getExpression());
             }
         }
+        return null;
+    }
+
+    @Override
+    public void visit(AnalyticExpression analyticExpression) {
+        ExpressionVisitor.super.visit(analyticExpression);
     }
 
     private void maybeAcceptThis(Expression expression) {
@@ -770,49 +1071,85 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     @Override
-    public void visit(SetOperationList list) {
+    public <S> T visit(SetOperationList list, S context) {
         List<WithItem> withItemsList = list.getWithItemsList();
         if (withItemsList != null && !withItemsList.isEmpty()) {
             for (WithItem withItem : withItemsList) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor<T>) this, context);
             }
         }
         for (Select selectBody : list.getSelects()) {
-            selectBody.accept((SelectVisitor) this);
+            selectBody.accept((SelectVisitor<T>) this, context);
         }
+        return null;
     }
 
     @Override
-    public void visit(ExtractExpression eexpr) {
+    public void visit(SetOperationList setOpList) {
+        SelectVisitor.super.visit(setOpList);
+    }
+
+    @Override
+    public <S> T visit(ExtractExpression eexpr, S context) {
         if (eexpr.getExpression() != null) {
             eexpr.getExpression().accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(ExtractExpression extractExpression) {
+        ExpressionVisitor.super.visit(extractExpression);
+    }
+
+    @Override
+    public <S> T visit(LateralSubSelect lateralSubSelect, S context) {
+        lateralSubSelect.getSelect().accept((SelectVisitor<T>) this, context);
+        return null;
     }
 
     @Override
     public void visit(LateralSubSelect lateralSubSelect) {
-        lateralSubSelect.getSelect().accept((SelectVisitor) this);
+        SelectVisitor.super.visit(lateralSubSelect);
+    }
+
+    @Override
+    public <S> T visit(TableStatement tableStatement, S context) {
+        tableStatement.getTable().accept(this);
+        return null;
     }
 
     @Override
     public void visit(TableStatement tableStatement) {
-        tableStatement.getTable().accept(this);
+        SelectVisitor.super.visit(tableStatement);
     }
 
     @Override
-    public void visit(IntervalExpression iexpr) {
+    public <S> T visit(IntervalExpression iexpr, S context) {
         if (iexpr.getExpression() != null) {
             iexpr.getExpression().accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(IntervalExpression intervalExpression) {
+        ExpressionVisitor.super.visit(intervalExpression);
+    }
+
+    @Override
+    public <S> T visit(JdbcNamedParameter jdbcNamedParameter, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(JdbcNamedParameter jdbcNamedParameter) {
-
+        ExpressionVisitor.super.visit(jdbcNamedParameter);
     }
 
     @Override
-    public void visit(OracleHierarchicalExpression oexpr) {
+    public <S> T visit(OracleHierarchicalExpression oexpr, S context) {
         if (oexpr.getStartExpression() != null) {
             oexpr.getStartExpression().accept(this);
         }
@@ -820,47 +1157,95 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (oexpr.getConnectExpression() != null) {
             oexpr.getConnectExpression().accept(this);
         }
+        return null;
     }
 
     @Override
-    public void visit(RegExpMatchOperator rexpr) {
-        visitBinaryExpression(rexpr);
+    public void visit(OracleHierarchicalExpression hierarchicalExpression) {
+        ExpressionVisitor.super.visit(hierarchicalExpression);
     }
 
     @Override
-    public void visit(JsonExpression jsonExpr) {
+    public <S> T visit(RegExpMatchOperator rexpr, S context) {
+        visitBinaryExpression(rexpr, context);
+        return null;
+    }
+
+    @Override
+    public void visit(RegExpMatchOperator regExpMatchOperator) {
+        ExpressionVisitor.super.visit(regExpMatchOperator);
+    }
+
+    @Override
+    public <S> T visit(JsonExpression jsonExpr, S context) {
         if (jsonExpr.getExpression() != null) {
             jsonExpr.getExpression().accept(this);
         }
+        return null;
     }
 
     @Override
-    public void visit(JsonOperator jsonExpr) {
-        visitBinaryExpression(jsonExpr);
+    public void visit(JsonExpression jsonExpression) {
+        ExpressionVisitor.super.visit(jsonExpression);
+    }
+
+    @Override
+    public <S> T visit(JsonOperator jsonExpr, S context) {
+        visitBinaryExpression(jsonExpr, context);
+        return null;
+    }
+
+    @Override
+    public void visit(JsonOperator jsonOperator) {
+        ExpressionVisitor.super.visit(jsonOperator);
+    }
+
+    @Override
+    public <S> T visit(AllColumns allColumns, S context) {
+        invokeCallback(ALL_COLUMNS, allColumns);
+        return null;
     }
 
     @Override
     public void visit(AllColumns allColumns) {
-        invokeCallback(ALL_COLUMNS, allColumns);
+        ExpressionVisitor.super.visit(allColumns);
+    }
+
+    @Override
+    public <S> T visit(AllTableColumns allTableColumns, S context) {
+        invokeCallback(ALL_TABLE_COLUMNS, allTableColumns);
+        return null;
     }
 
     @Override
     public void visit(AllTableColumns allTableColumns) {
-        invokeCallback(ALL_TABLE_COLUMNS, allTableColumns);
+        ExpressionVisitor.super.visit(allTableColumns);
+    }
+
+    @Override
+    public <S> T visit(AllValue allValue, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(AllValue allValue) {
+        ExpressionVisitor.super.visit(allValue);
+    }
 
+    @Override
+    public <S> T visit(IsDistinctExpression isDistinctExpression, S context) {
+        visitBinaryExpression(isDistinctExpression, context);
+        return null;
     }
 
     @Override
     public void visit(IsDistinctExpression isDistinctExpression) {
-        visitBinaryExpression(isDistinctExpression);
+        ExpressionVisitor.super.visit(isDistinctExpression);
     }
 
     @Override
-    public void visit(SelectItem item) {
+    public <S> T visit(SelectItem<?> item, S context) {
         // TODO: what are .getAliasColumns()? Should we look at them?
         var alias = item.getAlias();
         if (alias != null) {
@@ -873,30 +1258,56 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (alias != null) {
             popContext();
         }
+        return null;
     }
 
     @Override
-    public void visit(UserVariable var) {
-
+    public void visit(SelectItem<? extends Expression> selectItem) {
+        SelectItemVisitor.super.visit(selectItem);
     }
 
     @Override
-    public void visit(NumericBind bind) {
-
+    public <S> T visit(UserVariable var, S context) {
+        return null;
     }
 
     @Override
-    public void visit(KeepExpression aexpr) {
+    public void visit(UserVariable userVariable) {
+        ExpressionVisitor.super.visit(userVariable);
+    }
 
+    @Override
+    public <S> T visit(NumericBind bind, S context) {
+        return null;
+    }
+
+    @Override
+    public void visit(NumericBind numericBind) {
+        ExpressionVisitor.super.visit(numericBind);
+    }
+
+    @Override
+    public <S> T visit(KeepExpression aexpr, S context) {
+        return null;
+    }
+
+    @Override
+    public void visit(KeepExpression keepExpression) {
+        ExpressionVisitor.super.visit(keepExpression);
+    }
+
+    @Override
+    public <S> T visit(MySQLGroupConcat groupConcat, S context) {
+        return null;
     }
 
     @Override
     public void visit(MySQLGroupConcat groupConcat) {
-
+        ExpressionVisitor.super.visit(groupConcat);
     }
 
     @Override
-    public void visit(Delete delete) {
+    public <S> T visit(Delete delete, S context) {
         pushContext(DELETE);
         invokeCallback(MUTATION_COMMAND, "delete");
         visit(delete.getTable());
@@ -915,17 +1326,23 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             popContext(); // WHERE
         }
         popContext(); // DELETE
+        return null;
+    }
+
+    @Override
+    public void visit(Delete delete) {
+        StatementVisitor.super.visit(delete);
     }
 
     @SuppressWarnings("deprecation")
     @Override
-    public void visit(Update update) {
+    public <S> T visit(Update update, S context) {
         pushContext(UPDATE);
         invokeCallback(MUTATION_COMMAND, "update");
         visit(update.getTable());
         if (update.getWithItemsList() != null) {
             for (WithItem withItem : update.getWithItemsList()) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor) this, context);
             }
         }
 
@@ -961,122 +1378,230 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             popContext(); // WHERE
         }
         popContext(); // UPDATE
+        return null;
     }
 
     @Override
-    public void visit(Insert insert) {
+    public void visit(Update update) {
+        StatementVisitor.super.visit(update);
+    }
+
+    @Override
+    public <S> T visit(Insert insert, S context) {
         pushContext(INSERT);
         invokeCallback(MUTATION_COMMAND, "insert");
         visit(insert.getTable());
         if (insert.getWithItemsList() != null) {
             for (WithItem withItem : insert.getWithItemsList()) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor) this, context);
             }
         }
         if (insert.getSelect() != null) {
             visit(insert.getSelect());
         }
         popContext(); // INSERT
+        return null;
     }
 
-    public void visit(Analyze analyze) {
+    @Override
+    public void visit(Insert insert) {
+        StatementVisitor.super.visit(insert);
+    }
+
+    public <S> T visit(Analyze analyze, S context) {
         visit(analyze.getTable());
+        return null;
+    }
+
+    @Override
+    public void visit(Analyze analyze) {
+        StatementVisitor.super.visit(analyze);
+    }
+
+    @Override
+    public <S> T visit(Drop drop, S context) {
+        invokeCallback(MUTATION_COMMAND, "drop");
+        visit(drop.getName());
+        return null;
     }
 
     @Override
     public void visit(Drop drop) {
-        invokeCallback(MUTATION_COMMAND, "drop");
-        visit(drop.getName());
+        StatementVisitor.super.visit(drop);
+    }
+
+    @Override
+    public <S> T visit(Truncate truncate, S context) {
+        invokeCallback(MUTATION_COMMAND, "truncate");
+        visit(truncate.getTable());
+        return null;
     }
 
     @Override
     public void visit(Truncate truncate) {
-        invokeCallback(MUTATION_COMMAND, "truncate");
-        visit(truncate.getTable());
+        StatementVisitor.super.visit(truncate);
+    }
+
+    @Override
+    public <S> T visit(CreateIndex createIndex, S context) {
+        invokeCallback(MUTATION_COMMAND, "create-index");
+        return null;
     }
 
     @Override
     public void visit(CreateIndex createIndex) {
-        invokeCallback(MUTATION_COMMAND, "create-index");
+        StatementVisitor.super.visit(createIndex);
     }
 
     @Override
-    public void visit(CreateSchema aThis) {
+    public <S> T visit(CreateSchema aThis, S context) {
         invokeCallback(MUTATION_COMMAND, "create-schema");
+        return null;
     }
 
     @Override
-    public void visit(CreateTable create) {
+    public void visit(CreateSchema createSchema) {
+        StatementVisitor.super.visit(createSchema);
+    }
+
+    @Override
+    public <S> T visit(CreateTable create, S context) {
         invokeCallback(MUTATION_COMMAND, "create-table");
         visit(create.getTable());
         if (create.getSelect() != null) {
-            create.getSelect().accept((SelectVisitor) this);
+            create.getSelect().accept((SelectVisitor) this, context);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(CreateTable createTable) {
+        StatementVisitor.super.visit(createTable);
+    }
+
+    @Override
+    public <S> T visit(CreateView createView, S context) {
+        invokeCallback(MUTATION_COMMAND, "create-view");
+        return null;
     }
 
     @Override
     public void visit(CreateView createView) {
-        invokeCallback(MUTATION_COMMAND, "create-view");
+        StatementVisitor.super.visit(createView);
+    }
+
+    @Override
+    public <S> T visit(Alter alter, S context) {
+        invokeCallback(MUTATION_COMMAND, "alter-table");
+        return null;
     }
 
     @Override
     public void visit(Alter alter) {
-        invokeCallback(MUTATION_COMMAND, "alter-table");
+        StatementVisitor.super.visit(alter);
     }
 
     @Override
-    public void visit(Statements stmts) {
+    public <S> T visit(Statements stmts, S context) {
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
+    }
+
+    @Override
+    public void visit(Statements statements) {
+        StatementVisitor.super.visit(statements);
+    }
+
+    @Override
+    public <S> T visit(Execute execute, S context) {
         throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(Execute execute) {
+        StatementVisitor.super.visit(execute);
+    }
+
+    @Override
+    public <S> T visit(SetStatement set, S context) {
         throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(SetStatement set) {
+        StatementVisitor.super.visit(set);
+    }
+
+    @Override
+    public <S> T visit(ResetStatement reset, S context) {
         throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(ResetStatement reset) {
+        StatementVisitor.super.visit(reset);
+    }
+
+    @Override
+    public <S> T visit(ShowColumnsStatement set, S context) {
         throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
-    public void visit(ShowColumnsStatement set) {
+    public void visit(ShowColumnsStatement showColumns) {
+        StatementVisitor.super.visit(showColumns);
+    }
+
+    @Override
+    public <S> T visit(ShowIndexStatement showIndex, S context) {
         throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(ShowIndexStatement showIndex) {
-        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
+        StatementVisitor.super.visit(showIndex);
     }
 
     @Override
-    public void visit(RowConstructor<?> rowConstructor) {
+    public <S> T visit(RowConstructor<?> rowConstructor, S context) {
         for (Expression expr : rowConstructor) {
             expr.accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(RowConstructor<? extends Expression> rowConstructor) {
+        ExpressionVisitor.super.visit(rowConstructor);
+    }
+
+    @Override
+    public <S> T visit(RowGetExpression rowGetExpression, S context) {
+        rowGetExpression.getExpression().accept(this);
+        return null;
     }
 
     @Override
     public void visit(RowGetExpression rowGetExpression) {
-        rowGetExpression.getExpression().accept(this);
+        ExpressionVisitor.super.visit(rowGetExpression);
+    }
+
+    @Override
+    public <S> T visit(HexValue hexValue, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(HexValue hexValue) {
-
+        ExpressionVisitor.super.visit(hexValue);
     }
 
     @Override
-    public void visit(Merge merge) {
+    public <S> T visit(Merge merge, S context) {
         visit(merge.getTable());
         if (merge.getWithItemsList() != null) {
             for (WithItem withItem : merge.getWithItemsList()) {
-                withItem.accept((SelectVisitor) this);
+                withItem.accept((SelectVisitor<T>) this, context);
             }
         }
 
@@ -1085,45 +1610,91 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             merge.getFromItem().accept(this);
             popContext(); // FROM
         }
+        return null;
+    }
+
+    @Override
+    public void visit(Merge merge) {
+        StatementVisitor.super.visit(merge);
+    }
+
+    @Override
+    public <S> T visit(OracleHint hint, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(OracleHint hint) {
+        ExpressionVisitor.super.visit(hint);
+    }
 
+    @Override
+    public <S> T visit(TableFunction tableFunction, S context) {
+        visit(tableFunction.getFunction());
+        return null;
     }
 
     @Override
     public void visit(TableFunction tableFunction) {
-        visit(tableFunction.getFunction());
+        FromItemVisitor.super.visit(tableFunction);
+    }
+
+    @Override
+    public <S> T visit(AlterView alterView, S context) {
+        invokeCallback(MUTATION_COMMAND, "alter-view");
+        return null;
     }
 
     @Override
     public void visit(AlterView alterView) {
-        invokeCallback(MUTATION_COMMAND, "alter-view");
+        StatementVisitor.super.visit(alterView);
+    }
+
+    @Override
+    public <S> T visit(RefreshMaterializedViewStatement materializedView, S context) {
+        visit(materializedView.getView());
+        return null;
     }
 
     @Override
     public void visit(RefreshMaterializedViewStatement materializedView) {
-        visit(materializedView.getView());
+        StatementVisitor.super.visit(materializedView);
+    }
+
+    @Override
+    public <S> T visit(TimeKeyExpression timeKeyExpression, S context) {
+        return null;
     }
 
     @Override
     public void visit(TimeKeyExpression timeKeyExpression) {
-
+        ExpressionVisitor.super.visit(timeKeyExpression);
     }
 
     @Override
-    public void visit(DateTimeLiteralExpression literal) {
+    public <S> T visit(DateTimeLiteralExpression literal, S context) {
+        return null;
+    }
 
+    @Override
+    public void visit(DateTimeLiteralExpression dateTimeLiteralExpression) {
+        ExpressionVisitor.super.visit(dateTimeLiteralExpression);
+    }
+
+    @Override
+    public <S> T visit(Commit commit, S context) {
+
+        return null;
     }
 
     @Override
     public void visit(Commit commit) {
-
+        StatementVisitor.super.visit(commit);
     }
 
     @Override
-    public void visit(Upsert upsert) {
+    public <S> T visit(Upsert upsert, S context) {
         visit(upsert.getTable());
         if (upsert.getExpressions() != null) {
             upsert.getExpressions().accept(this);
@@ -1131,28 +1702,51 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (upsert.getSelect() != null) {
             visit(upsert.getSelect());
         }
+        return null;
+    }
+
+    @Override
+    public void visit(Upsert upsert) {
+        StatementVisitor.super.visit(upsert);
+    }
+
+    @Override
+    public <S> T visit(UseStatement use, S context) {
+        return null;
     }
 
     @Override
     public void visit(UseStatement use) {
-
+        StatementVisitor.super.visit(use);
     }
 
     @Override
-    public void visit(ParenthesedFromItem parenthesis) {
+    public <S> T visit(ParenthesedFromItem parenthesis, S context) {
         parenthesis.getFromItem().accept(this);
         // support join keyword in fromItem
         visitJoins(parenthesis.getJoins());
+        return null;
     }
 
     @Override
-    public void visit(GroupByElement element) {
+    public void visit(ParenthesedFromItem parenthesedFromItem) {
+        FromItemVisitor.super.visit(parenthesedFromItem);
+    }
+
+    @Override
+    public <S> T visit(GroupByElement element, S context) {
         pushContext(GROUP_BY);
         element.getGroupByExpressionList().accept(this);
         for (ExpressionList<?> exprList : element.getGroupingSets()) {
             exprList.accept(this);
         }
         popContext(); // GROUP_BY
+        return null;
+    }
+
+    @Override
+    public void visit(GroupByElement groupBy) {
+        GroupByVisitor.super.visit(groupBy);
     }
 
     /**
@@ -1178,14 +1772,20 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
     }
 
     @Override
-    public void visit(Block block) {
+    public <S> T visit(Block block, S context) {
         if (block.getStatements() != null) {
             visit(block.getStatements());
         }
+        return null;
     }
 
     @Override
-    public void visit(Comment comment) {
+    public void visit(Block block) {
+        StatementVisitor.super.visit(block);
+    }
+
+    @Override
+    public <S> T visit(Comment comment, S context) {
         if (comment.getTable() != null) {
             visit(comment.getTable());
         }
@@ -1195,57 +1795,117 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
                 visit(table);
             }
         }
+        return null;
+    }
+
+    @Override
+    public void visit(Comment comment) {
+        StatementVisitor.super.visit(comment);
+    }
+
+    @Override
+    public <S> T visit(Values values, S context) {
+        values.getExpressions().accept(this);
+        return null;
     }
 
     @Override
     public void visit(Values values) {
-        values.getExpressions().accept(this);
+        SelectVisitor.super.visit(values);
+    }
+
+    @Override
+    public <S> T visit(DescribeStatement describe, S context) {
+        describe.getTable().accept(this);
+        return null;
     }
 
     @Override
     public void visit(DescribeStatement describe) {
-        describe.getTable().accept(this);
+        StatementVisitor.super.visit(describe);
     }
 
     @Override
-    public void visit(ExplainStatement explain) {
+    public <S> T visit(ExplainStatement explain, S context) {
         if (explain.getStatement() != null) {
             explain.getStatement().accept((StatementVisitor) this);
         }
+        return null;
     }
 
     @Override
-    public void visit(NextValExpression nextVal) {
-
+    public void visit(ExplainStatement explainStatement) {
+        StatementVisitor.super.visit(explainStatement);
     }
 
     @Override
-    public void visit(CollateExpression col) {
+    public <S> T visit(NextValExpression nextVal, S context) {
+
+        return null;
+    }
+
+    @Override
+    public void visit(NextValExpression nextValExpression) {
+        ExpressionVisitor.super.visit(nextValExpression);
+    }
+
+    @Override
+    public <S> T visit(CollateExpression col, S context) {
         col.getLeftExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(ShowStatement aThis) {
-
+    public void visit(CollateExpression collateExpression) {
+        ExpressionVisitor.super.visit(collateExpression);
     }
 
     @Override
-    public void visit(SimilarToExpression expr) {
-        visitBinaryExpression(expr);
+    public <S> T visit(ShowStatement aThis, S context) {
+
+        return null;
     }
 
     @Override
-    public void visit(DeclareStatement aThis) {
+    public void visit(ShowStatement showStatement) {
+        StatementVisitor.super.visit(showStatement);
+    }
 
+    @Override
+    public <S> T visit(SimilarToExpression expr, S context) {
+        visitBinaryExpression(expr, context);
+        return null;
+    }
+
+    @Override
+    public void visit(SimilarToExpression similarToExpression) {
+        ExpressionVisitor.super.visit(similarToExpression);
+    }
+
+    @Override
+    public <S> T visit(DeclareStatement aThis, S context) {
+
+        return null;
+    }
+
+    @Override
+    public void visit(DeclareStatement declareStatement) {
+        StatementVisitor.super.visit(declareStatement);
+    }
+
+    @Override
+    public <S> T visit(Grant grant, S context) {
+        invokeCallback(MUTATION_COMMAND, "grant");
+        return null;
     }
 
     @Override
     public void visit(Grant grant) {
-        invokeCallback(MUTATION_COMMAND, "grant");
+        StatementVisitor.super.visit(grant);
     }
 
     @Override
-    public void visit(ArrayExpression array) {
+    public <S> T visit(ArrayExpression array, S context) {
         array.getObjExpression().accept(this);
         if (array.getStartIndexExpression() != null) {
             array.getIndexExpression().accept(this);
@@ -1256,82 +1916,193 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (array.getStopIndexExpression() != null) {
             array.getStopIndexExpression().accept(this);
         }
+        return null;
     }
 
     @Override
-    public void visit(ArrayConstructor array) {
+    public void visit(ArrayExpression arrayExpression) {
+        ExpressionVisitor.super.visit(arrayExpression);
+    }
+
+    @Override
+    public <S> T visit(ArrayConstructor array, S context) {
         for (Expression expression : array.getExpressions()) {
             expression.accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(ArrayConstructor arrayConstructor) {
+        ExpressionVisitor.super.visit(arrayConstructor);
+    }
+
+    @Override
+    public <S> T visit(CreateSequence createSequence, S context) {
+        invokeCallback(MUTATION_COMMAND, "create-sequence");
+        return null;
     }
 
     @Override
     public void visit(CreateSequence createSequence) {
-        invokeCallback(MUTATION_COMMAND, "create-sequence");
+        StatementVisitor.super.visit(createSequence);
+    }
+
+    @Override
+    public <S> T visit(AlterSequence alterSequence, S context) {
+        invokeCallback(MUTATION_COMMAND, "alter-sequence");
+        return null;
     }
 
     @Override
     public void visit(AlterSequence alterSequence) {
-        invokeCallback(MUTATION_COMMAND, "alter-sequence");
+        StatementVisitor.super.visit(alterSequence);
+    }
+
+    @Override
+    public <S> T visit(CreateFunctionalStatement createFunctionalStatement, S context) {
+        invokeCallback(MUTATION_COMMAND, "create-function");
+        return null;
     }
 
     @Override
     public void visit(CreateFunctionalStatement createFunctionalStatement) {
-        invokeCallback(MUTATION_COMMAND, "create-function");
+        StatementVisitor.super.visit(createFunctionalStatement);
     }
 
     @Override
-    public void visit(ShowTablesStatement showTables) {
+    public <S> T visit(ShowTablesStatement showTables, S context) {
         throw new UnsupportedOperationException(
                 "Reading from a ShowTablesStatement is not supported");
     }
 
     @Override
+    public void visit(ShowTablesStatement showTables) {
+        StatementVisitor.super.visit(showTables);
+    }
+
+    @Override
+    public <S> T visit(TSQLLeftJoin tsqlLeftJoin, S context) {
+        visitBinaryExpression(tsqlLeftJoin, context);
+        return null;
+    }
+
+    @Override
     public void visit(TSQLLeftJoin tsqlLeftJoin) {
-        visitBinaryExpression(tsqlLeftJoin);
+        ExpressionVisitor.super.visit(tsqlLeftJoin);
+    }
+
+    @Override
+    public <S> T visit(TSQLRightJoin tsqlRightJoin, S context) {
+        visitBinaryExpression(tsqlRightJoin, context);
+        return null;
     }
 
     @Override
     public void visit(TSQLRightJoin tsqlRightJoin) {
-        visitBinaryExpression(tsqlRightJoin);
+        ExpressionVisitor.super.visit(tsqlRightJoin);
     }
 
     @Override
-    public void visit(VariableAssignment var) {
+    public <S> T visit(StructType structType, S s) {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public void visit(StructType structType) {
+        ExpressionVisitor.super.visit(structType);
+    }
+
+    @Override
+    public <S> T visit(LambdaExpression lambdaExpression, S s) {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public void visit(LambdaExpression lambdaExpression) {
+        ExpressionVisitor.super.visit(lambdaExpression);
+    }
+
+    @Override
+    public <S> T visit(VariableAssignment var, S context) {
         var.getVariable().accept(this);
         var.getExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(XMLSerializeExpr aThis) {
+    public void visit(VariableAssignment variableAssignment) {
+        ExpressionVisitor.super.visit(variableAssignment);
+    }
 
+    @Override
+    public <S> T visit(XMLSerializeExpr aThis, S context) {
+
+        return null;
+    }
+
+    @Override
+    public void visit(XMLSerializeExpr xmlSerializeExpr) {
+        ExpressionVisitor.super.visit(xmlSerializeExpr);
+    }
+
+    @Override
+    public <S> T visit(CreateSynonym createSynonym, S context) {
+        invokeCallback(MUTATION_COMMAND, "create-synonym");
+        return null;
     }
 
     @Override
     public void visit(CreateSynonym createSynonym) {
-        invokeCallback(MUTATION_COMMAND, "create-synonym");
+        StatementVisitor.super.visit(createSynonym);
     }
 
     @Override
-    public void visit(TimezoneExpression aThis) {
+    public <S> T visit(TimezoneExpression aThis, S context) {
         aThis.getLeftExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(SavepointStatement savepointStatement) {}
+    public void visit(TimezoneExpression timezoneExpression) {
+        ExpressionVisitor.super.visit(timezoneExpression);
+    }
+
+    @Override
+    public <S> T visit(SavepointStatement savepointStatement, S context) {
+        return null;
+    }
+
+    @Override
+    public void visit(SavepointStatement savepointStatement) {
+        StatementVisitor.super.visit(savepointStatement);
+    }
+
+    @Override
+    public <S> T visit(RollbackStatement rollbackStatement, S context) {
+        return null;
+    }
 
     @Override
     public void visit(RollbackStatement rollbackStatement) {
+        StatementVisitor.super.visit(rollbackStatement);
+    }
 
+    @Override
+    public <S> T visit(AlterSession alterSession, S context) {
+        invokeCallback(MUTATION_COMMAND, "alter-session");
+        return null;
     }
 
     @Override
     public void visit(AlterSession alterSession) {
-        invokeCallback(MUTATION_COMMAND, "alter-session");
+        StatementVisitor.super.visit(alterSession);
     }
 
     @Override
-    public void visit(JsonAggregateFunction expression) {
+    public <S> T visit(JsonAggregateFunction expression, S context) {
         Expression expr = expression.getExpression();
         if (expr != null) {
             expr.accept(this);
@@ -1341,21 +2112,39 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
         if (expr != null) {
             expr.accept(this);
         }
+        return null;
     }
 
     @Override
-    public void visit(JsonFunction expression) {
+    public void visit(JsonAggregateFunction jsonAggregateFunction) {
+        ExpressionVisitor.super.visit(jsonAggregateFunction);
+    }
+
+    @Override
+    public <S> T visit(JsonFunction expression, S context) {
         for (JsonFunctionExpression expr : expression.getExpressions()) {
             expr.getExpression().accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(JsonFunction jsonFunction) {
+        ExpressionVisitor.super.visit(jsonFunction);
+    }
+
+    @Override
+    public <S> T visit(ConnectByRootOperator connectByRootOperator, S context) {
+        connectByRootOperator.getColumn().accept(this);
+        return null;
     }
 
     @Override
     public void visit(ConnectByRootOperator connectByRootOperator) {
-        connectByRootOperator.getColumn().accept(this);
+        ExpressionVisitor.super.visit(connectByRootOperator);
     }
 
-    public void visit(IfElseStatement ifElseStatement) {
+    public <S> T visit(IfElseStatement ifElseStatement, S context) {
         pushContext(IF);
         ifElseStatement.getIfStatement().accept(this);
         popContext(); // IF
@@ -1364,40 +2153,82 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             ifElseStatement.getElseStatement().accept(this);
             popContext(); // ELSE
         }
-    }
-
-    public void visit(OracleNamedFunctionParameter oracleNamedFunctionParameter) {
-        oracleNamedFunctionParameter.getExpression().accept(this);
+        return null;
     }
 
     @Override
-    public void visit(RenameTableStatement renameTableStatement) {
+    public void visit(IfElseStatement ifElseStatement) {
+        StatementVisitor.super.visit(ifElseStatement);
+    }
+
+    public <S> T visit(OracleNamedFunctionParameter oracleNamedFunctionParameter, S context) {
+        oracleNamedFunctionParameter.getExpression().accept(this);
+        return null;
+    }
+
+    @Override
+    public void visit(OracleNamedFunctionParameter oracleNamedFunctionParameter) {
+        ExpressionVisitor.super.visit(oracleNamedFunctionParameter);
+    }
+
+    @Override
+    public <S> T visit(RenameTableStatement renameTableStatement, S context) {
         invokeCallback(MUTATION_COMMAND, "rename-table");
         for (Map.Entry<Table, Table> e : renameTableStatement.getTableNames()) {
             e.getKey().accept(this);
             e.getValue().accept(this);
         }
+        return null;
     }
 
     @Override
-    public void visit(PurgeStatement purgeStatement) {
+    public void visit(RenameTableStatement renameTableStatement) {
+        StatementVisitor.super.visit(renameTableStatement);
+    }
+
+    @Override
+    public <S> T visit(PurgeStatement purgeStatement, S context) {
         invokeCallback(MUTATION_COMMAND, "purge");
         if (purgeStatement.getPurgeObjectType() == PurgeObjectType.TABLE) {
             ((Table) purgeStatement.getObject()).accept(this);
         }
+        return null;
+    }
+
+    @Override
+    public void visit(PurgeStatement purgeStatement) {
+        StatementVisitor.super.visit(purgeStatement);
+    }
+
+    @Override
+    public <S> T visit(AlterSystemStatement alterSystemStatement, S context) {
+        invokeCallback(MUTATION_COMMAND, "alter-system");
+        return null;
     }
 
     @Override
     public void visit(AlterSystemStatement alterSystemStatement) {
-        invokeCallback(MUTATION_COMMAND, "alter-system");
+        StatementVisitor.super.visit(alterSystemStatement);
+    }
+
+    @Override
+    public <S> T visit(UnsupportedStatement unsupportedStatement, S context) {
+        return null;
     }
 
     @Override
     public void visit(UnsupportedStatement unsupportedStatement) {
+        StatementVisitor.super.visit(unsupportedStatement);
+    }
+
+    @Override
+    public <S> T visit(GeometryDistance geometryDistance, S context) {
+        visitBinaryExpression(geometryDistance, context);
+        return null;
     }
 
     @Override
     public void visit(GeometryDistance geometryDistance) {
-        visitBinaryExpression(geometryDistance);
+        ExpressionVisitor.super.visit(geometryDistance);
     }
 }

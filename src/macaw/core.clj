@@ -47,14 +47,12 @@
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
   [^String query & {:as opts}]
-  ;; Dialects like SQLite and Databricks treat consecutive blank lines as implicit semicolons.
-  ;; JSQLParser, as a polyglot parser, always has this behavior, and there is no option to disable it.
-  ;; For Metabase, we are always dealing with single queries, so there's no point ever having this behavior.
-  ;; TODO When JSQLParser 4.10 is released, move to the more robust [[CCJSqlParserUtil.sanitizeSingleSql]] helper.
-  ;; See https://github.com/JSQLParser/JSqlParser/issues/1988
   (try
     (-> query
-        (str/replace #"\n{2,}" "\n")
+        ;; Dialects like SQLite and Databricks treat consecutive blank lines as implicit semicolons.
+        ;; JSQLParser, as a polyglot parser, always has this behavior, and there is no option to disable it.
+        ;; This utility pre-processed the query to remove any such blank lines.
+        (CCJSqlParserUtil/sanitizeSingleSql)
         (escape-keywords (:non-reserved-words opts))
         (CCJSqlParserUtil/parse (->parser-fn opts)))
     (catch JSQLParserException e
@@ -82,7 +80,7 @@
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
   [parsed & {:as opts}]
-  ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behavior.
+  ;; By default, we will preserve identifiers verbatim, to be agnostic of casing and quoting.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
   (try
@@ -139,7 +137,8 @@
   ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
   ;; Currently, we use a more complex and expensive sanitization method, so that it's reversible.
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
-  (let [sql'     (escape-keywords (str/replace sql #"(?m)^\n" " \n") (:non-reserved-words opts))
+  (let [sql'     (-> (str/replace sql #"(?m)^\n" " \n")
+                     (escape-keywords (:non-reserved-words opts)))
         opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
         renames' (walk/postwalk (fn [x]
                                   (if (string? x)

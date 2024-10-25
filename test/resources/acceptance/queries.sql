@@ -12,7 +12,7 @@ WHERE
   _TABLE_SUFFIX BETWEEN '20230101' AND '20230131'
 LIMIT 1000;
 
--- FIXTURE: broken/between
+-- FIXTURE: between/broken-49
 SELECT
     date_trunc('month', instance_started)::DATE AS month_started,
     avg(time_finished - instance_started) as avg_runtime,

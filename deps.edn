@@ -8,7 +8,7 @@
 
  :deps
  {;; The actual SQL Parser to wrap!
-  com.github.jsqlparser/jsqlparser {:mvn/version "4.9"}
+  com.github.jsqlparser/jsqlparser {:mvn/version "5.0"}
   ;; Get environment variables and Java properties
   environ/environ                  {:mvn/version "1.2.0"}
   ;; Schema-checking

@@ -1,0 +1,3 @@
+{:source-columns [{:table "usage_stats" :column "instance_started"}
+                  {:table "usage_stats" :column "time_finished"}]
+ :tables         [{:table "usage_stats"}]}
