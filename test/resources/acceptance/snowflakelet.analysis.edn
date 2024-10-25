@@ -1,0 +1,17 @@
+{:source-columns [{:table "table_2559", :column "column_2560"}
+                  {:table "table_2559", :column "column_2561"}
+                  {:table "table_2559", :column "column_2562"}
+                  {:table "table_2559", :column "column_2563"}
+                  {:table "table_2559", :column "column_2564"}
+                  {:table "table_2559", :column "column_7421"}]
+ :tables [{:table "table_2559"}]
+
+ :overrides
+ {:ast-walker-1
+  ;; TODO Seems not to be scanning the ORDER BY
+  {:source-columns
+   [{:table "table_2559", :column "column_2560"}
+    {:table "table_2559", :column "column_2561"}
+    {:table "table_2559", :column "column_2562"}
+    {:table "table_2559", :column "column_2563"}
+    {:table "table_2559", :column "column_2564"}]}}}

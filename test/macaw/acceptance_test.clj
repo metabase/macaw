@@ -37,15 +37,26 @@
 
 (def ^:private test-modes
   #{:ast-walker-1
-    :basic-select})
+    :basic-select
+    :compound-select})
+
+(def override-hierarchy
+  (-> (make-hierarchy)
+      (derive :basic-select :select-only)
+      (derive :compound-select :select-only)))
+
+(defn- lineage [h k]
+  (when k
+    (assert (<= (count (parents h k)) 1) "Multiple inheritance not supported for override hierarchy.")
+    (cons k (lineage h (first (parents h k))))))
 
 (def global-overrides
   {})
 
 (def ns-overrides
-  {:basic-select {"compound" :macaw.error/unsupported-expression
-                  "mutation" :macaw.error/invalid-query
-                  "dynamic"  :macaw.error/invalid-query}})
+  {:select-only  {"mutation" :macaw.error/invalid-query
+                  "dynamic"  :macaw.error/invalid-query}
+   :basic-select {"compound" :macaw.error/unsupported-expression}})
 
 (def ^:private merged-fixtures-file "test/resources/acceptance/queries.sql")
 
@@ -76,15 +87,21 @@
   (when (keyword? x)
     x))
 
-(defn- get-override [expected-cs mode fixture ck]
+(defn- get-override* [expected-cs mode fixture ck]
   (or (get global-overrides mode)
       (get-in ns-overrides [mode (namespace fixture)])
       (get-in expected-cs [:overrides mode :error])
-      (get-in expected-cs [:overrides :error])
       (get-in expected-cs [:overrides mode ck])
-      (get-in expected-cs [:overrides ck])
-      (when-keyword (get-in expected-cs [:overrides mode]))
-      (when-keyword (get expected-cs :overrides))))
+      (when-keyword (get-in expected-cs [:overrides mode]))))
+
+(defn- get-override [expected-cs mode fixture ck]
+  (or
+   (some #(get-override* expected-cs % fixture ck)
+         (lineage override-hierarchy mode))
+
+   (get-in expected-cs [:overrides :error])
+   (get-in expected-cs [:overrides ck])
+   (when-keyword (get expected-cs :overrides))))
 
 (defn- test-fixture
   "Test that we can parse a given fixture, and compare against expected analysis and rewrites, where they are defined."
@@ -95,7 +112,7 @@
         expected-cs (fixture-analysis fixture)
         renames     (fixture-renames fixture)
         expected-rw (fixture-rewritten fixture)
-        base-opts   {:non-reserved-words [:final]}
+        base-opts   {:non-reserved-words [:final], :allow-unused? true}
         opts-mode   (fn [mode] (assoc base-opts :mode mode))]
     (assert sql "Fixture exists")
     (doseq [m test-modes
@@ -107,7 +124,7 @@
             (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
           (let [cs (testing (str prefix " analysis does not throw")
                      (is (ct/components sql opts)))]
-            (doseq [[ck cv] (dissoc expected-cs :overrides :error)]
+            (doseq [[ck cv] (dissoc expected-cs :overrides :error :skip)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
                       override  (get-override expected-cs m fixture ck)]
@@ -118,7 +135,9 @@
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
-          (when-not (and (nil? correct) (nil? override))
+          (if (and (nil? correct) (nil? override))
+            (testing "Must define expected tables, or explicitly skip analysis"
+              (is (:skip expected-cs)))
             (testing (str prefix " table analysis is correct for mode " m)
               (validate-analysis correct override tables))))))
 
@@ -161,7 +180,7 @@
     (cons 'do
           (for [f fixtures
                 :let [test-name (symbol (str/replace (ct/fixture->filename f "-test") #"(?<!_)_(?!_)" "-"))]]
-            `(deftest ~test-name
+            `(deftest ^:parallel ~test-name
                (test-fixture ~f))))))
 
 (create-fixture-tests!)
@@ -185,7 +204,8 @@
                          (str/trim
                           (ct/query-fixture fixture))))))
 
-  (test-fixture :dynamic/generate-series)
+  (deftest ^:parallel single-test
+    (test-fixture :compound/nested-cte-sneaky))
 
   (test-fixture :compound/cte)
   (test-fixture :compound/cte-nonambiguous)

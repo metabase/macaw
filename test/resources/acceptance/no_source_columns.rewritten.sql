@@ -1,2 +1,2 @@
 WITH cte AS (SELECT COUNT(*) AS a FROM oof)
-SELECT a AS b FROM rab
+SELECT a AS b FROM cte
