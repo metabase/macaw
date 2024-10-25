@@ -20,7 +20,8 @@
   [:macaw.error/analysis-error
    :macaw.error/illegal-expression
    :macaw.error/invalid-query
-   :macaw.error/unable-to-parse])
+   :macaw.error/unable-to-parse
+   :macaw.error/unsupported-expression])
 
 (def error-result
   "A map indicating that we were not able to parse the query."
