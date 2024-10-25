@@ -69,10 +69,10 @@
      sql
      (mw/fold-query
       updated-ast
-      {:table  (replace-name #(let [fqn   (.getFullyQualifiedName ^Table %)
-                                    alias (.getAlias ^Table %)]
-                                (if alias
-                                  (str fqn " " (.getName alias))
+      {:table  (replace-name #(let [fqn     (.getFullyQualifiedName ^Table %)
+                                    t-alias (.getAlias ^Table %)]
+                                (if t-alias
+                                  (str fqn " " (.getName t-alias))
                                   fqn)))
        :column (replace-name #(.getFullyQualifiedName ^Column %))}
       []))))
