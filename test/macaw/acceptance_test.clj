@@ -28,7 +28,7 @@
     (ct/raw-components (get cs k))))
 
 (def ^:private test-modes
-  (set (macaw.types/modes)))
+  (set macaw.types/modes))
 
 (def override-hierarchy
   (-> (make-hierarchy)
