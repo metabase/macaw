@@ -22,7 +22,8 @@
           :else (recur (dec n) (inc next-id)))))))
 
 (defn- ->idx [^String sql line col]
-  (+ col (index-of-nth sql "\n" (dec line))))
+  ;; The second `dec` on `line` is a workaround for what appears to be an off-by-one error in this JSQLParser version.
+  (+ col (index-of-nth sql "\n" (dec (dec line)))))
 
 (defn- node->idx-range
   "Find the start and end index of the underlying tokens for a given AST node from a given SQL string."
@@ -68,7 +69,11 @@
      sql
      (mw/fold-query
       updated-ast
-      {:table  (replace-name #(.getFullyQualifiedName ^Table %))
+      {:table  (replace-name #(let [fqn   (.getFullyQualifiedName ^Table %)
+                                    alias (.getAlias ^Table %)]
+                                (if alias
+                                  (str fqn " " (.getName alias))
+                                  fqn)))
        :column (replace-name #(.getFullyQualifiedName ^Column %))}
       []))))
 
@@ -98,7 +103,7 @@
   (let [known-rename? (set (map second updated-nodes))]
     (doseq [[k items] renames]
       (when-let [unknown (first (remove known-rename? items))]
-        (throw (ex-info (str "Unknown rename: " unknown) {:type k
+        (throw (ex-info (str "Unknown rename: " unknown) {:type   k
                                                           :rename unknown}))))))
 
 (defn- index-by-instances [xs]
