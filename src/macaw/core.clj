@@ -52,10 +52,14 @@
   ;; For Metabase, we are always dealing with single queries, so there's no point ever having this behavior.
   ;; TODO When JSQLParser 4.10 is released, move to the more robust [[CCJSqlParserUtil.sanitizeSingleSql]] helper.
   ;; See https://github.com/JSQLParser/JSqlParser/issues/1988
-  (-> query
-      (str/replace #"\n{2,}" "\n")
-      (escape-keywords (:non-reserved-words opts))
-      (CCJSqlParserUtil/parse (->parser-fn opts))))
+  (try
+    (-> query
+        (str/replace #"\n{2,}" "\n")
+        (escape-keywords (:non-reserved-words opts))
+        (CCJSqlParserUtil/parse (->parser-fn opts)))
+    (catch JSQLParserException e
+      {:error   :macaw.error/unable-to-parse
+       :context {:cause e}})))
 
 (defn scope-id
   "A unique identifier for the given scope."
@@ -77,21 +81,20 @@
 
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
-  [statement & {:as opts}]
+  [parsed & {:as opts}]
   ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behavior.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
   (try
-    (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
-         (walk/postwalk (fn [x]
-                          (if (string? x)
-                            (unescape-keywords x (:non-reserved-words opts))
-                            x))))
+    (if (map? parsed)
+      parsed
+      (->> (collect/query->components parsed (merge {:preserve-identifiers? true} opts))
+           (walk/postwalk (fn [x]
+                            (if (string? x)
+                              (unescape-keywords x (:non-reserved-words opts))
+                              x)))))
     (catch AnalysisError e
-      (->macaw-error e))
-    (catch JSQLParserException e
-      {:error   :macaw.error/unable-to-parse
-       :context {:cause e}})))
+      (->macaw-error e))))
 
 (defn- raw-components [xs]
   (into (empty xs) (keep :component) xs))
@@ -111,16 +114,15 @@
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
   [sql & {:keys [mode] :as opts}]
   (try
-    (let [query (parsed-query sql opts)]
-      (case mode
-        :ast-walker-1    (-> (query->components query opts) :tables raw-components (->> (hash-map :tables)))
-        :basic-select    (-> (BasicTableExtractor/getTables query) tables->identifiers)
-        :compound-select (-> (CompoundTableExtractor/getTables query) tables->identifiers)))
+    (let [parsed (parsed-query sql opts)]
+      (if (map? parsed)
+        parsed
+        (case mode
+          :ast-walker-1 (-> (query->components parsed opts) :tables raw-components (->> (hash-map :tables)))
+          :basic-select (-> (BasicTableExtractor/getTables parsed) tables->identifiers)
+          :compound-select (-> (CompoundTableExtractor/getTables parsed) tables->identifiers))))
     (catch AnalysisError e
-      (->macaw-error e))
-    (catch JSQLParserException e
-      {:error   :macaw.error/unable-to-parse
-       :context {:cause e}})))
+      (->macaw-error e))))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.

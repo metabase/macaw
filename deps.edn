@@ -20,9 +20,10 @@
  :aliases
  {:dev
   {:extra-deps
-   {io.github.metabase/hawk     {:mvn/version "1.0.0"}
-    virgil/virgil               {:mvn/version "0.3.0"}
-    org.clojure/tools.namespace {:mvn/version "1.4.5"}}
+   {hashp/hashp                 {:mvn/version "0.2.2"}
+    io.github.metabase/hawk     {:mvn/version "1.0.0"}
+    org.clojure/tools.namespace {:mvn/version "1.4.5"}
+    virgil/virgil               {:mvn/version "0.3.0"}}
 
    :extra-paths
    ["test" "test/resources"]

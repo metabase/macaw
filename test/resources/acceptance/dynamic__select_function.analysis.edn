@@ -1,0 +1,4 @@
+{:error :macaw.error/illegal-expression
+ :overrides
+ {:select-only
+  {:tables #{}}}}
