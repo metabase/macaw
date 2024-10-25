@@ -67,6 +67,11 @@
   [^AstWalker$Scope s]
   (.getLabel s))
 
+(defn- ->macaw-error [^AnalysisError analysis-error]
+  {:error (keyword "macaw.error" (-> (.-errorType analysis-error)
+                                     str/lower-case
+                                     (str/replace #"_" "-")))})
+
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
 
@@ -76,11 +81,17 @@
   ;; By default, we will preserve identifiers verbatim, to be agnostic of case and quote behavior.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
-  (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
-       (walk/postwalk (fn [x]
-                        (if (string? x)
-                          (unescape-keywords x (:non-reserved-words opts))
-                          x)))))
+  (try
+    (->> (collect/query->components statement (merge {:preserve-identifiers? true} opts))
+         (walk/postwalk (fn [x]
+                          (if (string? x)
+                            (unescape-keywords x (:non-reserved-words opts))
+                            x))))
+    (catch AnalysisError e
+      (->macaw-error e))
+    (catch JSQLParserException e
+      {:error   :macaw.error/unable-to-parse
+       :context {:cause e}})))
 
 (defn- raw-components [xs]
   (into (empty xs) (keep :component) xs))
@@ -93,28 +104,23 @@
      :table  (.getName t)}
     {:table (.getName t)}))
 
-(defn- ->macaw-error [^AnalysisError analysis-error]
-  (keyword "macaw.error" (-> (.-errorType analysis-error)
-                             str/lower-case
-                             (str/replace #"_" "-"))))
-
-(defmacro ^:private kw-or-tables [expr]
-  `(try (set (map table->identifier ~expr))
-        (catch AnalysisError e#
-          (->macaw-error e#))
-        (catch JSQLParserException _e#
-          :macaw.error/unable-to-parse)))
+(defn- tables->identifiers [expr]
+  {:tables (set (map table->identifier expr))})
 
 (defn query->tables
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
   [sql & {:keys [mode] :as opts}]
-  ;; We delay parsing so that kw-or-tables is able to catch exceptions.
-  ;; This will no longer be necessary when we update :ast-walker-1 to catch exceptions too.
-  (let [query (delay (parsed-query sql opts))]
-    (case mode
-      :ast-walker-1 (-> (query->components @query opts) :tables raw-components)
-      :basic-select (-> (BasicTableExtractor/getTables @query) kw-or-tables)
-      :compound-select (-> (CompoundTableExtractor/getTables @query) kw-or-tables))))
+  (try
+    (let [query (parsed-query sql opts)]
+      (case mode
+        :ast-walker-1    (-> (query->components query opts) :tables raw-components (->> (hash-map :tables)))
+        :basic-select    (-> (BasicTableExtractor/getTables query) tables->identifiers)
+        :compound-select (-> (CompoundTableExtractor/getTables query) tables->identifiers)))
+    (catch AnalysisError e
+      (->macaw-error e))
+    (catch JSQLParserException e
+      {:error   :macaw.error/unable-to-parse
+       :context {:cause e}})))
 
 (defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
