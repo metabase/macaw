@@ -236,10 +236,6 @@ SELECT
     c.x
 FROM b, c;
 
--- FIXTURE: dynamic/generate-series
-SELECT t.day::date AS date
-FROM generate_series(timestamp '2021-01-01', now(), interval '1 day') AS t(day)
-
 -- FIXTURE: literal/with-table
 SELECT FALSE, 'str', 1, x FROM t
 

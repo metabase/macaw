@@ -11,15 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def broken-queries
-  "The DANGER ZONE
-  This map gives a pattern in the exception message we expect to receive when trying to analyze the given fixture."
-  {:broken/between       #"Encountered unexpected token: \"BETWEEN\""
-   :broken/filter-where  #"Encountered unexpected token: \"\(\""
-   :sqlserver/execute    #"Not supported yet"
-   :sqlserver/executesql #"Not supported yet"
-   :oracle/open-for      #"Encountered unexpected token: \"OPEN\""})
-
 (defn- fixture-analysis [fixture]
   (some-> fixture (ct/fixture->filename "acceptance" ".analysis.edn") io/resource slurp read-string))
 
@@ -60,15 +51,24 @@
 
 (def ^:private merged-fixtures-file "test/resources/acceptance/queries.sql")
 
-(defn- merged-fixtures
-  "The fixtures in merged fixtures file, mapped by their identifiers."
-  []
-  (->> (str/split (slurp merged-fixtures-file) #"-- FIXTURE: ")
+;; TODO generically detect queries.<namespace>.sql files
+(def ^:private dynamic-fixtures-file "test/resources/acceptance/queries.dynamic.sql")
+
+(defn- read-merged [file]
+  (->> (str/split (slurp file) #"-- FIXTURE: ")
        (keep (fn [named-query]
                (when-not (str/blank? named-query)
                  (let [[nm qry] (.split ^String named-query "\n" 2)]
                    [(keyword nm) (str/trim qry)]))))
        (into {})))
+
+(defn- merged-fixtures
+  "The fixtures in merged fixtures file, mapped by their identifiers."
+  []
+  (merge (read-merged merged-fixtures-file)
+         (update-keys
+          (read-merged dynamic-fixtures-file)
+          #(keyword "dynamic" (name %)))))
 
 (defn- validate-analysis [correct override actual]
   (let [expected (or override correct)]
@@ -88,11 +88,11 @@
     x))
 
 (defn- get-override* [expected-cs mode fixture ck]
-  (or (get global-overrides mode)
-      (get-in ns-overrides [mode (namespace fixture)])
-      (get-in expected-cs [:overrides mode :error])
+  (or (get-in expected-cs [:overrides mode :error])
       (get-in expected-cs [:overrides mode ck])
-      (when-keyword (get-in expected-cs [:overrides mode]))))
+      (when-keyword (get-in expected-cs [:overrides mode]))
+      (get-in ns-overrides [mode (namespace fixture)])
+      (get global-overrides mode)))
 
 (defn- get-override [expected-cs mode fixture ck]
   (or
@@ -119,19 +119,18 @@
             :let [opts (opts-mode m)]]
       (if (= m :ast-walker-1)
         ;; Legacy testing path for `components`, which only supports the original walker, and throws exceptions.
-        (if-let [expected-msg (broken-queries fixture)]
-          (testing (str prefix " analysis cannot be parsed")
-            (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
-          (let [cs (testing (str prefix " analysis does not throw")
-                     (is (ct/components sql opts)))]
-            (doseq [[ck cv] (dissoc expected-cs :overrides :error :skip)]
-              (testing (str prefix " analysis is correct: " (name ck))
-                (let [actual-cv (get-component cs ck)
-                      override  (get-override expected-cs m fixture ck)]
-                  (validate-analysis cv override actual-cv))))))
+        (let [cs (testing (str prefix " analysis does not throw")
+                   (is (ct/components sql opts)))]
+          (doseq [[ck cv] (dissoc expected-cs :overrides :error :skip)]
+            (testing (str prefix " analysis is correct: " (name ck))
+              (let [actual-cv (:error cs (get-component cs ck))
+                    override  (get-override expected-cs m fixture ck)]
+                (validate-analysis cv override actual-cv)))))
         ;; Testing path for newer modes.
         (let [correct  (:error expected-cs (:tables expected-cs))
-              override (get-override expected-cs m fixture :tables)
+              override (if (str/includes? sql "-- BROKEN")
+                         :macaw.error/unable-to-parse
+                         (get-override expected-cs m fixture :tables))
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]

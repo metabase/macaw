@@ -1,2 +1,1 @@
-{:error     :macaw.error/invalid-query
- :overrides {:ast-walker-1 :macaw.error/unable-to-parse}}
+{:error     :macaw.error/invalid-query}

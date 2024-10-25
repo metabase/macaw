@@ -5,8 +5,6 @@ package com.metabase.macaw;
 import clojure.lang.Cons;
 import clojure.lang.IFn;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -248,8 +246,6 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
             return value;
         }
     }
-
-    private static final String NOT_SUPPORTED_YET = "Not supported yet.";
 
     private Acc acc;
     private final EnumMap<CallbackKey, IFn> callbacks;
@@ -1030,32 +1026,32 @@ public class AstWalker<Acc> implements SelectVisitor, FromItemVisitor, Expressio
 
     @Override
     public void visit(Statements stmts) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(Execute execute) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(SetStatement set) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(ResetStatement reset) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(ShowColumnsStatement set) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
     public void visit(ShowIndexStatement showIndex) {
-        throw new UnsupportedOperationException(NOT_SUPPORTED_YET);
+        throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
     }
 
     @Override
