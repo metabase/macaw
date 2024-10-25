@@ -38,7 +38,7 @@
    [:table  {:optional true} :string]
    [:column                  :string]])
 
-(defn- wrapped [t]
+(defn- with-context [t]
   [:map
    [:component t]
    [:context :any]])
@@ -46,14 +46,16 @@
 (def components-result
   "A map holding all the components that we were able to parse from a query"
   [:map {:closed true}
-   [:tables         [:set (wrapped table-ident)]]
-   [:columns        [:set (wrapped column-ident)]]
+   [:tables         [:set (with-context table-ident)]]
+   [:columns        [:set (with-context column-ident)]]
    [:source-columns [:set column-ident]]
-   ;; TODO tighten types
-   [:tables-superset   [:set :any]]
-   [:has-wildcard?     [:set :any]]
-   [:mutation-commands [:set :any]]
-   [:table-wildcards   [:set :any]]])
+   ;; TODO Unclear why we would want to wrap any of these.
+   [:table-wildcards   [:set (with-context table-ident)]]
+   ;; This :maybe would be a problem, if anything actually used this value.
+   [:tables-superset   [:set (with-context [:maybe table-ident])]]
+   ;; Unclear why we need a collection here
+   [:has-wildcard?     [:set (with-context :boolean)]]
+   [:mutation-commands [:set (with-context :string)]]])
 
 (def tables-result
   "A map holding the tables that we were able to parse from a query"
