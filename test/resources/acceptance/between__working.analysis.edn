@@ -1,0 +1,2 @@
+{:source-columns [{:table "t", :column "created_at"}]
+ :tables         [{:table "t"}]}

@@ -124,7 +124,7 @@
             (is (thrown-with-msg? Exception expected-msg (ct/components sql opts))))
           (let [cs (testing (str prefix " analysis does not throw")
                      (is (ct/components sql opts)))]
-            (doseq [[ck cv] (dissoc expected-cs :overrides :error)]
+            (doseq [[ck cv] (dissoc expected-cs :overrides :error :skip)]
               (testing (str prefix " analysis is correct: " (name ck))
                 (let [actual-cv (get-component cs ck)
                       override  (get-override expected-cs m fixture ck)]
@@ -135,7 +135,9 @@
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
                          (is (ct/tables sql opts)))]
-          (when-not (and (nil? correct) (nil? override))
+          (if (and (nil? correct) (nil? override))
+            (testing "Must define expected tables, or explicitly skip analysis"
+              (is (:skip expected-cs)))
             (testing (str prefix " table analysis is correct for mode " m)
               (validate-analysis correct override tables))))))
 
