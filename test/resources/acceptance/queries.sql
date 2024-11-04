@@ -287,6 +287,9 @@ FROM user;
 -- FIXTURE: simple/select-star
 SELECT * FROM t;
 
+-- FIXTURE: simple/select-count
+SELECT COUNT(*) FROM t;
+
 -- FIXTURE: snowflakelet
 SELECT
     column_2564,
