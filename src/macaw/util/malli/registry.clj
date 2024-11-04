@@ -59,8 +59,6 @@
 
 (defonce ^:private registry (malli.registry/mutable-registry registry*))
 
-(malli.registry/set-default-registry! registry)
-
 (defn register!
   "Register a spec with our Malli spec registry."
   [schema definition]
