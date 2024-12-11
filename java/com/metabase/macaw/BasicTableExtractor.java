@@ -91,7 +91,7 @@ public final class BasicTableExtractor {
                 tables.add(table);
             } else if (item instanceof TableFunction) {
                 // Do not allow dynamic tables
-                throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
+                throw new AnalysisError(AnalysisErrorType.UNSUPPORTED_EXPRESSION);
             } else {
                 // Only allow simple table references.
                 throw new AnalysisError(AnalysisErrorType.UNSUPPORTED_EXPRESSION);

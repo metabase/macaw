@@ -1,0 +1,10 @@
+{:tables         [{:table "history"}]
+ :source-columns [{:table "history" :column "id"}
+                  {:table "history" :column "page"}
+                  {:table "history" :column "h_timestamp"}]
+ :overrides
+ {:ast-walker-1
+  {:tables         []
+   :source-columns []}
+  :basic-select    :macaw.error/unsupported-expression
+  :compound-select :macaw.error/unsupported-expression}}
