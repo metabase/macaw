@@ -127,8 +127,12 @@
                 (validate-analysis cv override actual-cv)))))
         ;; Testing path for newer modes.
         (let [correct  (:error expected-cs (:tables expected-cs))
-              override (if (str/includes? sql "-- BROKEN")
+              override (cond
+                         (str/includes? sql "-- BROKEN")
                          :macaw.error/unable-to-parse
+                         (str/includes? sql "-- UNSUPPORTED")
+                         :macaw.error/unsupported-expression
+                         :else
                          (get-override expected-cs m fixture :tables))
               ;; For now, we only support (and test) :tables
               tables   (testing (str prefix " table analysis does not throw for mode " m)
