@@ -442,6 +442,10 @@ public class AstWalker<Acc, T> implements SelectVisitor<T>, FromItemVisitor<T>, 
 
     @Override
     public <S> T visit(Column tableColumn, S context) {
+        // Ignore nested queries. In the future, we could do a nested part of them and merge the results.
+        if (tableColumn.getColumnName().startsWith("$$")) {
+            return null;
+        }
         invokeCallback(COLUMN, tableColumn);
 
         Table table = tableColumn.getTable();

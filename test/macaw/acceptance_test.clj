@@ -209,5 +209,6 @@
   (test-fixture :compound/cte-nonambiguous)
   (test-fixture :literal/with-table)
   (test-fixture :literal/without-table)
+  (test-fixture :interpolation/crosstab)
 
   (test-fixture :broken/filter-where))

@@ -125,7 +125,7 @@ public final class CompoundTableExtractor {
                 }
             } else if (item instanceof TableFunction) {
                 // Do not allow dynamic tables
-                throw new AnalysisError(AnalysisErrorType.INVALID_QUERY);
+                throw new AnalysisError(AnalysisErrorType.UNSUPPORTED_EXPRESSION);
             } else if (item instanceof Select) {
                 accTables((Select) item, tables, cteAliasScopes);
             } else if (item != null) {
