@@ -5,7 +5,7 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite]
    [macaw.types :as m.types]
-   [macaw.util.malli :as mu])
+   [malli.core :as m])
   (:import
    (com.metabase.macaw AnalysisError AstWalker$Scope BasicTableExtractor CompoundTableExtractor)
    (java.util.function Consumer)
@@ -77,13 +77,14 @@
                                      str/lower-case
                                      (str/replace #"_" "-")))})
 
-(mu/defn query->components :- [:or m.types/error-result m.types/components-result]
+(defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
 
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
   the query'; this function doesn't do additional inference work to find out a table's schema.)"
-  [parsed       :- [:or m.types/error-result [:fn #(instance? Statement %)]]
-   & {:as opts} :- [:maybe m.types/options-map]]
+  [parsed & {:as opts}]
+  (m/validate [:or m.types/error-result [:fn #(instance? Statement %)]] parsed)
+  (m/validate [:maybe m.types/options-map] opts)
   ;; By default, we will preserve identifiers verbatim, to be agnostic of casing and quoting.
   ;; This may result in duplicate components, which are left to the caller to deduplicate.
   ;; In Metabase's case, this is done during the stage where the database metadata is queried.
@@ -112,9 +113,11 @@
 (defn- tables->identifiers [expr]
   {:tables (set (map table->identifier expr))})
 
-(mu/defn query->tables :- [:or m.types/error-result m.types/tables-result]
+(defn query->tables
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a set of all the table identifiers found within it."
-  [sql :- :string & {:keys [mode] :as opts} :- [:maybe m.types/options-map]]
+  [sql & {:keys [mode] :as opts}]
+  (m/validate :string sql)
+  (m/validate [:maybe m.types/options-map] opts)
   (try
     (let [parsed (parsed-query sql opts)]
       (if (map? parsed)
@@ -126,7 +129,7 @@
     (catch AnalysisError e
       (->macaw-error e))))
 
-(mu/defn replace-names :- :string
+(defn replace-names
   "Given an SQL query, apply the given table, column, and schema renames.
 
   Supported options:
@@ -137,9 +140,10 @@
     - :agnostic - case is ignored when comparing identifiers in code to replacement \"from\" strings.
 
   - quotes-preserve-case: whether quoted identifiers should override the previous option."
-  [sql          :- :string
-   renames      :- :map
-   & {:as opts} :- [:maybe m.types/options-map]]
+  [sql renames & {:as opts}]
+  (m/validate :string sql)
+  (m/validate :map renames)
+  (m/validate [:maybe m.types/options-map] opts)
   ;; We need to pre-sanitize the SQL before its analyzed so that the AST token positions match up correctly.
   ;; Currently, we use a more complex and expensive sanitization method, so that it's reversible.
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.

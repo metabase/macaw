@@ -12,7 +12,7 @@
   ;; Get environment variables and Java properties
   environ/environ                  {:mvn/version "1.2.0"}
   ;; Schema-checking
-  metosin/malli                    {:mvn/version "0.16.3"}
+  metosin/malli                    {:mvn/version "0.18.0"}
   ;; import-vars!
   potemkin/potemkin                {:mvn/version "0.4.7"}}
 
