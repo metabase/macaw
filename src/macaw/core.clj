@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [macaw.clj :as m.clj]
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite]
    [macaw.types :as m.types]
@@ -159,3 +160,6 @@
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
+(defn ->ast
+  [parsed]
+  (m.clj/->ast parsed {:with-instance? true}))
