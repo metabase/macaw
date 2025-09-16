@@ -182,7 +182,8 @@
 (defmethod ->ast CastExpression
   [^CastExpression parsed opts]
   (node
-   {:type ::cast
+   {:type ::unary-expression
+    :operation :cast
     :expression (->ast (.getLeftExpression parsed) opts)
     :datatype (some-> (.getColDataType parsed) str)}
    parsed opts))
@@ -190,7 +191,8 @@
 (defmethod ->ast ExtractExpression
   [^ExtractExpression parsed opts]
   (node
-   {:type ::extract
+   {:type ::unary-expression
+    :operation :extract
     :expression (->ast (.getExpression parsed) opts)
     :part (.getName parsed)}
    parsed opts))
@@ -216,7 +218,8 @@
 (defmethod ->ast SignedExpression
   [^SignedExpression parsed opts]
   (node
-   {:type ::signed-expression
+   {:type ::unary-expression
+    :operation :sign
     :expression (->ast (.getExpression parsed) opts)
     :sign (str (.getSign parsed))}
    parsed opts))
@@ -224,14 +227,16 @@
 (defmethod ->ast ExistsExpression
   [^ExistsExpression parsed opts]
   (node
-   {:type ::exists-expression
+   {:type ::unary-expression
+    :operation :exists
     :expression (->ast (.getRightExpression parsed) opts)}
    parsed opts))
 
 (defmethod ->ast IsNullExpression
   [^IsNullExpression parsed opts]
   (node
-   {:type ::is-null-expression
+   {:type ::unary-expression
+    :operation :is-null
     :expression (->ast (.getLeftExpression parsed) opts)
     :not (.isNot parsed)}
    parsed opts))
@@ -267,6 +272,7 @@
 (defmethod ->ast NotExpression
   [^NotExpression parsed opts]
   (node
-   {:type ::not
+   {:type ::unary-expression
+    :operation :not
     :expression (->ast (.getExpression parsed) opts)}
    parsed opts))

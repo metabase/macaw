@@ -126,7 +126,8 @@
                      :operator "<",
                      :left {:type :macaw.ast/column, :column "total"},
                      :right {:type :macaw.ast/literal, :value 0}}
-              :then {:type :macaw.ast/signed-expression,
+              :then {:type :macaw.ast/unary-expression,
+                     :operation :sign
                      :expression {:type :macaw.ast/column, :column "total"},
                      :sign "-"}}]}],
           :from {:type :macaw.ast/table, :table "orders"}}
@@ -151,7 +152,8 @@
            {:type :macaw.ast/column, :table "u", :column "email"}],
           :from {:type :macaw.ast/table, :alias "u", :table "users"},
           :where
-          {:type :macaw.ast/exists-expression,
+          {:type :macaw.ast/unary-expression,
+           :operation :exists
            :expression
            {:type :macaw.ast/select,
             :select [{:type :macaw.ast/literal, :value 1}],
@@ -170,7 +172,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
           :where
-          {:type :macaw.ast/not,
+          {:type :macaw.ast/unary-expression,
+           :operation :not
            :expression
            {:type :macaw.ast/expression-list,
             :expressions
@@ -185,7 +188,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
           :where
-          {:type :macaw.ast/is-null-expression,
+          {:type :macaw.ast/unary-expression,
+           :operation :is-null
            :expression {:type :macaw.ast/column, :column "category"},
            :not false}}
          (->ast "select * from products where category is null"))))
@@ -195,7 +199,8 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
           :where
-          {:type :macaw.ast/is-null-expression,
+          {:type :macaw.ast/unary-expression,
+           :operation :is-null
            :expression {:type :macaw.ast/column, :column "category"},
            :not true}}
          (->ast "select * from products where category is not null"))))
@@ -237,7 +242,8 @@ SELECT * FROM active_users"))))
                {:type :macaw.ast/literal, :alias "level", :value 0}],
               :from {:type :macaw.ast/table, :table "employees"},
               :where
-              {:type :macaw.ast/is-null-expression,
+              {:type :macaw.ast/unary-expression,
+               :operation :is-null
                :expression {:type :macaw.ast/column, :column "manager_id"},
                :not false}}
              {:type :macaw.ast/select,
@@ -427,9 +433,11 @@ ORDER BY
               [{:type :macaw.ast/binary-expression,
                 :operator "/",
                 :left
-                {:type :macaw.ast/cast,
+                {:type :macaw.ast/unary-expression,
+                 :operation :cast
                  :expression
-                 {:type :macaw.ast/extract,
+                 {:type :macaw.ast/unary-expression,
+                  :operation :extract
                   :expression
                   {:type :macaw.ast/expression-list,
                    :expressions
@@ -470,9 +478,11 @@ ORDER BY
               [{:type :macaw.ast/binary-expression,
                 :operator "/",
                 :left
-                {:type :macaw.ast/cast,
+                {:type :macaw.ast/unary-expression,
+                 :operation :cast
                  :expression
-                 {:type :macaw.ast/extract,
+                 {:type :macaw.ast/unary-expression,
+                  :operation :extract
                   :expression
                   {:type :macaw.ast/expression-list,
                    :expressions
@@ -507,9 +517,11 @@ ORDER BY
               [{:type :macaw.ast/binary-expression,
                 :operator "/",
                 :left
-                {:type :macaw.ast/cast,
+                {:type :macaw.ast/unary-expression,
+                 :operation :cast
                  :expression
-                 {:type :macaw.ast/extract,
+                 {:type :macaw.ast/unary-expression,
+                  :operation :extract
                   :expression
                   {:type :macaw.ast/expression-list,
                    :expressions
