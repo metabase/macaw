@@ -1,4 +1,4 @@
-(ns macaw.clj
+(ns macaw.ast
   (:require
    [macaw.util :as u])
   (:import

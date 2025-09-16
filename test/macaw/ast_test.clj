@@ -1,18 +1,18 @@
-(ns macaw.clj-test
+(ns macaw.ast-test
   (:require
    [clojure.test :refer :all]
-   [macaw.clj :as m.clj]
+   [macaw.ast :as m.ast]
    [macaw.core :as m]))
 
 (deftest node-test
   (is (= {:foo 1
           :instance :an-instance}
-         (#'m.clj/node {:foo 1} :an-instance {:with-instance? true})))
+         (#'m.ast/node {:foo 1} :an-instance {:with-instance? true})))
   (is (= {:foo 1}
-         (#'m.clj/node {:foo 1} :an-instance {:with-instance? false}))))
+         (#'m.ast/node {:foo 1} :an-instance {:with-instance? false}))))
 
 (defn- ->ast [query]
-  (-> query m/parsed-query (m.clj/->ast {:with-instance? false})))
+  (-> query m/parsed-query (m.ast/->ast {:with-instance? false})))
 
 (deftest basic-select-test
   (is (= {:type :macaw.clj/select,
@@ -143,6 +143,47 @@
               :then {:type :macaw.clj/literal, :value "is gizmo"}}]}],
           :from {:type :macaw.clj/table, :table "products"}}
          (->ast "select case category when 'Gizmo' then 'is gizmo' else 'is not gizmo' end from products"))))
+
+(deftest basic-exists-test
+  (is (= {}
+         (->ast "SELECT u.name, u.email
+FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
+
+(deftest basic-cte-test
+  (is (= {}
+         (->ast "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
+SELECT * FROM active_users"))))
+
+(deftest recursive-cte-test
+  (is (= {}
+         (->ast "WITH RECURSIVE emp_hierarchy AS (
+  SELECT id, name, manager_id, 0 AS level
+  FROM employees
+  WHERE manager_id IS NULL
+  UNION ALL
+  SELECT e.id, e.name, e.manager_id, h.level + 1
+  FROM employees e
+  JOIN emp_hierarchy h ON e.manager_id = h.id
+)
+SELECT name, level FROM emp_hierarchy"))))
+
+(deftest basic-union-test
+  (is (= {}
+         (->ast "SELECT id, name FROM users
+UNION
+SELECT id, name FROM archived_users"))))
+
+(deftest row-number-test
+  (is (= {}
+         (->ast "SELECT name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank
+FROM employees"))))
+
+(deftest partition-by-test
+  (is (= {}
+         (->ast "SELECT department, name, salary,
+  RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
+FROM employees"))))
 
 (deftest week-test
   (is (= {:type :macaw.clj/select,
