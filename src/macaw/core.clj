@@ -162,4 +162,4 @@
         (unescape-keywords (:non-reserved-words opts)))))
 (defn ->ast
   [parsed]
-  (m.ast/->ast parsed {:with-instance? true}))
+  (m.ast/->ast parsed {:with-instance? false}))
