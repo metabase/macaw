@@ -3,13 +3,17 @@
    [macaw.util :as u])
   (:import
    (net.sf.jsqlparser.statement.select AllColumns AllTableColumns Join OrderByElement
-                                       ParenthesedSelect PlainSelect SelectItem)
+                                       ParenthesedSelect PlainSelect SelectItem SetOperationList
+                                       WithItem)
    (net.sf.jsqlparser.schema Column Database Table)
-   (net.sf.jsqlparser.expression Alias BinaryExpression CaseExpression CastExpression DateValue
-                                 DoubleValue ExtractExpression Function IntervalExpression
-                                 JdbcParameter LongValue NullValue SignedExpression StringValue
-                                 TimeValue TimestampValue)
-   (net.sf.jsqlparser.expression.operators.relational ExpressionList)))
+   (net.sf.jsqlparser.expression Alias AnalyticExpression BinaryExpression CaseExpression
+                                 CastExpression DateValue DoubleValue ExtractExpression Function
+                                 IntervalExpression JdbcParameter LongValue NotExpression NullValue
+                                 SignedExpression StringValue TimeValue TimestampValue WhenClause)
+   (net.sf.jsqlparser.expression.operators.relational ExistsExpression ExpressionList
+                                                      IsNullExpression)))
+
+(set! *warn-on-reflection* true)
 
 (defn- node [data instance {:keys [with-instance?] :as _opts}]
   (-> (merge data
@@ -18,10 +22,8 @@
                {}))
       (u/strip-nils true)))
 
-
 (defmulti ->ast (fn [parsed _opts]
-                       (type parsed)))
-
+                  (type parsed)))
 
 (defmethod ->ast :default
   [parsed _opts]
@@ -29,9 +31,8 @@
                     {:value parsed}))
   parsed)
 
-
 (defmethod ->ast PlainSelect
-  [parsed opts]
+  [^PlainSelect parsed opts]
   (node
    {:type ::select
     :select (mapv #(->ast % opts) (.getSelectItems parsed))
@@ -41,11 +42,12 @@
     :group-by (some->> (.getGroupBy parsed)
                        .getGroupByExpressionList
                        (mapv #(->ast % opts)))
-    :order-by (mapv #(->ast % opts) (.getOrderByElements parsed))}
+    :order-by (mapv #(->ast % opts) (.getOrderByElements parsed))
+    :with (mapv #(->ast % opts) (.getWithItemsList parsed))}
    parsed opts))
 
 (defmethod ->ast SelectItem
-  [parsed opts]
+  [^SelectItem parsed opts]
   (node
    (merge
     (->ast (.getAlias parsed) opts)
@@ -59,7 +61,7 @@
    parsed opts))
 
 (defmethod ->ast AllTableColumns
-  [parsed opts]
+  [^AllTableColumns parsed opts]
   (node
    (merge
     (->ast (.getTable parsed) opts)
@@ -67,15 +69,17 @@
    parsed opts))
 
 (defmethod ->ast ParenthesedSelect
-  [parsed opts]
+  [^ParenthesedSelect parsed opts]
   (node
    (merge
     (->ast (.getAlias parsed) opts)
-    (->ast (.getPlainSelect parsed) opts))
+    (->ast (try (.getPlainSelect parsed)
+                (catch ClassCastException e
+                  (.getSetOperationList parsed))) opts))
    parsed opts))
 
 (defmethod ->ast Column
-  [parsed opts]
+  [^Column parsed opts]
   (node
    (merge
     (->ast (.getTable parsed) opts)
@@ -84,7 +88,7 @@
    parsed opts))
 
 (defmethod ->ast Table
-  [parsed opts]
+  [^Table parsed opts]
   (node
    (merge
     (->ast (.getAlias parsed) opts)
@@ -95,13 +99,13 @@
    parsed opts))
 
 (defmethod ->ast Database
-  [parsed opts]
+  [^Database parsed opts]
   (node
    {:database (.getDatabaseName parsed)}
    parsed opts))
 
 (defmethod ->ast Join
-  [parsed opts]
+  [^Join parsed opts]
   (node
    {:type ::join
     :source (->ast (.getRightItem parsed) opts)
@@ -109,7 +113,7 @@
    parsed opts))
 
 (defmethod ->ast BinaryExpression
-  [parsed opts]
+  [^BinaryExpression parsed opts]
   (node
    {:type ::binary-expression
     :operator (.getStringExpression parsed)
@@ -118,23 +122,37 @@
    parsed opts))
 
 (defmethod ->ast Alias
-  [parsed opts]
+  [^Alias parsed opts]
   (node
    {:type ::alias
     :alias (.getName parsed)}
    parsed opts))
 
-(doseq [valueClass [DateValue DoubleValue LongValue NullValue
-                    StringValue TimeValue TimestampValue]]
-  (defmethod ->ast valueClass
-    [parsed opts]
-    (node
-     {:type ::literal
-      :value (.getValue parsed)}
-     parsed opts)))
+(defmacro value->ast [value-class]
+  (let [parsed-sym (gensym "parsed")]
+    `(defmethod ->ast ~value-class
+       [~(with-meta parsed-sym {:tag value-class}) opts#]
+       (node
+        {:type ::literal
+         :value (.getValue ~parsed-sym)}
+        ~parsed-sym opts#))))
+
+(value->ast DateValue)
+(value->ast DoubleValue)
+(value->ast LongValue)
+(value->ast StringValue)
+(value->ast TimeValue)
+(value->ast TimestampValue)
+
+(defmethod ->ast NullValue
+  [parsed opts]
+  (node
+   {:type ::literal
+    :value nil}
+   parsed opts))
 
 (defmethod ->ast Function
-  [parsed opts]
+  [^Function parsed opts]
   (node
    {:type ::function
     :name (.getName parsed)
@@ -142,27 +160,27 @@
    parsed opts))
 
 (defmethod ->ast ExpressionList
-  [parsed opts]
+  [^ExpressionList parsed opts]
   (node
    {:type ::expression-list
     :expressions (mapv #(->ast % opts) (.getExpressions parsed))}
    parsed opts))
 
 (defmethod ->ast IntervalExpression
-  [parsed opts]
+  [^IntervalExpression parsed opts]
   (node
    {:type ::interval
     :value (.getParameter parsed)}
    parsed opts))
 
 (defmethod ->ast OrderByElement
-  [parsed opts]
+  [^OrderByElement parsed opts]
   (node
    (->ast (.getExpression parsed) opts)
    parsed opts))
 
 (defmethod ->ast CastExpression
-  [parsed opts]
+  [^CastExpression parsed opts]
   (node
    {:type ::cast
     :expression (->ast (.getLeftExpression parsed) opts)
@@ -170,7 +188,7 @@
    parsed opts))
 
 (defmethod ->ast ExtractExpression
-  [parsed opts]
+  [^ExtractExpression parsed opts]
   (node
    {:type ::extract
     :expression (->ast (.getExpression parsed) opts)
@@ -184,21 +202,71 @@
    parsed opts))
 
 (defmethod ->ast CaseExpression
-  [parsed opts]
+  [^CaseExpression parsed opts]
   (node
    {:type ::case
     :switch (->ast (.getSwitchExpression parsed) opts)
     :else (->ast (.getElseExpression parsed) opts)
-    :when-clauses (map (fn [when-clause]
+    :when-clauses (map (fn [^WhenClause when-clause]
                          {:when (->ast (.getWhenExpression when-clause) opts)
                           :then (->ast (.getThenExpression when-clause) opts)})
                        (.getWhenClauses parsed))}
    parsed opts))
 
 (defmethod ->ast SignedExpression
-  [parsed opts]
+  [^SignedExpression parsed opts]
   (node
    {:type ::signed-expression
     :expression (->ast (.getExpression parsed) opts)
     :sign (str (.getSign parsed))}
+   parsed opts))
+
+(defmethod ->ast ExistsExpression
+  [^ExistsExpression parsed opts]
+  (node
+   {:type ::exists-expression
+    :expression (->ast (.getRightExpression parsed) opts)}
+   parsed opts))
+
+(defmethod ->ast IsNullExpression
+  [^IsNullExpression parsed opts]
+  (node
+   {:type ::is-null-expression
+    :expression (->ast (.getLeftExpression parsed) opts)
+    :not (.isNot parsed)}
+   parsed opts))
+
+(defmethod ->ast WithItem
+  [^WithItem parsed opts]
+  (node
+   (merge
+    (->ast (.getAlias parsed) opts)
+    (->ast (.getSelect parsed) opts))
+   parsed opts))
+
+(defmethod ->ast SetOperationList
+  [^SetOperationList parsed opts]
+  (node
+   {:type ::set-operation
+    :selects (mapv #(->ast % opts) (.getSelects parsed))
+    :operations (mapv str (.getOperations parsed))}
+   parsed opts))
+
+(defmethod ->ast AnalyticExpression
+  [^AnalyticExpression parsed opts]
+  (node
+   {:type ::analytic-expression
+    :expression (->ast (.getExpression parsed) opts)
+    :offset (->ast (.getOffset parsed) opts)
+    :window (->ast (.getWindowElement parsed) opts)
+    :name (.getName parsed)
+    :partition-by (mapv #(->ast % opts) (.getPartitionExpressionList parsed))
+    :order-by (mapv #(->ast % opts) (.getOrderByElements parsed))}
+   parsed opts))
+
+(defmethod ->ast NotExpression
+  [^NotExpression parsed opts]
+  (node
+   {:type ::not
+    :expression (->ast (.getExpression parsed) opts)}
    parsed opts))

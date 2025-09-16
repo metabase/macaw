@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [macaw.clj :as m.clj]
+   [macaw.ast :as m.ast]
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite]
    [macaw.types :as m.types]
@@ -162,4 +162,4 @@
         (unescape-keywords (:non-reserved-words opts)))))
 (defn ->ast
   [parsed]
-  (m.clj/->ast parsed {:with-instance? true}))
+  (m.ast/->ast parsed {:with-instance? true}))
