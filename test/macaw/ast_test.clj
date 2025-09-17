@@ -297,6 +297,17 @@ SELECT name, level FROM emp_hierarchy"))))
 UNION
 SELECT id, name FROM archived_users"))))
 
+(deftest basic-between-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :where
+          {:type :macaw.ast/between,
+           :expression {:type :macaw.ast/column, :column "created_at"},
+           :start {:type :macaw.ast/jdbc-parameter},
+           :end {:type :macaw.ast/jdbc-parameter}}}
+         (->ast "select * from orders where created_at between ? and ?"))))
+
 (deftest row-number-test
   (is (= {:type :macaw.ast/select,
           :select
@@ -822,3 +833,805 @@ GROUP BY
 ORDER BY
   DATE_TRUNC('month', \"source\".\"created_at\") ASC,
   \"source\".\"upper_category\" ASC"))))
+
+(deftest complicated-test-2
+  (is (= {:type :macaw.ast/select,
+          :select
+          [{:type :macaw.ast/column, :table "a", :column "id"}
+           {:type :macaw.ast/column, :table "a", :column "customer_name"}
+           {:type :macaw.ast/column, :table "a", :column "created_at"}
+           {:type :macaw.ast/column, :table "a", :column "is_converted"}
+           {:type :macaw.ast/column, :table "a", :column "lifetime_value"}
+           {:type :macaw.ast/column, :table "a", :column "is_active"}
+           {:type :macaw.ast/column,
+            :table "a",
+            :column "subscription_status"}
+           {:type :macaw.ast/column, :table "a", :column "deployment"}
+           {:type :macaw.ast/column, :table "a", :column "plan_name"}
+           {:type :macaw.ast/column, :table "a", :column "plan_alias"}
+           {:type :macaw.ast/column, :table "a", :column "base_fee"}
+           {:type :macaw.ast/column, :table "a", :column "annual_value"}
+           {:type :macaw.ast/column, :table "mas", :column "month"}
+           {:type :macaw.ast/column, :table "mas", :column "is_trialing"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_trialing_accounts_cloud"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_active_accounts_cloud"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_paid_accounts_cloud"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_trialing_accounts_self_hosted"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_active_accounts_self_hosted"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_paid_accounts_self_hosted"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_active_accounts_enterprise"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_paid_accounts_enterprise"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_active_accounts_starter"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_paid_accounts_starter"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_active_accounts_pro"}
+           {:type :macaw.ast/column,
+            :table "mas",
+            :column "is_paid_accounts_pro"}],
+          :from
+          {:type :macaw.ast/table,
+           :table-alias "a",
+           :schema "dbt_models",
+           :table "account"},
+          :join
+          [{:type :macaw.ast/join,
+            :source
+            {:type :macaw.ast/table,
+             :table-alias "mas",
+             :table "monthly_account_subscription_status"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "=",
+              :left {:type :macaw.ast/column, :table "a", :column "id"},
+              :right
+              {:type :macaw.ast/column, :table "mas", :column "id"}}]}],
+          :with
+          [{:table-alias "months",
+            :type :macaw.ast/select,
+            :select
+            [{:alias "month",
+              :type :macaw.ast/unary-expression,
+              :operation :cast,
+              :expression
+              {:type :macaw.ast/function,
+               :name "generate_series",
+               :params
+               [{:type :macaw.ast/function,
+                 :name "date_trunc",
+                 :params
+                 [{:value "month", :type :macaw.ast/literal}
+                  {:type :macaw.ast/unary-expression,
+                   :operation :cast,
+                   :expression
+                   {:value "2024-01-01", :type :macaw.ast/literal},
+                   :datatype "date"}]}
+                {:type :macaw.ast/binary-expression,
+                 :operator "-",
+                 :left
+                 {:type :macaw.ast/function,
+                  :name "date_trunc",
+                  :params
+                  [{:value "month", :type :macaw.ast/literal}
+                   {:type :macaw.ast/time-key, :value "current_date"}]},
+                 :right {:type :macaw.ast/interval, :value "'1 month'"}}
+                {:value "1 month", :type :macaw.ast/literal}]},
+              :datatype "date"}]}
+           {:table-alias "monthly_account_subscription_status",
+            :type :macaw.ast/select,
+            :select
+            [{:type :macaw.ast/column, :table "a", :column "id"}
+             {:type :macaw.ast/column, :table "m", :column "month"}
+             {:alias "is_trialing",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "<=",
+                    :left
+                    {:type :macaw.ast/column, :table "m", :column "month"},
+                    :right
+                    {:type :macaw.ast/function,
+                     :name "date_trunc",
+                     :params
+                     [{:value "month", :type :macaw.ast/literal}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "trial_ended_at"}]}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_trialing_accounts_cloud",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/unary-expression,
+                     :operation :is-null,
+                     :expression
+                     {:type :macaw.ast/column,
+                      :table "ah",
+                      :column "subscription_status"},
+                     :not true},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "deployment"},
+                     :right {:value "cloud", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "<=",
+                    :left
+                    {:type :macaw.ast/column, :table "m", :column "month"},
+                    :right
+                    {:type :macaw.ast/function,
+                     :name "date_trunc",
+                     :params
+                     [{:value "month", :type :macaw.ast/literal}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "trial_ended_at"}]}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_active_accounts_cloud",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "=",
+                    :left
+                    {:type :macaw.ast/column,
+                     :table "a",
+                     :column "deployment"},
+                    :right {:value "cloud", :type :macaw.ast/literal}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_paid_accounts_cloud",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/binary-expression,
+                     :operator ">",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "lifetime_value"},
+                     :right {:value 0, :type :macaw.ast/literal}},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "deployment"},
+                     :right {:value "cloud", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/expression-list,
+                    :expressions
+                    [{:type :macaw.ast/binary-expression,
+                      :operator "OR",
+                      :left
+                      {:type :macaw.ast/binary-expression,
+                       :operator ">=",
+                       :left
+                       {:type :macaw.ast/column, :table "m", :column "month"},
+                       :right
+                       {:type :macaw.ast/function,
+                        :name "date_trunc",
+                        :params
+                        [{:value "month", :type :macaw.ast/literal}
+                         {:type :macaw.ast/column,
+                          :table "a",
+                          :column "trial_ended_at"}]}},
+                      :right
+                      {:type :macaw.ast/unary-expression,
+                       :operation :is-null,
+                       :expression
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "trial_ended_at"},
+                       :not false}}]}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_trialing_accounts_self_hosted",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/unary-expression,
+                     :operation :is-null,
+                     :expression
+                     {:type :macaw.ast/column,
+                      :table "ah",
+                      :column "subscription_status"},
+                     :not true},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "deployment"},
+                     :right
+                     {:value "self-hosted", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "<=",
+                    :left
+                    {:type :macaw.ast/column, :table "m", :column "month"},
+                    :right
+                    {:type :macaw.ast/function,
+                     :name "date_trunc",
+                     :params
+                     [{:value "month", :type :macaw.ast/literal}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "trial_ended_at"}]}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_active_accounts_self_hosted",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "=",
+                    :left
+                    {:type :macaw.ast/column,
+                     :table "a",
+                     :column "deployment"},
+                    :right {:value "self-hosted", :type :macaw.ast/literal}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_paid_accounts_self_hosted",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/binary-expression,
+                     :operator ">",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "lifetime_value"},
+                     :right {:value 0, :type :macaw.ast/literal}},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "deployment"},
+                     :right
+                     {:value "self-hosted", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/expression-list,
+                    :expressions
+                    [{:type :macaw.ast/binary-expression,
+                      :operator "OR",
+                      :left
+                      {:type :macaw.ast/binary-expression,
+                       :operator ">=",
+                       :left
+                       {:type :macaw.ast/column, :table "m", :column "month"},
+                       :right
+                       {:type :macaw.ast/function,
+                        :name "date_trunc",
+                        :params
+                        [{:value "month", :type :macaw.ast/literal}
+                         {:type :macaw.ast/column,
+                          :table "a",
+                          :column "trial_ended_at"}]}},
+                      :right
+                      {:type :macaw.ast/unary-expression,
+                       :operation :is-null,
+                       :expression
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "trial_ended_at"},
+                       :not false}}]}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_active_accounts_enterprise",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "=",
+                    :left
+                    {:type :macaw.ast/function,
+                     :name "coalesce",
+                     :params
+                     [{:type :macaw.ast/column,
+                       :table "ah",
+                       :column "plan_name"}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "plan_name"}]},
+                    :right {:value "enterprise", :type :macaw.ast/literal}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_paid_accounts_enterprise",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/binary-expression,
+                     :operator ">",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "lifetime_value"},
+                     :right {:value 0, :type :macaw.ast/literal}},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/function,
+                      :name "coalesce",
+                      :params
+                      [{:type :macaw.ast/column,
+                        :table "ah",
+                        :column "plan_name"}
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "plan_name"}]},
+                     :right {:value "enterprise", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/expression-list,
+                    :expressions
+                    [{:type :macaw.ast/binary-expression,
+                      :operator "OR",
+                      :left
+                      {:type :macaw.ast/binary-expression,
+                       :operator ">=",
+                       :left
+                       {:type :macaw.ast/column, :table "m", :column "month"},
+                       :right
+                       {:type :macaw.ast/function,
+                        :name "date_trunc",
+                        :params
+                        [{:value "month", :type :macaw.ast/literal}
+                         {:type :macaw.ast/column,
+                          :table "a",
+                          :column "trial_ended_at"}]}},
+                      :right
+                      {:type :macaw.ast/unary-expression,
+                       :operation :is-null,
+                       :expression
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "trial_ended_at"},
+                       :not false}}]}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_active_accounts_starter",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "=",
+                    :left
+                    {:type :macaw.ast/function,
+                     :name "coalesce",
+                     :params
+                     [{:type :macaw.ast/column,
+                       :table "ah",
+                       :column "plan_name"}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "plan_name"}]},
+                    :right {:value "starter", :type :macaw.ast/literal}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_paid_accounts_starter",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/binary-expression,
+                     :operator ">",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "lifetime_value"},
+                     :right {:value 0, :type :macaw.ast/literal}},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/function,
+                      :name "coalesce",
+                      :params
+                      [{:type :macaw.ast/column,
+                        :table "ah",
+                        :column "plan_name"}
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "plan_name"}]},
+                     :right {:value "starter", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/expression-list,
+                    :expressions
+                    [{:type :macaw.ast/binary-expression,
+                      :operator "OR",
+                      :left
+                      {:type :macaw.ast/binary-expression,
+                       :operator ">=",
+                       :left
+                       {:type :macaw.ast/column, :table "m", :column "month"},
+                       :right
+                       {:type :macaw.ast/function,
+                        :name "date_trunc",
+                        :params
+                        [{:value "month", :type :macaw.ast/literal}
+                         {:type :macaw.ast/column,
+                          :table "a",
+                          :column "trial_ended_at"}]}},
+                      :right
+                      {:type :macaw.ast/unary-expression,
+                       :operation :is-null,
+                       :expression
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "trial_ended_at"},
+                       :not false}}]}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_active_accounts_pro",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/unary-expression,
+                    :operation :is-null,
+                    :expression
+                    {:type :macaw.ast/column,
+                     :table "ah",
+                     :column "subscription_status"},
+                    :not true},
+                   :right
+                   {:type :macaw.ast/binary-expression,
+                    :operator "=",
+                    :left
+                    {:type :macaw.ast/function,
+                     :name "coalesce",
+                     :params
+                     [{:type :macaw.ast/column,
+                       :table "ah",
+                       :column "plan_name"}
+                      {:type :macaw.ast/column,
+                       :table "a",
+                       :column "plan_name"}]},
+                    :right {:value "pro", :type :macaw.ast/literal}}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}
+             {:alias "is_paid_accounts_pro",
+              :type :macaw.ast/function,
+              :name "max",
+              :params
+              [{:type :macaw.ast/case,
+                :else {:value 0, :type :macaw.ast/literal},
+                :when-clauses
+                [{:when
+                  {:type :macaw.ast/binary-expression,
+                   :operator "AND",
+                   :left
+                   {:type :macaw.ast/binary-expression,
+                    :operator "AND",
+                    :left
+                    {:type :macaw.ast/binary-expression,
+                     :operator ">",
+                     :left
+                     {:type :macaw.ast/column,
+                      :table "a",
+                      :column "lifetime_value"},
+                     :right {:value 0, :type :macaw.ast/literal}},
+                    :right
+                    {:type :macaw.ast/binary-expression,
+                     :operator "=",
+                     :left
+                     {:type :macaw.ast/function,
+                      :name "coalesce",
+                      :params
+                      [{:type :macaw.ast/column,
+                        :table "ah",
+                        :column "plan_name"}
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "plan_name"}]},
+                     :right {:value "pro", :type :macaw.ast/literal}}},
+                   :right
+                   {:type :macaw.ast/expression-list,
+                    :expressions
+                    [{:type :macaw.ast/binary-expression,
+                      :operator "OR",
+                      :left
+                      {:type :macaw.ast/binary-expression,
+                       :operator ">=",
+                       :left
+                       {:type :macaw.ast/column, :table "m", :column "month"},
+                       :right
+                       {:type :macaw.ast/function,
+                        :name "date_trunc",
+                        :params
+                        [{:value "month", :type :macaw.ast/literal}
+                         {:type :macaw.ast/column,
+                          :table "a",
+                          :column "trial_ended_at"}]}},
+                      :right
+                      {:type :macaw.ast/unary-expression,
+                       :operation :is-null,
+                       :expression
+                       {:type :macaw.ast/column,
+                        :table "a",
+                        :column "trial_ended_at"},
+                       :not false}}]}},
+                  :then {:value 1, :type :macaw.ast/literal}}]}]}],
+            :from
+            {:type :macaw.ast/table,
+             :table-alias "a",
+             :schema "dbt_models",
+             :table "account"},
+            :join
+            [{:type :macaw.ast/join,
+              :source
+              {:type :macaw.ast/table,
+               :table-alias "ah",
+               :schema "dbt_models",
+               :table "account_history"},
+              :condition
+              [{:type :macaw.ast/binary-expression,
+                :operator "=",
+                :left {:type :macaw.ast/column, :table "a", :column "id"},
+                :right
+                {:type :macaw.ast/column,
+                 :table "ah",
+                 :column "account_id"}}]}
+             {:type :macaw.ast/join,
+              :source
+              {:type :macaw.ast/table, :table-alias "m", :table "months"},
+              :condition
+              [{:type :macaw.ast/between,
+                :expression
+                {:type :macaw.ast/column, :table "m", :column "month"},
+                :start
+                {:type :macaw.ast/function,
+                 :name "date_trunc",
+                 :params
+                 [{:value "month", :type :macaw.ast/literal}
+                  {:type :macaw.ast/column,
+                   :table "ah",
+                   :column "valid_from"}]},
+                :end
+                {:type :macaw.ast/function,
+                 :name "date_trunc",
+                 :params
+                 [{:value "month", :type :macaw.ast/literal}
+                  {:type :macaw.ast/column,
+                   :table "ah",
+                   :column "valid_to"}]}}]}],
+            :group-by
+            [{:value 1, :type :macaw.ast/literal}
+             {:value 2, :type :macaw.ast/literal}]}]}
+         (->ast "with months as (
+  select
+    generate_series(date_trunc('month', '2024-01-01'::date),
+                    date_trunc('month', current_date) - interval '1 month',
+                    '1 month')::date as month
+
+)
+, monthly_account_subscription_status as (
+  select
+    a.id,
+    m.month,
+
+    max(case when ah.subscription_status is not null and m.month <= date_trunc('month', a.trial_ended_at) then 1 else 0 end) as is_trialing,
+
+    -- cloud
+    max(case when ah.subscription_status is not null and a.deployment = 'cloud' and m.month <= date_trunc('month', a.trial_ended_at) then 1 else 0 end) as is_trialing_accounts_cloud,
+    max(case when ah.subscription_status is not null and a.deployment = 'cloud' then 1 else 0 end) as is_active_accounts_cloud,
+    max(case when a.lifetime_value > 0 and a.deployment = 'cloud' and (m.month >= date_trunc('month', a.trial_ended_at) or a.trial_ended_at is null) then 1 else 0 end) as is_paid_accounts_cloud,
+
+    -- self-hosted
+    max(case when ah.subscription_status is not null and a.deployment = 'self-hosted' and m.month <= date_trunc('month', a.trial_ended_at) then 1 else 0 end) as is_trialing_accounts_self_hosted,
+    max(case when ah.subscription_status is not null and a.deployment = 'self-hosted' then 1 else 0 end) as is_active_accounts_self_hosted,
+    max(case when a.lifetime_value > 0 and a.deployment = 'self-hosted' and (m.month >= date_trunc('month', a.trial_ended_at) or a.trial_ended_at is null) then 1 else 0 end) as is_paid_accounts_self_hosted,
+
+    -- enterprise
+    max(case when ah.subscription_status is not null and coalesce(ah.plan_name, a.plan_name) = 'enterprise' then 1 else 0 end) as is_active_accounts_enterprise,
+    max(case when a.lifetime_value > 0 and coalesce(ah.plan_name, a.plan_name) = 'enterprise' and (m.month >= date_trunc('month', a.trial_ended_at) or a.trial_ended_at is null) then 1 else 0 end) as is_paid_accounts_enterprise,
+
+    -- starter
+    max(case when ah.subscription_status is not null and coalesce(ah.plan_name, a.plan_name) = 'starter' then 1 else 0 end) as is_active_accounts_starter,
+    max(case when a.lifetime_value > 0 and coalesce(ah.plan_name, a.plan_name) = 'starter' and (m.month >= date_trunc('month', a.trial_ended_at) or a.trial_ended_at is null) then 1 else 0 end) as is_paid_accounts_starter,
+
+    -- pro
+    max(case when ah.subscription_status is not null and coalesce(ah.plan_name, a.plan_name) = 'pro' then 1 else 0 end) as is_active_accounts_pro,
+    max(case when a.lifetime_value > 0 and coalesce(ah.plan_name, a.plan_name) = 'pro' and (m.month >= date_trunc('month', a.trial_ended_at) or a.trial_ended_at is null) then 1 else 0 end) as is_paid_accounts_pro
+  from dbt_models.account a
+  left join dbt_models.account_history ah
+    on a.id = ah.account_id
+  left join months m
+    on m.month between date_trunc('month', ah.valid_from) and date_trunc('month', ah.valid_to)
+  group by 1,2
+)
+select
+  a.id,
+  a.customer_name,
+  a.created_at,
+  a.is_converted,
+  a.lifetime_value,
+  a.is_active,
+  a.subscription_status,
+  a.deployment,
+  a.plan_name,
+  a.plan_alias,
+  a.base_fee,
+  a.annual_value,
+
+  -- monthly account status
+  mas.month,
+  mas.is_trialing,
+  mas.is_trialing_accounts_cloud,
+  mas.is_active_accounts_cloud,
+  mas.is_paid_accounts_cloud,
+  mas.is_trialing_accounts_self_hosted,
+  mas.is_active_accounts_self_hosted,
+  mas.is_paid_accounts_self_hosted,
+  mas.is_active_accounts_enterprise,
+  mas.is_paid_accounts_enterprise,
+  mas.is_active_accounts_starter,
+  mas.is_paid_accounts_starter,
+  mas.is_active_accounts_pro,
+  mas.is_paid_accounts_pro
+
+from dbt_models.account a
+left join monthly_account_subscription_status mas
+  on a.id = mas.id
+;"))))

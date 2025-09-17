@@ -9,8 +9,9 @@
    (net.sf.jsqlparser.expression Alias AnalyticExpression BinaryExpression CaseExpression
                                  CastExpression DateValue DoubleValue ExtractExpression Function
                                  IntervalExpression JdbcParameter LongValue NotExpression NullValue
-                                 SignedExpression StringValue TimeValue TimestampValue WhenClause)
-   (net.sf.jsqlparser.expression.operators.relational ExistsExpression ExpressionList
+                                 SignedExpression StringValue TimeKeyExpression  TimeValue
+                                 TimestampValue WhenClause)
+   (net.sf.jsqlparser.expression.operators.relational Between ExistsExpression ExpressionList
                                                       IsNullExpression)))
 
 (set! *warn-on-reflection* true)
@@ -205,10 +206,10 @@
    {:type ::case
     :switch (->ast (.getSwitchExpression parsed) opts)
     :else (->ast (.getElseExpression parsed) opts)
-    :when-clauses (map (fn [^WhenClause when-clause]
-                         {:when (->ast (.getWhenExpression when-clause) opts)
-                          :then (->ast (.getThenExpression when-clause) opts)})
-                       (.getWhenClauses parsed))}
+    :when-clauses (mapv (fn [^WhenClause when-clause]
+                          {:when (->ast (.getWhenExpression when-clause) opts)
+                           :then (->ast (.getThenExpression when-clause) opts)})
+                        (.getWhenClauses parsed))}
    parsed opts))
 
 (defmethod ->ast SignedExpression
@@ -272,4 +273,20 @@
    {:type ::unary-expression
     :operation :not
     :expression (->ast (.getExpression parsed) opts)}
+   parsed opts))
+
+(defmethod ->ast Between
+  [^Between parsed opts]
+  (node
+   {:type ::between
+    :expression (->ast (.getLeftExpression parsed) opts)
+    :start (->ast (.getBetweenExpressionStart parsed) opts)
+    :end (->ast (.getBetweenExpressionEnd parsed) opts)}
+   parsed opts))
+
+(defmethod ->ast TimeKeyExpression
+  [^TimeKeyExpression parsed opts]
+  (node
+   {:type ::time-key
+    :value (str parsed)}
    parsed opts))
