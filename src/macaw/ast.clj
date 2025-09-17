@@ -50,7 +50,8 @@
   [^SelectItem parsed opts]
   (node
    (merge
-    (->ast (.getAlias parsed) opts)
+    {:alias (some-> (.getAlias parsed)
+                    .getName)}
     (->ast (.getExpression parsed) opts))
    parsed opts))
 
@@ -72,7 +73,8 @@
   [^ParenthesedSelect parsed opts]
   (node
    (merge
-    (->ast (.getAlias parsed) opts)
+    {:table-alias (some-> (.getAlias parsed)
+                          .getName)}
     (->ast (try (.getPlainSelect parsed)
                 (catch ClassCastException e
                   (.getSetOperationList parsed))) opts))
@@ -91,9 +93,10 @@
   [^Table parsed opts]
   (node
    (merge
-    (->ast (.getAlias parsed) opts)
     (->ast (.getDatabase parsed) opts)
     {:type ::table
+     :table-alias (some-> (.getAlias parsed)
+                          .getName)
      :schema (.getSchemaName parsed)
      :table (.getName parsed)})
    parsed opts))
@@ -119,13 +122,6 @@
     :operator (.getStringExpression parsed)
     :left (->ast (.getLeftExpression parsed) opts)
     :right (->ast (.getRightExpression parsed) opts)}
-   parsed opts))
-
-(defmethod ->ast Alias
-  [^Alias parsed opts]
-  (node
-   {:type ::alias
-    :alias (.getName parsed)}
    parsed opts))
 
 (defmacro value->ast [value-class]
@@ -245,7 +241,8 @@
   [^WithItem parsed opts]
   (node
    (merge
-    (->ast (.getAlias parsed) opts)
+    {:table-alias (some-> (.getAlias parsed)
+                          .getName)}
     (->ast (.getSelect parsed) opts))
    parsed opts))
 

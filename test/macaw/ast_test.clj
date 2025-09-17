@@ -56,7 +56,7 @@
           :select
           [{:type :macaw.ast/column, :table "p", :column "a", :alias "b"}
            {:type :macaw.ast/column, :table "p", :column "c", :alias "d"}],
-          :from {:alias "p", :type :macaw.ast/table, :table "products"}}
+          :from {:table-alias "p", :type :macaw.ast/table, :table "products"}}
          (->ast "select p.a as b, p.c as d from products p"))))
 
 (deftest basic-where-test
@@ -150,14 +150,14 @@
           :select
           [{:type :macaw.ast/column, :table "u", :column "name"}
            {:type :macaw.ast/column, :table "u", :column "email"}],
-          :from {:type :macaw.ast/table, :alias "u", :table "users"},
+          :from {:type :macaw.ast/table, :table-alias "u", :table "users"},
           :where
           {:type :macaw.ast/unary-expression,
            :operation :exists
            :expression
            {:type :macaw.ast/select,
             :select [{:type :macaw.ast/literal, :value 1}],
-            :from {:type :macaw.ast/table, :alias "o", :table "orders"},
+            :from {:type :macaw.ast/table, :table-alias "o", :table "orders"},
             :where
             {:type :macaw.ast/binary-expression,
              :operator "=",
@@ -211,7 +211,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
           :from {:type :macaw.ast/table, :table "active_users"},
           :with
           [{:type :macaw.ast/select,
-            :alias "active_users",
+            :table-alias "active_users",
             :select
             [{:type :macaw.ast/column, :column "id"}
              {:type :macaw.ast/column, :column "name"}],
@@ -232,7 +232,7 @@ SELECT * FROM active_users"))))
           :from {:type :macaw.ast/table, :table "emp_hierarchy"},
           :with
           [{:type :macaw.ast/set-operation,
-            :alias "emp_hierarchy",
+            :table-alias "emp_hierarchy",
             :selects
             [{:type :macaw.ast/select,
               :select
@@ -255,11 +255,11 @@ SELECT * FROM active_users"))))
                 :operator "+",
                 :left {:type :macaw.ast/column, :table "h", :column "level"},
                 :right {:value 1, :type :macaw.ast/literal}}],
-              :from {:type :macaw.ast/table, :alias "e", :table "employees"},
+              :from {:type :macaw.ast/table, :table-alias "e", :table "employees"},
               :join
               [{:type :macaw.ast/join,
                 :source
-                {:type :macaw.ast/table, :alias "h", :table "emp_hierarchy"},
+                {:type :macaw.ast/table, :table-alias "h", :table "emp_hierarchy"},
                 :condition
                 [{:type :macaw.ast/binary-expression,
                   :operator "=",
@@ -325,6 +325,15 @@ FROM employees"))))
          (->ast "SELECT department, name, salary,
   RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
 FROM employees"))))
+
+(deftest select-with-column-alias-test
+  (is (= {:type :macaw.ast/select,
+          :select
+          [{:alias "order1",
+            :type :macaw.ast/select,
+            :select [{:type :macaw.ast/column, :column "order"}],
+            :from {:type :macaw.ast/table, :table "products"}}]}
+         (->ast "select (select order from products) as order1"))))
 
 (deftest week-test
   (is (= {:type :macaw.ast/select,
@@ -637,7 +646,7 @@ ORDER BY
             :params [{:type :macaw.ast/wildcard}]}],
           :from
           {:type :macaw.ast/select,
-           :alias "\"source\"",
+           :table-alias "\"source\"",
            :select
            [{:type :macaw.ast/column,
              :alias "\"product_id\"",
@@ -691,7 +700,7 @@ ORDER BY
            [{:type :macaw.ast/join,
              :source
              {:type :macaw.ast/select,
-              :alias "\"Products\"",
+              :table-alias "\"Products\"",
               :select
               [{:type :macaw.ast/column,
                 :alias "\"id\"",
