@@ -14,6 +14,11 @@
 (defn- ->ast [query]
   (-> query m/parsed-query (m.ast/->ast {:with-instance? false})))
 
+(deftest garbage-test
+  (let [bad-node (->ast "nothing")]
+    (is (= (:type bad-node :macaw.ast/unrecognized-node)))
+    (is (some? (:node bad-node)))))
+
 (deftest basic-select-test
   (is (= {:type :macaw.ast/select,
           :select

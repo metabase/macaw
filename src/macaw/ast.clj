@@ -27,10 +27,11 @@
                   (type parsed)))
 
 (defmethod ->ast :default
-  [parsed _opts]
-  #_(throw (ex-info "Unsupported value passed to ->ast"
-                    {:value parsed}))
-  parsed)
+  [parsed opts]
+  (node
+   {:type ::unrecognized-node
+    :node parsed}
+   parsed opts))
 
 (defmethod ->ast PlainSelect
   [^PlainSelect parsed opts]
