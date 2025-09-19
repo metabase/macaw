@@ -24,16 +24,20 @@
       (u/strip-nils true)))
 
 (defmulti ->ast (fn [parsed _opts]
-                  (type parsed)))
+                  (and parsed [(type parsed)])))
 
 (defmethod ->ast :default
   [parsed opts]
   (node
    {:type ::unrecognized-node
-    :node parsed}
+    :instance parsed}
    parsed opts))
 
-(defmethod ->ast PlainSelect
+(defmethod ->ast nil
+  [_parsed _opts]
+  nil)
+
+(defmethod ->ast [PlainSelect]
   [^PlainSelect parsed opts]
   (node
    {:type ::select
@@ -48,7 +52,7 @@
     :with (mapv #(->ast % opts) (.getWithItemsList parsed))}
    parsed opts))
 
-(defmethod ->ast SelectItem
+(defmethod ->ast [SelectItem]
   [^SelectItem parsed opts]
   (node
    (merge
@@ -57,13 +61,13 @@
     (->ast (.getExpression parsed) opts))
    parsed opts))
 
-(defmethod ->ast AllColumns
+(defmethod ->ast [AllColumns]
   [parsed opts]
   (node
    {:type ::wildcard}
    parsed opts))
 
-(defmethod ->ast AllTableColumns
+(defmethod ->ast [AllTableColumns]
   [^AllTableColumns parsed opts]
   (node
    (merge
@@ -71,7 +75,7 @@
     {:type ::table-wildcard})
    parsed opts))
 
-(defmethod ->ast ParenthesedSelect
+(defmethod ->ast [ParenthesedSelect]
   [^ParenthesedSelect parsed opts]
   (node
    (merge
@@ -82,7 +86,7 @@
                   (.getSetOperationList parsed))) opts))
    parsed opts))
 
-(defmethod ->ast Column
+(defmethod ->ast [Column]
   [^Column parsed opts]
   (node
    (merge
@@ -91,7 +95,7 @@
      :column (.getColumnName parsed)})
    parsed opts))
 
-(defmethod ->ast Table
+(defmethod ->ast [Table]
   [^Table parsed opts]
   (node
    (merge
@@ -103,13 +107,13 @@
      :table (.getName parsed)})
    parsed opts))
 
-(defmethod ->ast Database
+(defmethod ->ast [Database]
   [^Database parsed opts]
   (node
    {:database (.getDatabaseName parsed)}
    parsed opts))
 
-(defmethod ->ast Join
+(defmethod ->ast [Join]
   [^Join parsed opts]
   (node
    {:type ::join
@@ -117,7 +121,7 @@
     :condition (mapv #(->ast % opts) (.getOnExpressions parsed))}
    parsed opts))
 
-(defmethod ->ast BinaryExpression
+(defmethod ->ast [BinaryExpression]
   [^BinaryExpression parsed opts]
   (node
    {:type ::binary-expression
@@ -128,7 +132,7 @@
 
 (defmacro value->ast [value-class]
   (let [parsed-sym (gensym "parsed")]
-    `(defmethod ->ast ~value-class
+    `(defmethod ->ast [~value-class]
        [~(with-meta parsed-sym {:tag value-class}) opts#]
        (node
         {:type ::literal
@@ -142,14 +146,14 @@
 (value->ast TimeValue)
 (value->ast TimestampValue)
 
-(defmethod ->ast NullValue
+(defmethod ->ast [NullValue]
   [parsed opts]
   (node
    {:type ::literal
     :value nil}
    parsed opts))
 
-(defmethod ->ast Function
+(defmethod ->ast [Function]
   [^Function parsed opts]
   (node
    {:type ::function
@@ -157,27 +161,27 @@
     :params (mapv #(->ast % opts) (.getParameters parsed))}
    parsed opts))
 
-(defmethod ->ast ExpressionList
+(defmethod ->ast [ExpressionList]
   [^ExpressionList parsed opts]
   (node
    {:type ::expression-list
     :expressions (mapv #(->ast % opts) (.getExpressions parsed))}
    parsed opts))
 
-(defmethod ->ast IntervalExpression
+(defmethod ->ast [IntervalExpression]
   [^IntervalExpression parsed opts]
   (node
    {:type ::interval
     :value (.getParameter parsed)}
    parsed opts))
 
-(defmethod ->ast OrderByElement
+(defmethod ->ast [OrderByElement]
   [^OrderByElement parsed opts]
   (node
    (->ast (.getExpression parsed) opts)
    parsed opts))
 
-(defmethod ->ast CastExpression
+(defmethod ->ast [CastExpression]
   [^CastExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -186,7 +190,7 @@
     :datatype (some-> (.getColDataType parsed) str)}
    parsed opts))
 
-(defmethod ->ast ExtractExpression
+(defmethod ->ast [ExtractExpression]
   [^ExtractExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -195,13 +199,13 @@
     :part (.getName parsed)}
    parsed opts))
 
-(defmethod ->ast JdbcParameter
+(defmethod ->ast [JdbcParameter]
   [parsed opts]
   (node
    {:type ::jdbc-parameter}
    parsed opts))
 
-(defmethod ->ast CaseExpression
+(defmethod ->ast [CaseExpression]
   [^CaseExpression parsed opts]
   (node
    {:type ::case
@@ -213,7 +217,7 @@
                         (.getWhenClauses parsed))}
    parsed opts))
 
-(defmethod ->ast SignedExpression
+(defmethod ->ast [SignedExpression]
   [^SignedExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -222,7 +226,7 @@
     :sign (str (.getSign parsed))}
    parsed opts))
 
-(defmethod ->ast ExistsExpression
+(defmethod ->ast [ExistsExpression]
   [^ExistsExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -230,7 +234,7 @@
     :expression (->ast (.getRightExpression parsed) opts)}
    parsed opts))
 
-(defmethod ->ast IsNullExpression
+(defmethod ->ast [IsNullExpression]
   [^IsNullExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -239,7 +243,7 @@
     :not (.isNot parsed)}
    parsed opts))
 
-(defmethod ->ast WithItem
+(defmethod ->ast [WithItem]
   [^WithItem parsed opts]
   (node
    (merge
@@ -248,7 +252,7 @@
     (->ast (.getSelect parsed) opts))
    parsed opts))
 
-(defmethod ->ast SetOperationList
+(defmethod ->ast [SetOperationList]
   [^SetOperationList parsed opts]
   (node
    {:type ::set-operation
@@ -256,7 +260,7 @@
     :operations (mapv str (.getOperations parsed))}
    parsed opts))
 
-(defmethod ->ast AnalyticExpression
+(defmethod ->ast [AnalyticExpression]
   [^AnalyticExpression parsed opts]
   (node
    {:type ::analytic-expression
@@ -268,7 +272,7 @@
     :order-by (mapv #(->ast % opts) (.getOrderByElements parsed))}
    parsed opts))
 
-(defmethod ->ast NotExpression
+(defmethod ->ast [NotExpression]
   [^NotExpression parsed opts]
   (node
    {:type ::unary-expression
@@ -276,7 +280,7 @@
     :expression (->ast (.getExpression parsed) opts)}
    parsed opts))
 
-(defmethod ->ast Between
+(defmethod ->ast [Between]
   [^Between parsed opts]
   (node
    {:type ::between
@@ -285,7 +289,7 @@
     :end (->ast (.getBetweenExpressionEnd parsed) opts)}
    parsed opts))
 
-(defmethod ->ast TimeKeyExpression
+(defmethod ->ast [TimeKeyExpression]
   [^TimeKeyExpression parsed opts]
   (node
    {:type ::time-key

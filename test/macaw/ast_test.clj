@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [macaw.ast :as m.ast]
-   [macaw.core :as m]))
+   [macaw.ast-types :as m.ast-types]
+   [macaw.core :as m]
+   [malli.core :as malli]))
 
 (deftest node-test
   (is (= {:foo 1
@@ -11,13 +13,23 @@
   (is (= {:foo 1}
          (#'m.ast/node {:foo 1} :an-instance {:with-instance? false}))))
 
+(defn- check-ast [ast]
+  (is (nil? (malli/explain m.ast-types/ast ast {:registry m.ast-types/base-registry})))
+  ast)
+
 (defn- ->ast [query]
-  (-> query m/parsed-query (m.ast/->ast {:with-instance? false})))
+  (-> query m/parsed-query (m.ast/->ast {:with-instance? false}) check-ast))
 
 (deftest garbage-test
   (let [bad-node (->ast "nothing")]
     (is (= (:type bad-node :macaw.ast/unrecognized-node)))
-    (is (some? (:node bad-node)))))
+    (is (some? (:instance bad-node)))))
+
+(deftest lone-select-test
+  (is (= {:type :macaw.ast/select
+          :select [{:type :macaw.ast/literal
+                    :value 1}]}
+         (->ast "select 1"))))
 
 (deftest basic-select-test
   (is (= {:type :macaw.ast/select,
