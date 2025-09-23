@@ -5,19 +5,19 @@
    [malli.registry :as mr]
    [malli.util :as mu]))
 
-(def base-node
+(def ^:private base-node
   [:map
    [:type :keyword]
    [:instance {:optional true} :any]])
 
-(def unrecognized-node
+(def ^:private unrecognized-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/unrecognized-node]]
     [:instance :any]]])
 
-(def select-node
+(def ^:private select-node
   [:merge
    base-node
    [:map
@@ -32,20 +32,20 @@
     [:alias {:optional true} :string]
     [:table-alias {:optional true} :string]]])
 
-(def wildcard-node
+(def ^:private wildcard-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/wildcard]]]])
 
-(def table-wildcard-node
+(def  ^:private table-wildcard-node
   [:merge
    base-node
    [:ref ::table-node]
    [:map
     [:type [:= ::ast/table-wildcard]]]])
 
-(def column-node
+(def ^:private column-node
   [:merge
    base-node
    [:ref ::table-node]
@@ -53,7 +53,7 @@
     [:type [:= ::ast/column]]
     [:column :string]]])
 
-(def table-node
+(def ^:private table-node
   [:merge
    base-node
    [:map
@@ -63,7 +63,7 @@
     [:table {:optional true} :string]
     [:table-alias {:optional true} :string]]])
 
-(def join-node
+(def ^:private join-node
   [:merge
    base-node
    [:map
@@ -71,7 +71,7 @@
     [:source [:ref ::ast-node]]
     [:condition {:optional true} [:sequential [:ref ::ast-node]]]]])
 
-(def binary-expression-node
+(def ^:private binary-expression-node
   [:merge
    base-node
    [:map
@@ -80,14 +80,14 @@
     [:left [:ref ::ast-node]]
     [:right [:ref ::ast-node]]]])
 
-(def literal-node
+(def ^:private literal-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/literal]]
     [:value {:optional true} :any]]])
 
-(def function-node
+(def ^:private function-node
   [:merge
    base-node
    [:map
@@ -95,21 +95,21 @@
     [:name :string]
     [:params {:optional true} [:sequential [:ref ::ast-node]]]]])
 
-(def expression-list-node
+(def ^:private expression-list-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/expression-list]]
     [:expressions {:optional true} [:sequential [:ref ::ast-node]]]]])
 
-(def interval-node
+(def ^:private interval-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/interval]]
     [:value :string]]])
 
-(def base-unary-expression-node
+(def ^:private base-unary-expression-node
   [:merge
    base-node
    [:map
@@ -117,53 +117,53 @@
     [:operation :keyword]
     [:expression [:ref ::ast-node]]]])
 
-(def cast-node
+(def ^:private cast-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :cast]]
     [:datatype :string]]])
 
-(def extract-node
+(def ^:private extract-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :extract]]
     [:part :string]]])
 
-(def sign-node
+(def ^:private sign-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :sign]]
     [:sign :string]]])
 
-(def exists-node
+(def ^:private exists-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :exists]]]])
 
-(def is-null-node
+(def ^:private is-null-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :is-null]]
     [:not :boolean]]])
 
-(def not-node
+(def ^:private not-node
   [:merge
    base-unary-expression-node
    [:map
     [:operation [:= :not]]]])
 
-(def jdbc-parameter-node
+(def ^:private jdbc-parameter-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/jdbc-parameter]]]])
 
-(def case-node
+(def ^:private case-node
   [:merge
    base-node
    [:map
@@ -175,7 +175,7 @@
                                       [:then [:ref ::ast-node]]]]]
     [:else {:optional true} [:ref ::ast-node]]]])
 
-(def set-operation-node
+(def ^:private set-operation-node
   [:merge
    base-node
    [:map
@@ -183,7 +183,7 @@
     [:selects {:optional true} [:sequential [:ref ::ast-node]]]
     [:operations {:optional true} [:sequential :string]]]])
 
-(def analytic-expression-node
+(def ^:private analytic-expression-node
   [:merge
    base-node
    [:map
@@ -195,7 +195,7 @@
     [:partition-by {:optional true} [:sequential [:ref ::ast-node]]]
     [:order-by {:optional true} [:sequential [:ref ::ast-node]]]]])
 
-(def between-node
+(def ^:private between-node
   [:merge
    base-node
    [:map
@@ -204,14 +204,14 @@
     [:start [:ref ::ast-node]]
     [:end [:ref ::ast-node]]]])
 
-(def time-key-node
+(def ^:private time-key-node
   [:merge
    base-node
    [:map
     [:type [:= ::ast/time-key]]
     [:value :string]]])
 
-(def unary-expression-node
+(def ^:private unary-expression-node
   [:multi {:dispatch :operation}
    [:cast [:ref ::cast-node]]
    [:extract [:ref ::extract-node]]
@@ -220,7 +220,7 @@
    [:is-null [:ref ::is-null-node]]
    [:not [:ref ::not-node]]])
 
-(def ast-node
+(def ^:private ast-node
   [:multi {:dispatch :type}
    [::ast/unrecognized-node [:ref ::unrecognized-node]]
    [::ast/select [:ref ::select-node]]
@@ -243,7 +243,7 @@
    [::ast/unary-expression [:ref ::unary-expression-node]]])
 
 (def registry
-  #_{::base-node base-node}
+  "The registry value that contains all of individual node malli schemas."
   {::unrecognized-node unrecognized-node
    ::select-node select-node
    ::wildcard-node wildcard-node
@@ -272,9 +272,11 @@
    ::ast-node ast-node})
 
 (def ast
+  "A malli spec for an ast node (as returned by ->ast)."
   [:ref {:registry registry} ::ast-node])
 
 (def base-registry
+  "A base registry that works with the ast malli schema"
   (mr/composite-registry
    (m/default-schemas)
    (mu/schemas)))

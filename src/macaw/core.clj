@@ -161,5 +161,8 @@
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
 (defn ->ast
+  "Given a sql query, return a clojure ast that represents it.
+
+   This ast can potentially be lossy and generally shouldn't be as part of a round trip back to sql."
   [parsed]
   (m.ast/->ast parsed {:with-instance? false}))

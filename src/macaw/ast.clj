@@ -6,11 +6,10 @@
                                        ParenthesedSelect PlainSelect SelectItem SetOperationList
                                        WithItem)
    (net.sf.jsqlparser.schema Column Database Table)
-   (net.sf.jsqlparser.expression Alias AnalyticExpression BinaryExpression CaseExpression
-                                 CastExpression DateValue DoubleValue ExtractExpression Function
-                                 IntervalExpression JdbcParameter LongValue NotExpression NullValue
-                                 SignedExpression StringValue TimeKeyExpression  TimeValue
-                                 TimestampValue WhenClause)
+   (net.sf.jsqlparser.expression AnalyticExpression BinaryExpression CaseExpression CastExpression
+                                 DateValue DoubleValue ExtractExpression Function IntervalExpression
+                                 JdbcParameter LongValue NotExpression NullValue SignedExpression
+                                 StringValue TimeKeyExpression  TimeValue TimestampValue WhenClause)
    (net.sf.jsqlparser.expression.operators.relational Between ExistsExpression ExpressionList
                                                       IsNullExpression)))
 
@@ -23,8 +22,13 @@
                {}))
       (u/strip-nils true)))
 
-(defmulti ->ast (fn [parsed _opts]
-                  (and parsed [(type parsed)])))
+(defmulti ->ast
+  "The underlying multimethod that converts a jsqlparser query object into a cljoure ast.
+
+  Takes an options map.  Currently, the only option is `with-instance?` -- when true, this function will include the
+  underlying jsqlparser instance into every ast node."
+  (fn [parsed _opts]
+    (and parsed [(type parsed)])))
 
 (defmethod ->ast :default
   [parsed opts]
@@ -82,7 +86,7 @@
     {:table-alias (some-> (.getAlias parsed)
                           .getName)}
     (->ast (try (.getPlainSelect parsed)
-                (catch ClassCastException e
+                (catch ClassCastException _
                   (.getSetOperationList parsed))) opts))
    parsed opts))
 
@@ -130,7 +134,7 @@
     :right (->ast (.getRightExpression parsed) opts)}
    parsed opts))
 
-(defmacro value->ast [value-class]
+(defmacro ^:private value->ast [value-class]
   (let [parsed-sym (gensym "parsed")]
     `(defmethod ->ast [~value-class]
        [~(with-meta parsed-sym {:tag value-class}) opts#]
