@@ -6,7 +6,7 @@
    [macaw.core :as m]
    [malli.core :as malli]))
 
-(deftest node-test
+(deftest ^:parallel node-test
   (is (= {:foo 1
           :instance :an-instance}
          (#'m.ast/node {:foo 1} :an-instance {:with-instance? true})))
@@ -20,18 +20,18 @@
 (defn- ->ast [query]
   (-> query m/parsed-query (m.ast/->ast {:with-instance? false}) check-ast))
 
-(deftest garbage-test
+(deftest ^:parallel garbage-test
   (let [bad-node (->ast "nothing")]
-    (is (= (:type bad-node :macaw.ast/unrecognized-node)))
+    (is (= (:type bad-node) :macaw.ast/unrecognized-node))
     (is (some? (:instance bad-node)))))
 
-(deftest lone-select-test
+(deftest ^:parallel lone-select-test
   (is (= {:type :macaw.ast/select
           :select [{:type :macaw.ast/literal
                     :value 1}]}
          (->ast "select 1"))))
 
-(deftest basic-select-test
+(deftest ^:parallel basic-select-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/wildcard}],
@@ -43,7 +43,7 @@
            :from {:type :macaw.ast/table, :table "products"}}}
          (->ast "select * from (select a, b from products)"))))
 
-(deftest basic-join-test
+(deftest ^:parallel basic-join-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/table-wildcard,
@@ -68,7 +68,7 @@
                :column "product_id"}}]}]}
          (->ast "select products.*, orders.id from products inner join orders on products.id = orders.product_id"))))
 
-(deftest basic-alias-test
+(deftest ^:parallel basic-alias-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :table "p", :column "a", :alias "b"}
@@ -76,7 +76,7 @@
           :from {:table-alias "p", :type :macaw.ast/table, :table "products"}}
          (->ast "select p.a as b, p.c as d from products p"))))
 
-(deftest basic-where-test
+(deftest ^:parallel basic-where-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
@@ -87,7 +87,7 @@
            :right {:type :macaw.ast/literal, :value "hello"}}}
          (->ast "select * from products where category = 'hello'"))))
 
-(deftest basic-aggregation-test
+(deftest ^:parallel basic-aggregation-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/function,
@@ -96,7 +96,7 @@
           :from {:type :macaw.ast/table, :table "products"}}
          (->ast "select count(*) from products"))))
 
-(deftest extra-names-test
+(deftest ^:parallel extra-names-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:database "db",
@@ -111,7 +111,7 @@
            :table "table"}}
          (->ast "select db.schema.table.col from db.schema.table"))))
 
-(deftest basic-grouping-test
+(deftest ^:parallel basic-grouping-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/function,
@@ -122,7 +122,7 @@
           :group-by [{:type :macaw.ast/column, :column "category"}]}
          (->ast "select sum(total), category from orders group by category"))))
 
-(deftest basic-arg-test
+(deftest ^:parallel basic-arg-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
@@ -133,7 +133,7 @@
            :right {:type :macaw.ast/jdbc-parameter}}}
          (->ast "select * from products where category = ?"))))
 
-(deftest basic-case-test
+(deftest ^:parallel basic-case-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/case,
@@ -150,7 +150,7 @@
           :from {:type :macaw.ast/table, :table "orders"}}
          (->ast "select case when total < 0 then -total else total end from orders"))))
 
-(deftest switch-case-test
+(deftest ^:parallel switch-case-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/case,
@@ -162,7 +162,7 @@
           :from {:type :macaw.ast/table, :table "products"}}
          (->ast "select case category when 'Gizmo' then 'is gizmo' else 'is not gizmo' end from products"))))
 
-(deftest basic-exists-test
+(deftest ^:parallel basic-exists-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :table "u", :column "name"}
@@ -184,7 +184,7 @@
 FROM users u
 WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
 
-(deftest basic-not-test
+(deftest ^:parallel basic-not-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
@@ -200,7 +200,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
               :right {:value "Gizmo", :type :macaw.ast/literal}}]}}}
          (->ast "select * from products where not (category = 'Gizmo')"))))
 
-(deftest basic-is-null-test
+(deftest ^:parallel basic-is-null-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
@@ -211,7 +211,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
            :not false}}
          (->ast "select * from products where category is null"))))
 
-(deftest negated-is-null-test
+(deftest ^:parallel negated-is-null-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "products"},
@@ -222,7 +222,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
            :not true}}
          (->ast "select * from products where category is not null"))))
 
-(deftest basic-cte-test
+(deftest ^:parallel basic-cte-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "active_users"},
@@ -241,7 +241,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)"))))
          (->ast "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM active_users"))))
 
-(deftest recursive-cte-test
+(deftest ^:parallel recursive-cte-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :column "name"}
@@ -296,7 +296,7 @@ SELECT * FROM active_users"))))
 )
 SELECT name, level FROM emp_hierarchy"))))
 
-(deftest basic-union-test
+(deftest ^:parallel basic-union-test
   (is (= {:type :macaw.ast/set-operation,
           :selects
           [{:type :macaw.ast/select,
@@ -314,7 +314,7 @@ SELECT name, level FROM emp_hierarchy"))))
 UNION
 SELECT id, name FROM archived_users"))))
 
-(deftest basic-between-test
+(deftest ^:parallel basic-between-test
   (is (= {:type :macaw.ast/select,
           :select [{:type :macaw.ast/wildcard}],
           :from {:type :macaw.ast/table, :table "orders"},
@@ -325,7 +325,7 @@ SELECT id, name FROM archived_users"))))
            :end {:type :macaw.ast/jdbc-parameter}}}
          (->ast "select * from orders where created_at between ? and ?"))))
 
-(deftest row-number-test
+(deftest ^:parallel row-number-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :column "name"}
@@ -338,7 +338,7 @@ SELECT id, name FROM archived_users"))))
          (->ast "SELECT name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank
 FROM employees"))))
 
-(deftest partition-by-test
+(deftest ^:parallel partition-by-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :column "department"}
@@ -354,7 +354,7 @@ FROM employees"))))
   RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
 FROM employees"))))
 
-(deftest select-with-column-alias-test
+(deftest ^:parallel select-with-column-alias-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:alias "order1",
@@ -363,7 +363,7 @@ FROM employees"))))
             :from {:type :macaw.ast/table, :table "products"}}]}
          (->ast "select (select order from products) as order1"))))
 
-(deftest week-test
+(deftest ^:parallel week-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/expression-list,
@@ -458,7 +458,7 @@ ORDER BY
     ) + INTERVAL '-1 day'
   ) ASC"))))
 
-(deftest week-of-year-test
+(deftest ^:parallel week-of-year-test
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/function,
@@ -639,7 +639,7 @@ ORDER BY
     )
   ) ASC"))))
 
-(deftest complicated-test-1
+(deftest ^:parallel complicated-test-1
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/function,
@@ -851,7 +851,7 @@ ORDER BY
   DATE_TRUNC('month', \"source\".\"created_at\") ASC,
   \"source\".\"upper_category\" ASC"))))
 
-(deftest complicated-test-2
+(deftest ^:parallel complicated-test-2
   (is (= {:type :macaw.ast/select,
           :select
           [{:type :macaw.ast/column, :table "a", :column "id"}
