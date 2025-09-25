@@ -57,10 +57,20 @@
       (seek (match-prefix element ks-prefix) m))))
 
 (def ^:private nil-val? (comp nil? val))
+(defn- nil-or-empty? [entry]
+  (let [v (val entry)]
+    (or (nil? v)
+        (and (seqable? v)
+             (empty? v)))))
 
 (defn strip-nils
   "Remove any keys corresponding to nil values from the given map."
-  [m]
-  (if (some nil-val? m)
-    (with-meta (into {} (remove nil-val?) m) (meta m))
-    m))
+  ([m]
+   (strip-nils m false))
+  ([m strip-empty?]
+   (let [pred (if strip-empty?
+                nil-or-empty?
+                nil-val?)]
+     (if (some pred m)
+       (with-meta (into {} (remove pred) m) (meta m))
+       m))))
