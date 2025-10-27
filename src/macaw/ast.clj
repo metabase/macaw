@@ -4,12 +4,12 @@
   (:import
    (net.sf.jsqlparser.statement.select AllColumns AllTableColumns Join OrderByElement
                                        ParenthesedSelect PlainSelect SelectItem SetOperationList
-                                       WithItem)
+                                       TableFunction WithItem)
    (net.sf.jsqlparser.schema Column Database Table)
    (net.sf.jsqlparser.expression AnalyticExpression BinaryExpression CaseExpression CastExpression
                                  DateValue DoubleValue ExtractExpression Function IntervalExpression
                                  JdbcParameter LongValue NotExpression NullValue SignedExpression
-                                 StringValue TimeKeyExpression  TimeValue TimestampValue WhenClause)
+                                 StringValue TimeKeyExpression TimeValue TimestampValue WhenClause)
    (net.sf.jsqlparser.expression.operators.relational Between ExistsExpression ExpressionList
                                                       IsNullExpression)))
 
@@ -155,6 +155,16 @@
   (node
    {:type ::literal
     :value nil}
+   parsed opts))
+
+(defmethod ->ast [TableFunction]
+  [^TableFunction parsed opts]
+  (node
+   (merge
+    (->ast (.getFunction parsed) opts)
+    {:type ::table-function
+     :table-alias (some-> (.getAlias parsed)
+                    .getName)})
    parsed opts))
 
 (defmethod ->ast [Function]

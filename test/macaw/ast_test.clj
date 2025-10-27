@@ -325,6 +325,16 @@ SELECT id, name FROM archived_users"))))
            :end {:type :macaw.ast/jdbc-parameter}}}
          (->ast "select * from orders where created_at between ? and ?"))))
 
+(deftest ^:parallel table-function-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/column, :column "i"}],
+          :from {:type :macaw.ast/table-function,
+                 :name "generate_series",
+                 :params [{:value 1, :type :macaw.ast/literal}
+                          {:value 500, :type :macaw.ast/literal}],
+                 :table-alias "i"}}
+         (->ast "select i from generate_series(1, 500) as i"))))
+
 (deftest ^:parallel row-number-test
   (is (= {:type :macaw.ast/select,
           :select
