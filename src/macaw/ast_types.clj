@@ -95,6 +95,15 @@
     [:name :string]
     [:params {:optional true} [:sequential [:ref ::ast-node]]]]])
 
+(def ^:private table-function-node
+  [:merge
+   base-node
+   [:map
+    [:type [:= ::ast/table-function]]
+    [:name :string]
+    [:params {:optional true} [:sequential [:ref ::ast-node]]]
+    [:alias {:optional true} :string]]])
+
 (def ^:private expression-list-node
   [:merge
    base-node
@@ -232,6 +241,7 @@
    [::ast/binary-expression [:ref ::binary-expression-node]]
    [::ast/literal [:ref ::literal-node]]
    [::ast/function [:ref ::function-node]]
+   [::ast/table-function [:ref ::table-function-node]]
    [::ast/expression-list [:ref ::expression-list-node]]
    [::ast/interval [:ref ::interval-node]]
    [::ast/jdbc-parameter [:ref ::jdbc-parameter-node]]
@@ -254,6 +264,7 @@
    ::binary-expression-node binary-expression-node
    ::literal-node literal-node
    ::function-node function-node
+   ::table-function-node table-function-node
    ::expression-list-node expression-list-node
    ::interval-node interval-node
    ::cast-node cast-node
