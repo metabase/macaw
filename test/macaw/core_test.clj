@@ -481,11 +481,15 @@ from foo")
   (is (= cte-after-replace
          (m/replace-names cte-before-replace {:tables {{:table "a"} "b"}})))
 
-  ;; TODO fix this, which is broken due to shadowing
-  #_(testing "with shadowing"
+  (testing "with shadowing"
     (let [rr #(str/replace % "z" "a")]
-        (is (= (rr cte-after-replace)
-               (m/replace-names (rr cte-before-replace) {:tables {{:table "a"} "b"}}))))))
+        ;; TODO fix this, which is broken due to shadowing
+        (is (= #_(rr cte-after-replace)
+             ;; We treat references to the table `a` as if they were references to the CTE, and therefore leave them.
+             (rr cte-before-replace)
+             (m/replace-names (rr cte-before-replace)
+                              {:tables {{:table "a"} "b"}}
+                              {:allow-unused? true}))))))
 
 
 (deftest allow-unused-test
