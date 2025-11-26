@@ -478,7 +478,6 @@ from foo")
              :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
                        {:schema "public" :table "snore_user" :column "yoink"} "oink"}}))))
 
-
 (deftest replace-intended-test
   (is (= "SELECT S1.T1.C1, T2.C2, C3 FROM S1.T1 JOIN S2.T2"
          (m/replace-names "SELECT s1.t1.c1, t2.c2, c3 FROM s1.t1 JOIN s2.t2"
