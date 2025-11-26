@@ -237,7 +237,7 @@ from foo")
                                              :case-insensitive :agnostic
                                              :quotes-preserve-case? true))))
     (testing "The query is unchanged when allowed to run partially"
-      (is (= heavily-quoted-query-mixed-case
+      (is (= (str/replace heavily-quoted-query-mixed-case "`ding`" "king")
              (m/replace-names heavily-quoted-query-mixed-case
                               heavily-quoted-query-rewrites
                               {:case-insensitive      :agnostic
@@ -426,10 +426,11 @@ from foo")
   ;; To consider - we could avoid splitting up the renames into column and table portions in the client, as
   ;; qualified targets would allow us to infer such changes. Partial qualification could also work fine where there
   ;; is no ambiguity - even if this is just a nice convenience for testing.
-  #_(is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
-           (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                            {:columns {{:schema "public" :table "a" :column "x"}
-                                       {:table "aa" :column "xx"}}})))
+  (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
+         (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                          {:tables  {{:table "a"} "aa"}
+                           :columns {{:schema "public" :table "a" :column "x"}
+                                     {:table "aa" :column "xx"}}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
@@ -438,6 +439,10 @@ from foo")
   (is (= "SELECT p.id, q.id FROM public.whatever p join private.orders q"
          (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
                           {:tables {{:schema "public" :table "orders"} "whatever"}})))
+
+  (is (= "SELECT p.id FROM public.q p"
+         (m/replace-names "SELECT p.id FROM public.p p"
+                          {:tables {{:schema "public" :table "p"} "q"}})))
 
   (is (ws= "SELECT SUM(public.orders.total) AS s,
             MAX(orders.total) AS max,
