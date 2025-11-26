@@ -444,6 +444,11 @@ from foo")
          (m/replace-names "SELECT p.id FROM public.p p"
                           {:tables {{:schema "public" :table "p"} "q"}})))
 
+  (is (= "SELECT p.id FROM public.q P"
+         (m/replace-names "SELECT p.id FROM public.p P"
+                          {:tables {{:schema "public" :table "p"} "q"}}
+                          {:case-insensitive :agnostic})))
+
   (is (ws= "SELECT SUM(public.orders.total) AS s,
             MAX(orders.total) AS max,
             MIN(total) AS min
