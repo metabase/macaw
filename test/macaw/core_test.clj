@@ -237,12 +237,13 @@ from foo")
                                              :case-insensitive :agnostic
                                              :quotes-preserve-case? true))))
     (testing "The query is unchanged when allowed to run partially"
-      (is (= (str/replace heavily-quoted-query-mixed-case "`ding`" "king")
-             (m/replace-names heavily-quoted-query-mixed-case
-                              heavily-quoted-query-rewrites
-                              {:case-insensitive      :agnostic
-                               :quotes-preserve-case? true
-                               :allow-unused?         true}))))))
+      (let [with-no-exact-matches (str/replace heavily-quoted-query-mixed-case "ding" "dIng")]
+        (is (= with-no-exact-matches
+               (m/replace-names with-no-exact-matches
+                                heavily-quoted-query-rewrites
+                                {:case-insensitive      :agnostic
+                                 :quotes-preserve-case? true
+                                 :allow-unused?         true})))))))
 
 (def ^:private ambiguous-case-replacements
   {:columns {{:schema "public" :table "DOGS" :column "BARK"}  "MEOW"
