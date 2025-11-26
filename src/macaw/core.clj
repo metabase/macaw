@@ -164,6 +164,6 @@
 (defn ->ast
   "Given an SQL query, return a clojure AST that represents it.
 
-   This AST can potentially be lossy, and generally shouldn't be as part of a round trip back to SQL."
+   This AST can potentially be lossy, and generally shouldn't be used as part of a round trip back to SQL."
   [parsed]
   (m.ast/->ast parsed {:with-instance? false}))
