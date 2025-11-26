@@ -210,10 +210,16 @@ from foo")
                            :tables  {{:schema "public" :table "DOGS"} "cats"}
                            :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
                           {:case-insensitive :agnostic
-                           :allow-unused?    true}))))
+                           :allow-unused?    true})))
+
+  (testing "Updating the schema only"
+    (is (= "SELECT bark FROM private.dogs"
+           (m/replace-names "SELECT bark FROM PUBLIC.dogs"
+                            {:schemas {"public" "private"}}
+                            {:case-insensitive :lower})))))
 
 (def ^:private heavily-quoted-query-mixed-case
-  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `ding`.`doNg`")
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `dIng`.`doNg`")
 
 (deftest case-and-quotes-test
   (testing "By default, quoted references are also case insensitive"
@@ -461,13 +467,39 @@ from foo")
              :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
                        {:schema "public" :table "snore_user" :column "yoink"} "oink"}}))))
 
+
+(deftest replace-intended-test
+  (is (= "SELECT S1.T1.C1, T2.C2, C3 FROM S1.T1 JOIN S2.T2"
+         (m/replace-names "SELECT s1.t1.c1, t2.c2, c3 FROM s1.t1 JOIN s2.t2"
+                          {:schemas {"s1" "S1", "s2" "S2"}
+                           :tables  {{:schema "s1" :table "t1"} "T1"
+                                     {:schema "s2" :table "t2"} "T2"}
+                           :columns {{:schema "s1" :table "t1" :column "c1"} "C1"
+                                     {:schema "s2" :table "t2" :column "c2"} "C2"
+                                     {:schema "s2" :table "t2" :column "c3"} "C3"}}))))
+
+(deftest replace-precision-test
+  (is (= "SELECT p.a.x, q.b.y, c.z FROM p.a, q.b, q.c"
+         (m/replace-names "SELECT s1.t1.a, s2.t1.a, t2.a FROM s1.t1, s2.t1, s2.t2"
+                          {:schemas {"s1" "p", "s2" "q"}
+                           :tables  {{:schema "s1" :table "t1"} "a"
+                                     {:schema "s2" :table "t1"} "b"
+                                     {:schema "s2" :table "t2"} "c"}
+                           :columns {{:schema "s1" :table "t1" :column "a"} "x"
+                                     {:schema "s2" :table "t1" :column "a"} "y"
+                                     {:schema "s2" :table "t2" :column "a"} "z"}}))))
+
+(deftest replace-schema-only-test
+  (is (= "SELECT totally_private.orders.x FROM totally_private.orders, private.orders WHERE x = 1"
+         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                          {:schemas {"public" "totally_private"}}))))
+
 (deftest replace-schema-test
-  ;; Somehow we broke renaming the `x` in the WHERE clause.
-  #_(is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
-           (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
-                            {:schemas {"public" "totally_private"}
-                             :tables  {{:schema "public" :table "orders"} "purchases"}
-                             :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
+  (is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
+         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                          {:schemas {"public" "totally_private"}
+                           :tables  {{:schema "public" :table "orders"} "purchases"}
+                           :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
 
 (deftest allow-unused-test
   (is (thrown-with-msg?
