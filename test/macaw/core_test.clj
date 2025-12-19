@@ -477,6 +477,18 @@ from foo")
          (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}
                           {:allow-unused? true}))))
 
+(deftest add-schema-to-naked-table-test
+  (testing "Renaming a naked table reference can add a schema qualifier"
+    (is (= "SELECT * FROM isolated.y"
+           (m/replace-names "SELECT * FROM x"
+                            {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
+    (is (= "SELECT a.id FROM isolated.y a"
+           (m/replace-names "SELECT a.id FROM x a"
+                            {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
+    (is (= "SELECT id, name FROM isolated.users"
+           (m/replace-names "SELECT id, name FROM users"
+                            {:tables {{:table "users"} {:schema "isolated" :table "users"}}})))))
+
 (deftest model-reference-test
   (is (= "SELECT subtotal FROM metabase_sentinel_table_154643 LIMIT 3"
          (m/replace-names "SELECT total FROM metabase_sentinel_table_154643 LIMIT 3"
