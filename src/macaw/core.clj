@@ -160,6 +160,7 @@
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
+
 (defn ->ast
   "Given a sql query, return a clojure ast that represents it.
 
