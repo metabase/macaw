@@ -4,6 +4,7 @@
 .\#*
 /*.iml
 /.calva
+/.claude
 /.cpcache
 /.eastwood
 /.env
