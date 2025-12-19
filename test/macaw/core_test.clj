@@ -405,16 +405,16 @@ from foo")
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
          (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                          {:tables  {{:schema "public" :table "a"} "aa"}
-                           :columns {{:schema "public" :table "a" :column "x"} "xx"}})))
+                          {:tables  {{:table "a"} "aa"}
+                           :columns {{:table "a" :column "x"} "xx"}})))
 
   (testing "Handle fully qualified replacement targets"
     ;; Giving Macaw more context could make it easier to
     ;; In any case, this is trivial for Metabase to provide.
     (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
            (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                            {:tables  {{:schema "public" :table "a"} "aa"}
-                             :columns {{:schema "public" :table "a"  :column "x"}
+                            {:tables  {{:table "a"} "aa"}
+                             :columns {{:table "a"  :column "x"}
                                        {:schema "public" :table "aa" :column "xx"}}}))))
 
   ;; To consider - we could avoid splitting up the renames into column and table portions in the client, as
@@ -422,12 +422,12 @@ from foo")
   ;; is no ambiguity - even if this is just a nice convenience for testing.
   #_(is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
            (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                            {:columns {{:schema "public" :table "a" :column "x"}
+                            {:columns {{:table "a" :column "x"}
                                        {:table "aa" :column "xx"}}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
-                          {:columns {{:schema "public" :table "orders" :column "id"} "qwe"}})))
+                          {:columns {{:table "orders" :column "id"} "qwe"}})))
 
   (is (= "SELECT p.id, q.id FROM public.whatever p join private.orders q"
          (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
@@ -455,11 +455,11 @@ from foo")
              FROM /* /* lore */
                   core_user,
                   bore_user,  /* more */ snore_user ;"
-            {:tables  {{:schema "public" :table "core_user"}  "floor_muser"
-                       {:schema "public" :table "bore_user"}  "user"
-                       {:schema "public" :table "snore_user"} "vigilant_user"}
-             :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
-                       {:schema "public" :table "snore_user" :column "yoink"} "oink"}}))))
+            {:tables  {{:table "core_user"}  "floor_muser"
+                       {:table "bore_user"}  "user"
+                       {:table "snore_user"} "vigilant_user"}
+             :columns {{:table "core_user" :column "boink"}  "sturmunddrang"
+                       {:table "snore_user" :column "yoink"} "oink"}}))))
 
 (deftest replace-schema-test
   ;; Somehow we broke renaming the `x` in the WHERE clause.
@@ -487,7 +487,17 @@ from foo")
                             {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
     (is (= "SELECT id, name FROM isolated.users"
            (m/replace-names "SELECT id, name FROM users"
-                            {:tables {{:table "users"} {:schema "isolated" :table "users"}}})))))
+                            {:tables {{:table "users"} {:schema "isolated" :table "users"}}}))))
+  (testing "It does not have false positives"
+    (is (= "SELECT * FROM x"
+           (m/replace-names "SELECT * FROM x"
+                            {:tables {{:schema "s", :table "x"} {:schema "isolated" :table "y"}}}
+                            {:allow-unused? true})))
+    (is (= "SELECT * FROM y.x"
+           (m/replace-names "SELECT * FROM y.x"
+                            {:tables {{:schema nil :table "x"} {:schema "isolated" :table "y"}}}
+                            {:allow-unused? true}))))
+  )
 
 (deftest model-reference-test
   (is (= "SELECT subtotal FROM metabase_sentinel_table_154643 LIMIT 3"
