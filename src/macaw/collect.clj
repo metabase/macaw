@@ -195,7 +195,10 @@
   (into {}
         (map (fn [[component-type components]]
                [component-type (into (empty components)
-                                     (map #(dissoc % :context))
+                                     (map (fn [component]
+                                            (update component :context #(if (seq %)
+                                                                          (conj (empty %) (first %))
+                                                                          (empty %)))))
                                      components)]))
         components-map))
 

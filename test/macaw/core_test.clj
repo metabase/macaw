@@ -404,18 +404,16 @@ from foo")
 
 (deftest strip-context-test
   (testing "Stripping contexts works"
-    (is (= {:columns
-            #{{:component {:table "orders", :column "total"}}
-              {:component {:table "orders", :column "id"}}},
-            :source-columns
-            #{{:table "orders", :column "total"}
-              {:table "orders", :column "id"}},
-            :has-wildcard?     #{{:component true}},
-            :mutation-commands #{},
-            :tables            #{{:component {:table "orders"}}},
-            :tables-superset   #{{:component {:table "orders"}}},
-            :table-wildcards   #{}}
-           (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10" {:strip-contexts? true})))))
+    (is (=? {:columns
+             #{{:component {:column "total" :table "orders"}, :context ["SELECT"]}
+               {:component {:column "id"    :table "orders"}, :context ["SELECT"]}
+               {:component {:column "total" :table "orders"}, :context ["WHERE"]}},
+             :has-wildcard?     #{{:component true, :context ["SELECT"]}},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "orders"}, :context ["FROM"]}},
+             :table-wildcards   #{}}
+            (strip-context-ids (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"
+                                           {:strip-contexts? true}))))))
 
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
