@@ -13,7 +13,8 @@
    [:non-reserved-words    {:optional true} [:seqable :keyword]]
    [:allow-unused?         {:optional true} :boolean]
    [:case-insensitive      {:optional true} [:enum :upper :lower :agnostic]]
-   [:quotes-preserve-case? {:optional true} :boolean]])
+   [:quotes-preserve-case? {:optional true} :boolean]
+   [:strip-contexts?       {:optional true} :boolean]])
 
 (def error-types
   "The different types of errors that Macaw can return."

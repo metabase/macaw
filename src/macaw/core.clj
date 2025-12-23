@@ -82,7 +82,9 @@
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
 
   (Specifically, it returns their fully-qualified names as strings, where 'fully-qualified' means 'as referred to in
-  the query'; this function doesn't do additional inference work to find out a table's schema.)"
+  the query'; this function doesn't do additional inference work to find out a table's schema.)
+
+  Note that this is O(N^2) normally, but drops to O(N) when :strip-contexts? is specified."
   [parsed & {:as opts}]
   (m/validate [:or m.types/error-result [:fn #(instance? Statement %)]] parsed)
   (m/validate [:maybe m.types/options-map] opts)
@@ -124,7 +126,7 @@
       (if (map? parsed)
         parsed
         (case mode
-          :ast-walker-1 (-> (query->components parsed opts) :tables raw-components (->> (hash-map :tables)))
+          :ast-walker-1 (-> (query->components parsed (assoc opts :strip-contexts? true)) :tables raw-components (->> (hash-map :tables)))
           :basic-select (-> (BasicTableExtractor/getTables parsed) tables->identifiers)
           :compound-select (-> (CompoundTableExtractor/getTables parsed) tables->identifiers))))
     (catch AnalysisError e

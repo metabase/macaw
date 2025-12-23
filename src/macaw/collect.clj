@@ -191,9 +191,17 @@
                  (assoc element :schema schema')
                  element)))))
 
+(defn- strip-contexts [components-map]
+  (into {}
+        (map (fn [[component-type components]]
+               [component-type (into (empty components)
+                                     (map #(dissoc % :context))
+                                     components)]))
+        components-map))
+
 (defn query->components
   "See macaw.core/query->components doc."
-  [^Statement parsed-ast & {:as opts}]
+  [^Statement parsed-ast & {:keys [strip-contexts?] :as opts}]
   (let [{:keys [aliases
                 columns
                 qualifiers
@@ -201,7 +209,11 @@
                 mutation-commands
                 pseudo-tables
                 tables
-                table-wildcards]} (query->raw-components parsed-ast)
+                table-wildcards]} (cond-> (query->raw-components parsed-ast)
+                                    ;; strip contexts immediately if requested, because processing them can cause
+                                    ;; O(N^2) space and time usage when we take a set of lists that all share a ton of
+                                    ;; structure and then run sequence operations like filter on each individual list.
+                                    strip-contexts? strip-contexts)
         alias-map                 (into {} (map #(-> % :component ((partial alias-mapping opts) (:context %))) tables))
         ;; we're parsing qualifiers here for a single purpose - rewrite uses instances to find tables for renaming
         table-map                 (->> (update-components (partial make-table opts) tables)
@@ -236,19 +248,21 @@
                                                    (remove :internal?)
                                                    (map strip-alias))))
         table-map                 (update-vals table-map (partial infer-table-schema source-columns))]
-    {:columns           all-columns
-     :source-columns    source-columns
-     ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
-     :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
-     :mutation-commands (into #{} mutation-commands)
-     :tables            (into #{} (comp (map val)
-                                        (remove (comp :internal? :component))
-                                        strip-non-query-contexts)
-                              table-map)
-     :tables-superset   (into #{}
-                              (comp (map val) strip-non-query-contexts)
-                              (merge-with merge-with-instances qualifier-map table-map))
-     :table-wildcards   (into #{}
-                              (comp strip-non-query-contexts
-                                    (update-components (partial resolve-table-name opts)))
-                              table-wildcards)}))
+    (cond-> {:columns           all-columns
+             :source-columns    source-columns
+             ;; result-columns ... filter out the elements (and wildcards) in the top level scope only.
+             :has-wildcard?     (into #{} strip-non-query-contexts has-wildcard?)
+             :mutation-commands (into #{} mutation-commands)
+             :tables            (into #{} (comp (map val)
+                                                (remove (comp :internal? :component))
+                                                strip-non-query-contexts)
+                                      table-map)
+             :tables-superset   (into #{}
+                                      (comp (map val) strip-non-query-contexts)
+                                      (merge-with merge-with-instances qualifier-map table-map))
+             :table-wildcards   (into #{}
+                                      (comp strip-non-query-contexts
+                                            (update-components (partial resolve-table-name opts)))
+                                      table-wildcards)}
+      ;; strip contexts again because the intervening operations often add empty context lists
+      strip-contexts? strip-contexts)))
