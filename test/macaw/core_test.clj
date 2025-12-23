@@ -402,6 +402,19 @@ from foo")
              :table-wildcards   #{{:component {:table "orders"}, :context ["SELECT"]}}}
             (strip-context-ids (components "SELECT o.* FROM orders o JOIN foo ON orders.id = foo.order_id"))))))
 
+(deftest strip-context-test
+  (testing "Stripping contexts works"
+    (is (=? {:columns
+             #{{:component {:column "total" :table "orders"}, :context ["SELECT"]}
+               {:component {:column "id"    :table "orders"}, :context ["SELECT"]}
+               {:component {:column "total" :table "orders"}, :context ["WHERE"]}},
+             :has-wildcard?     #{{:component true, :context ["SELECT"]}},
+             :mutation-commands #{},
+             :tables            #{{:component {:table "orders"}, :context ["FROM"]}},
+             :table-wildcards   #{}}
+            (strip-context-ids (components "SELECT * FROM (SELECT id, total FROM orders) WHERE total > 10"
+                                           {:strip-contexts? true}))))))
+
 (deftest replace-names-test
   (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
          (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
