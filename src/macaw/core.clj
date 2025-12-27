@@ -162,9 +162,10 @@
     (-> (rewrite/replace-names sql' parsed renames' opts')
         (str/replace #"(?m)^ \n" "\n")
         (unescape-keywords (:non-reserved-words opts)))))
-(defn ->ast
-  "Given a sql query, return a clojure ast that represents it.
 
-   This ast can potentially be lossy and generally shouldn't be as part of a round trip back to sql."
+(defn ->ast
+  "Given an SQL query, return a clojure AST that represents it.
+
+   This AST can potentially be lossy, and generally shouldn't be used as part of a round trip back to SQL."
   [parsed]
   (m.ast/->ast parsed {:with-instance? false}))

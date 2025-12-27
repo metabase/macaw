@@ -35,9 +35,9 @@
   "Check whether the given literal matches the expected literal or pattern."
   [expected actual]
   (when expected
-    (if (instance? Pattern expected)
-      (boolean (re-find expected actual))
-      (= expected actual))))
+    (or (= expected actual)
+        (when (and (instance? Pattern expected) (string? actual))
+          (boolean (re-find expected actual))))))
 
 (defn- match-prefix [element ks-prefix]
   (let [expected (map element ks-prefix)]
