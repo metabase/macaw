@@ -82,8 +82,13 @@
   (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
     ;; Handle both raw string renames, as well as more precise element based ones.
     (vswap! updated-nodes conj [t rename])
-    (let [identifier (as-> (val rename) % (:table % %))]
-      (.setName t identifier)))
+    (let [rename-val  (val rename)
+          table-name  (if (map? rename-val) (:table rename-val) rename-val)
+          schema-name (when (map? rename-val) (:schema rename-val))]
+      (.setName t table-name)
+      ;; If the rename specifies a schema, set it on the table (handles adding schema to naked refs)
+      (when schema-name
+        (.setSchemaName t schema-name))))
   (let [raw-schema-name (.getSchemaName t)
         schema-name     (collect/normalize-reference raw-schema-name opts)]
     (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
