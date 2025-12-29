@@ -28,3 +28,35 @@
                {:a nil :b 2 :c 3}]]
       (is (nil?
            (u/find-relevant haystack x [:a :b :c]))))))
+
+;; Test the 3-tier priority: exact → wildcard → fallback
+(deftest ^:parallel find-relevant-priority-test
+  (testing "Exact match has highest priority (key has explicit nil)"
+    (let [m {{:table "x" :schema nil} :exact
+             {:table "x"}             :wildcard
+             {:table "x" :schema "s"} :fallback}]
+      (is (= [{:table "x" :schema nil} :exact]
+             (u/find-relevant m {:table "x"} [:table :schema])))))
+
+  (testing "Wildcard match when no exact match (key lacks the suffix key entirely)"
+    (let [m {{:table "x"}             :wildcard
+             {:table "x" :schema "s"} :fallback}]
+      (is (= [{:table "x"} :wildcard]
+             (u/find-relevant m {:table "x"} [:table :schema])))))
+
+  (testing "Fallback match (naked ref matches qualified key)"
+    (let [m {{:table "x" :schema "s"} :fallback}]
+      (is (= [{:table "x" :schema "s"} :fallback]
+             (u/find-relevant m {:table "x"} [:table :schema])))))
+
+  (testing "Exact match (explicit nil) preferred over wildcard (key absent)"
+    (let [m {{:table "x" :schema nil} :exact
+             {:table "x"}             :wildcard}]
+      (is (= [{:table "x" :schema nil} :exact]
+             (u/find-relevant m {:table "x"} [:table :schema])))))
+
+  (testing "No match when prefix keys don't match"
+    (let [m {{:table "y" :schema nil} :exact
+             {:table "y"}             :wildcard
+             {:table "y" :schema "s"} :fallback}]
+      (is (nil? (u/find-relevant m {:table "x"} [:table :schema]))))))

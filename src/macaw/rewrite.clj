@@ -9,6 +9,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- preserve-quotes
+  "Apply the same quoting style from the original name to the new name.
+   Handles backticks, double quotes, and square brackets."
+  [^String original-name ^String new-name]
+  (if (or (nil? original-name) (nil? new-name) (< (count original-name) 2))
+    new-name
+    (let [first-char (first original-name)
+          last-char  (last original-name)]
+      (case first-char
+        \` (str "`" new-name "`")
+        \" (str "\"" new-name "\"")
+        \[ (if (= last-char \])
+             (str "[" new-name "]")
+             new-name)
+        new-name))))
+
 (defn- index-of-nth [^String haystack ^String needle n]
   (assert (not (neg? n)))
   (if (zero? n)
@@ -54,17 +70,21 @@
 (defn- update-query
   "Emit a SQL string for an updated AST, preserving the comments and whitespace from the original SQL."
   [updated-ast updated-nodes sql & {:as _opts}]
-  (let [updated-node? (set (map first updated-nodes))
-        replacement   (fn [->text visitable]
-                        (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
-                              idx-range (node->idx-range ast-node sql)
-                              node-text (->text visitable)]
-                          [idx-range node-text]))
-        replace-name  (fn [->text]
-                        (fn [acc visitable _ctx]
-                          (cond-> acc
-                            (updated-node? visitable)
-                            (conj (replacement ->text visitable)))))]
+  (let [updated-node?        (set (map first updated-nodes))
+        ;; Schema renames on qualifiers should propagate to column output
+        schema-renamed-node? (set (keep (fn [[node info]]
+                                          (when (:schema-rename? info) node))
+                                        updated-nodes))
+        replacement          (fn [->text visitable]
+                               (let [ast-node  (.getASTNode ^ASTNodeAccess visitable)
+                                     idx-range (node->idx-range ast-node sql)
+                                     node-text (->text visitable)]
+                                 [idx-range node-text]))
+        replace-name         (fn [->text]
+                               (fn [acc visitable _ctx]
+                                 (cond-> acc
+                                   (updated-node? visitable)
+                                   (conj (replacement ->text visitable)))))]
     (splice-replacements
      sql
      (mw/fold-query
@@ -74,33 +94,51 @@
                                 (if t-alias
                                   (str fqn " " (.getName t-alias))
                                   fqn)))
-       :column (replace-name #(.getFullyQualifiedName ^Column %))}
+       ;; For columns, also check if the qualifier's schema was renamed
+       :column (fn [acc ^Column c _ctx]
+                 (if (or (updated-node? c)
+                         (schema-renamed-node? (.getTable c)))
+                   (conj acc (replacement #(.getFullyQualifiedName ^Column %) c))
+                   acc))}
       []))))
 
 (defn- rename-table
   [updated-nodes table-renames schema-renames known-tables opts ^Table t _ctx]
-  (when-let [rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
-    ;; Handle both raw string renames, as well as more precise element based ones.
-    (vswap! updated-nodes conj [t rename])
-    (let [identifier (as-> (val rename) % (:table % %))]
-      (.setName t identifier)))
-  (let [raw-schema-name (.getSchemaName t)
-        schema-name     (collect/normalize-reference raw-schema-name opts)]
-    (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
-      (vswap! updated-nodes conj [raw-schema-name schema-rename])
+  (let [raw-schema        (.getSchemaName t)
+        raw-table         (.getName t)
+        normalized-schema (collect/normalize-reference raw-schema opts)
+        table-rename      (u/find-relevant table-renames (get known-tables t) [:table :schema])
+        schema-rename     (u/seek (comp (partial u/match-component normalized-schema) key) schema-renames)]
+    ;; Apply table rename if found
+    (when table-rename
+      (vswap! updated-nodes conj [t table-rename])
+      (let [rename-val (val table-rename)
+            table-name (if (map? rename-val) (:table rename-val) rename-val)]
+        (.setName t (preserve-quotes raw-table table-name))
+        ;; If the table rename includes a :schema key, use it (nil removes the schema)
+        (when (and (map? rename-val) (contains? rename-val :schema))
+          (let [new-schema (:schema rename-val)]
+            (.setSchemaName t (when new-schema (preserve-quotes raw-schema new-schema)))))))
+    ;; Apply schema rename only if table rename didn't specify a schema
+    (when (and schema-rename
+               (not (and table-rename (map? (val table-rename)) (contains? (val table-rename) :schema))))
+      (vswap! updated-nodes conj [t {:entry schema-rename :schema-rename? true}])
       (let [identifier (as-> (val schema-rename) % (:table % %))]
-        (.setSchemaName t identifier)))))
+        (.setSchemaName t (preserve-quotes raw-schema identifier))))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
   (when-let [rename (u/find-relevant column-renames (get known-columns c) [:column :table :schema])]
     ;; Handle both raw string renames, as well as more precise element based ones.
     (vswap! updated-nodes conj [c rename])
-    (let [identifier (as-> (val rename) % (:column % %))]
-      (.setColumnName c identifier))))
+    (let [raw-column (.getColumnName c)
+          identifier (as-> (val rename) % (:column % %))]
+      (.setColumnName c (preserve-quotes raw-column identifier)))))
 
 (defn- alert-unused! [updated-nodes renames]
-  (let [known-rename? (set (map second updated-nodes))]
+  (let [;; Extract the rename entry from each updated node (handles both plain entries and {:entry e} maps)
+        extract-entry (fn [[_node info]] (if (map? info) (:entry info) info))
+        known-rename? (set (map extract-entry updated-nodes))]
     (doseq [[k items] renames]
       (when-let [unknown (first (remove known-rename? items))]
         (throw (ex-info (str "Unknown rename: " unknown) {:type   k

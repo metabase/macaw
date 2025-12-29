@@ -80,9 +80,11 @@
 
 (defn- find-table [{:keys [alias->table name->table keep-internal-tables?] :as opts} ^Table t]
   (let [n      (normalize-reference (.getName t) opts)
-        schema (normalize-reference (.getSchemaName t) opts)]
+        schema (normalize-reference (.getSchemaName t) opts)
+        ;; Strip nils so naked table refs (no schema) use fallback matching
+        element (u/strip-nils {:table n :schema schema})]
     (or (get alias->table n)
-        (:component (last (u/find-relevant name->table {:table n :schema schema} [:table :schema])))
+        (:component (last (u/find-relevant name->table element [:table :schema])))
         (when keep-internal-tables?
           {:table n, :schema schema, :internal? true}))))
 
