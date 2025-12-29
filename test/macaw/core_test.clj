@@ -488,11 +488,13 @@ from foo")
     (is (= "SELECT id, name FROM isolated.users"
            (m/replace-names "SELECT id, name FROM users"
                             {:tables {{:table "users"} {:schema "isolated" :table "users"}}}))))
-  (testing "It does not have false positives"
-    (is (= "SELECT * FROM x"
+  (testing "Schema-qualified rename keys match naked tables as fallback"
+    ;; {:schema "s" :table "x"} matches naked x as lowest priority fallback
+    (is (= "SELECT * FROM isolated.y"
            (m/replace-names "SELECT * FROM x"
-                            {:tables {{:schema "s", :table "x"} {:schema "isolated" :table "y"}}}
-                            {:allow-unused? true})))
+                            {:tables {{:schema "s", :table "x"} {:schema "isolated" :table "y"}}}))))
+  (testing "Explicit nil schema only matches nil, not other schemas"
+    ;; {:schema nil :table "x"} should NOT match y.x (which has schema y)
     (is (= "SELECT * FROM y.x"
            (m/replace-names "SELECT * FROM y.x"
                             {:tables {{:schema nil :table "x"} {:schema "isolated" :table "y"}}}
