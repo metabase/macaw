@@ -151,8 +151,9 @@ from foo")
 (def ^:private heavily-quoted-query
   "SELECT raw, \"foo\", \"dong\".\"bar\", `ding`.`dong`.`fee` FROM `ding`.dong")
 
+;; Note: backticks and double-quotes are preserved from originals
 (def ^:private heavily-quoted-query-rewritten
-  "SELECT flaw, glue, long.lark, king.long.flee FROM king.long")
+  "SELECT flaw, \"glue\", \"long\".\"lark\", `king`.`long`.`flee` FROM `king`.long")
 
 (def ^:private heavily-quoted-query-rewrites
   {:schemas {"ding" "king"}
@@ -215,9 +216,19 @@ from foo")
 (def ^:private heavily-quoted-query-mixed-case
   "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `ding`.`doNg`")
 
+;; With quotes-preserve-case?, only the schema "ding" matches (same case as `ding`)
+;; The table and columns have different case and won't match
+;; Note: backticks are preserved from the original `ding` schema
+(def ^:private heavily-quoted-query-mixed-case-rewritten
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `king`.`doNg`")
+
+;; When case-insensitive matching is used on the mixed-case query, quotes are still preserved
+(def ^:private heavily-quoted-query-mixed-case-full-rewritten
+  "SELECT flaw, \"glue\", \"long\".\"lark\", `king`.`long`.`flee` FROM `king`.`long`")
+
 (deftest case-and-quotes-test
   (testing "By default, quoted references are also case insensitive"
-    (is (= heavily-quoted-query-rewritten
+    (is (= heavily-quoted-query-mixed-case-full-rewritten
            (m/replace-names heavily-quoted-query-mixed-case
                             heavily-quoted-query-rewrites
                             :case-insensitive :lower))))
@@ -230,8 +241,8 @@ from foo")
                                              heavily-quoted-query-rewrites
                                              :case-insensitive :agnostic
                                              :quotes-preserve-case? true))))
-    (testing "The query is unchanged when allowed to run partially"
-      (is (= heavily-quoted-query-mixed-case
+    (testing "Only matching identifiers are renamed when allowed to run partially"
+      (is (= heavily-quoted-query-mixed-case-rewritten
              (m/replace-names heavily-quoted-query-mixed-case
                               heavily-quoted-query-rewrites
                               {:case-insensitive      :agnostic
@@ -247,10 +258,11 @@ from foo")
 
 (deftest ambiguous-case-test
   (testing "Correctly handles flexibility around the case of the replacements"
-    (doseq [[case-insensitive expected] {:lower    "SELECT meow, PuRr FROM DOGS"
-                                         :upper    "SELECT MEOW, PURR FROM DOGS"
+    ;; Note: backticks are preserved from the original `GROWL` column
+    (doseq [[case-insensitive expected] {:lower    "SELECT meow, `PuRr` FROM DOGS"
+                                         :upper    "SELECT MEOW, `PURR` FROM DOGS"
                                          ;; Not strictly deterministic, depends on map ordering.
-                                         :agnostic "SELECT MEOW, PuRr FROM DOGS"}]
+                                         :agnostic "SELECT MEOW, `PuRr` FROM DOGS"}]
       (is (= expected
              (m/replace-names "SELECT bark, `GROWL` FROM DOGS"
                               ambiguous-case-replacements
@@ -499,7 +511,17 @@ from foo")
            (m/replace-names "SELECT * FROM y.x"
                             {:tables {{:schema nil :table "x"} {:schema "isolated" :table "y"}}}
                             {:allow-unused? true}))))
-  )
+  (testing "Renaming to {:schema nil} removes the schema qualifier"
+    (is (= "SELECT * FROM x"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:schemas {"public" nil}})))
+    (is (= "SELECT * FROM y"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:tables {{:schema "public" :table "x"} {:schema nil :table "y"}}})))
+    ;; Omitting :schema key keeps the original schema
+    (is (= "SELECT * FROM public.y"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:tables {{:schema "public" :table "x"} {:table "y"}}})))))
 
 (deftest model-reference-test
   (is (= "SELECT subtotal FROM metabase_sentinel_table_154643 LIMIT 3"

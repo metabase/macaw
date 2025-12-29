@@ -78,7 +78,6 @@
     ;; We need at least one non-generate key to remain for the search.
     (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel element)) reverse seq)]
       (let [ks-suffix (drop (count ks-prefix) ks)]
-        ;; Priority: exact nil > wildcard (no key) > omitted (any value)
         (or (seek (match-keys element ks-prefix ks-suffix :exact) m)
             (seek (match-keys element ks-prefix ks-suffix :wildcard) m)
             (seek (match-keys element ks-prefix ks-suffix :omitted) m))))))
