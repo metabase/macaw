@@ -43,7 +43,7 @@
   "Returns a predicate that checks if a map entry matches the element.
    - ks-prefix: keys to match on (element has non-nil values)
    - ks-suffix: keys stripped from element (element has nil/sentinel values)
-   - mode: :exact (key present with nil value), :wildcard (key absent), :omitted (allow any value)"
+   - mode: :exact (key present with nil value), :wildcard (key absent)"
   [element ks-prefix ks-suffix mode]
   (let [expected (map element ks-prefix)]
     (fn [entry]
@@ -52,19 +52,17 @@
          ;; The prefix keys must match
          (every? true? (map match-component expected (map k ks-prefix)))
          ;; For suffix keys, behavior depends on mode and sentinel values
-         ;; In :omitted mode, we accept any value so skip the check entirely
-         (or (= mode :omitted)
-             (every? (fn [suffix-key]
-                       (let [elem-val (element suffix-key)]
-                         ;; Sentinel value - allow any value in map key (lenient matching)
-                         (if (and elem-val (not (non-sentinel elem-val)))
-                           true
-                           (case mode
-                             ;; Exact: key must be present with explicit nil value
-                             :exact    (and (contains? k suffix-key) (nil? (k suffix-key)))
-                             ;; Wildcard: key must be absent entirely
-                             :wildcard (not (contains? k suffix-key))))))
-                     ks-suffix)))))))
+         (every? (fn [suffix-key]
+                   (let [elem-val (element suffix-key)]
+                     ;; Sentinel value - allow any value in map key (lenient matching)
+                     (if (and elem-val (not (non-sentinel elem-val)))
+                       true
+                       (case mode
+                         ;; Exact: key must be present with explicit nil value
+                         :exact    (and (contains? k suffix-key) (nil? (k suffix-key)))
+                         ;; Wildcard: key must be absent entirely
+                         :wildcard (not (contains? k suffix-key))))))
+                 ks-suffix))))))
 
 (defn find-relevant
   "Search the given map for the entry corresponding to [[element]], considering only the relevant keys.
@@ -74,7 +72,7 @@
   Matching priority (for element {:table \"x\"} with no :schema key):
   1. Exact match: {:schema nil :table \"x\"} - element's nil/missing schema matches key's nil schema
   2. Wildcard match: {:table \"x\"} - key doesn't have :schema key at all
-  3. Omitted match: {:schema \"s\" :table \"x\"} - naked reference matches qualified key as fallback"
+  3. Fallback match: {:schema \"s\" :table \"x\"} - naked reference matches qualified key (suffix keys ignored)"
   [m element ks]
   (when element
     ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
@@ -83,7 +81,7 @@
       (let [ks-suffix (drop (count ks-prefix) ks)]
         (or (seek (match-keys element ks-prefix ks-suffix :exact) m)
             (seek (match-keys element ks-prefix ks-suffix :wildcard) m)
-            (seek (match-keys element ks-prefix ks-suffix :omitted) m))))))
+            (seek (match-keys element ks-prefix [] :exact) m))))))
 
 (def ^:private nil-val? (comp nil? val))
 (defn- nil-or-empty? [entry]

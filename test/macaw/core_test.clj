@@ -525,18 +525,18 @@ from foo")
                             {:tables {{:schema nil :table "x"} {:schema "exact" :table "result"}
                                       {:table "x"}             {:schema "wildcard" :table "result"}}}
                             {:allow-unused? true}))))
-  (testing "Wildcard match (no schema key) preferred over omitted (qualified key)"
+  (testing "Wildcard match (no schema key) preferred over fallback (qualified key)"
     ;; {:table "x"} matches naked ref, preferred over {:schema "s" :table "x"}
     (is (= "SELECT * FROM wildcard.result"
            (m/replace-names "SELECT * FROM x"
                             {:tables {{:table "x"}             {:schema "wildcard" :table "result"}
-                                      {:schema "s" :table "x"} {:schema "omitted" :table "result"}}}
+                                      {:schema "s" :table "x"} {:schema "fallback" :table "result"}}}
                             {:allow-unused? true}))))
-  (testing "Omitted match (qualified key matches naked ref) as fallback"
+  (testing "Fallback match (qualified key matches naked ref)"
     ;; {:schema "s" :table "x"} matches naked x when no better match exists
-    (is (= "SELECT * FROM omitted.result"
+    (is (= "SELECT * FROM fallback.result"
            (m/replace-names "SELECT * FROM x"
-                            {:tables {{:schema "s" :table "x"} {:schema "omitted" :table "result"}}}))))
+                            {:tables {{:schema "s" :table "x"} {:schema "fallback" :table "result"}}}))))
   (testing "Qualified ref matches exact schema over wildcard"
     ;; Qualified ref s.x should match {:schema "s" :table "x"} exactly, not {:table "x"}
     (is (= "SELECT * FROM exact.result"
