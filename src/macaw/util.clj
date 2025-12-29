@@ -39,22 +39,49 @@
       (boolean (re-find expected actual))
       (= expected actual))))
 
-(defn- match-prefix [element ks-prefix]
+(defn- match-keys
+  "Returns a predicate that checks if a map entry matches the element.
+   - ks-prefix: keys to match on (element has non-nil values)
+   - ks-suffix: keys stripped from element (element has nil/sentinel values)
+   - mode: :exact (require nil), :wildcard (require key absent), :omitted (allow any value)"
+  [element ks-prefix ks-suffix mode]
   (let [expected (map element ks-prefix)]
     (fn [entry]
-      (every? true? (map match-component expected (map (key entry) ks-prefix))))))
+      (let [k (key entry)]
+        (and
+         ;; The prefix keys must match
+         (every? true? (map match-component expected (map k ks-prefix)))
+         ;; For suffix keys, behavior depends on mode and sentinel values
+         (every? (fn [suffix-key]
+                   (let [elem-val (element suffix-key)]
+                     ;; Sentinel value - allow any value in map key (lenient matching)
+                     (if (and elem-val (not (non-sentinel elem-val)))
+                       true
+                       (case mode
+                         :exact    (nil? (k suffix-key))
+                         :wildcard (not (contains? k suffix-key))
+                         :omitted  true))))
+                 ks-suffix))))))
 
 (defn find-relevant
   "Search the given map for the entry corresponding to [[element]], considering only the relevant keys.
   The relevant keys are obtained by ignoring any suffix of [[ks]] for which [[element]] has nil or missing values.
-  We require that there is at least one relevant key to find a match."
+  We require that there is at least one relevant key to find a match.
+
+  Matching priority (for element {:table \"x\"} with no :schema key):
+  1. Exact match: {:schema nil :table \"x\"} - element's nil/missing schema matches key's nil schema
+  2. Wildcard match: {:table \"x\"} - key doesn't have :schema key at all
+  3. Omitted match: {:schema \"s\" :table \"x\"} - naked reference matches qualified key as fallback"
   [m element ks]
   (when element
     ;; Strip off keys from right-to-left where they are nil, and relax search to only consider these keys.
     ;; We need at least one non-generate key to remain for the search.
-    ;; NOTE: we could optimize away calling `non-sentinel` twice in this function, but for now just keeping it simple.
     (when-let [ks-prefix (->> ks reverse (drop-while (comp not non-sentinel element)) reverse seq)]
-      (seek (match-prefix element ks-prefix) m))))
+      (let [ks-suffix (drop (count ks-prefix) ks)]
+        ;; Priority: exact nil > wildcard (no key) > omitted (any value)
+        (or (seek (match-keys element ks-prefix ks-suffix :exact) m)
+            (seek (match-keys element ks-prefix ks-suffix :wildcard) m)
+            (seek (match-keys element ks-prefix ks-suffix :omitted) m))))))
 
 (def ^:private nil-val? (comp nil? val))
 (defn- nil-or-empty? [entry]

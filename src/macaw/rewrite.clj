@@ -77,34 +77,25 @@
        :column (replace-name #(.getFullyQualifiedName ^Column %))}
       []))))
 
-(defn- schemas-match?
-  "Check if the element's schema matches the rename key's schema.
-   Both must be nil, or both must be non-nil for a match."
-  [element rename-key]
-  (let [element-schema (:schema element)
-        rename-schema  (:schema rename-key)]
-    ;; Schemas match if they're both nil or both non-nil
-    ;; (the actual value matching is handled by find-relevant)
-    (= (nil? element-schema) (nil? rename-schema))))
-
 (defn- rename-table
   [updated-nodes table-renames schema-renames known-tables opts ^Table t _ctx]
-  (let [element (get known-tables t)]
-    (when-let [rename (u/find-relevant table-renames element [:table :schema])]
-      ;; Only apply rename if schemas are compatible (both nil or both non-nil)
-      (when (schemas-match? element (key rename))
-        ;; Handle both raw string renames, in addition to more precise element based ones.
-        (vswap! updated-nodes conj [t rename])
-        (let [rename-val  (val rename)
-              table-name  (if (map? rename-val) (:table rename-val) rename-val)
-              schema-name (when (map? rename-val) (:schema rename-val))]
-          (.setName t table-name)
-          ;; If the rename specifies a schema, set it on the table (handles adding schema to naked refs)
-          (when schema-name
-            (.setSchemaName t schema-name))))))
+  ;; Get original schema before any modifications
   (let [raw-schema-name (.getSchemaName t)
-        schema-name     (collect/normalize-reference raw-schema-name opts)]
-    (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
+        normalized-schema (collect/normalize-reference raw-schema-name opts)
+        table-rename (u/find-relevant table-renames (get known-tables t) [:table :schema])
+        schema-rename (u/seek (comp (partial u/match-component normalized-schema) key) schema-renames)]
+    ;; Apply table rename if found
+    (when table-rename
+      (vswap! updated-nodes conj [t table-rename])
+      (let [rename-val (val table-rename)
+            table-name (if (map? rename-val) (:table rename-val) rename-val)]
+        (.setName t table-name)
+        ;; If the table rename includes a schema, use it (takes precedence over schema-renames)
+        (when-let [new-schema (and (map? rename-val) (:schema rename-val))]
+          (.setSchemaName t new-schema))))
+    ;; Apply schema rename only if table rename didn't set a schema
+    (when (and schema-rename
+               (not (and table-rename (map? (val table-rename)) (:schema (val table-rename)))))
       (vswap! updated-nodes conj [raw-schema-name schema-rename])
       (let [identifier (as-> (val schema-rename) % (:table % %))]
         (.setSchemaName t identifier)))))
