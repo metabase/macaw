@@ -43,7 +43,7 @@
   "Returns a predicate that checks if a map entry matches the element.
    - ks-prefix: keys to match on (element has non-nil values)
    - ks-suffix: keys stripped from element (element has nil/sentinel values)
-   - mode: :exact (require nil), :wildcard (require key absent), :omitted (allow any value)"
+   - mode: :exact (key present with nil value), :wildcard (key absent), :omitted (allow any value)"
   [element ks-prefix ks-suffix mode]
   (let [expected (map element ks-prefix)]
     (fn [entry]
@@ -52,16 +52,19 @@
          ;; The prefix keys must match
          (every? true? (map match-component expected (map k ks-prefix)))
          ;; For suffix keys, behavior depends on mode and sentinel values
-         (every? (fn [suffix-key]
-                   (let [elem-val (element suffix-key)]
-                     ;; Sentinel value - allow any value in map key (lenient matching)
-                     (if (and elem-val (not (non-sentinel elem-val)))
-                       true
-                       (case mode
-                         :exact    (nil? (k suffix-key))
-                         :wildcard (not (contains? k suffix-key))
-                         :omitted  true))))
-                 ks-suffix))))))
+         ;; In :omitted mode, we accept any value so skip the check entirely
+         (or (= mode :omitted)
+             (every? (fn [suffix-key]
+                       (let [elem-val (element suffix-key)]
+                         ;; Sentinel value - allow any value in map key (lenient matching)
+                         (if (and elem-val (not (non-sentinel elem-val)))
+                           true
+                           (case mode
+                             ;; Exact: key must be present with explicit nil value
+                             :exact    (and (contains? k suffix-key) (nil? (k suffix-key)))
+                             ;; Wildcard: key must be absent entirely
+                             :wildcard (not (contains? k suffix-key))))))
+                     ks-suffix)))))))
 
 (defn find-relevant
   "Search the given map for the entry corresponding to [[element]], considering only the relevant keys.

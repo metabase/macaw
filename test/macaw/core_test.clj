@@ -489,7 +489,7 @@ from foo")
          (m/replace-names "SELECT 1" {:tables {{:schema "public" :table "a"} "aa"}}
                           {:allow-unused? true}))))
 
-(deftest add-schema-to-naked-table-test
+(deftest table-rename-adds-schema-test
   (testing "Renaming a naked table reference can add a schema qualifier"
     (is (= "SELECT * FROM isolated.y"
            (m/replace-names "SELECT * FROM x"
@@ -499,29 +499,63 @@ from foo")
                             {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
     (is (= "SELECT id, name FROM isolated.users"
            (m/replace-names "SELECT id, name FROM users"
-                            {:tables {{:table "users"} {:schema "isolated" :table "users"}}}))))
-  (testing "Schema-qualified rename keys match naked tables as fallback"
-    ;; {:schema "s" :table "x"} matches naked x as lowest priority fallback
-    (is (= "SELECT * FROM isolated.y"
+                            {:tables {{:table "users"} {:schema "isolated" :table "users"}}})))))
+
+(deftest table-rename-removes-schema-test
+  (testing "Renaming to {:schema nil} removes the schema qualifier"
+    (is (= "SELECT * FROM y"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:tables {{:schema "public" :table "x"} {:schema nil :table "y"}}}))))
+  (testing "Omitting :schema key keeps the original schema"
+    (is (= "SELECT * FROM public.y"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:tables {{:schema "public" :table "x"} {:table "y"}}})))))
+
+(deftest schema-rename-removes-schema-test
+  (testing "Schema rename to nil removes the schema qualifier"
+    (is (= "SELECT * FROM x"
+           (m/replace-names "SELECT * FROM public.x"
+                            {:schemas {"public" nil}})))))
+
+(deftest table-rename-priority-test
+  (testing "Exact match (explicit nil schema) preferred over wildcard (no schema key)"
+    ;; {:schema nil :table "x"} is more specific than {:table "x"}
+    (is (= "SELECT * FROM exact.result"
            (m/replace-names "SELECT * FROM x"
-                            {:tables {{:schema "s", :table "x"} {:schema "isolated" :table "y"}}}))))
+                            {:tables {{:schema nil :table "x"} {:schema "exact" :table "result"}
+                                      {:table "x"}             {:schema "wildcard" :table "result"}}}
+                            {:allow-unused? true}))))
+  (testing "Wildcard match (no schema key) preferred over omitted (qualified key)"
+    ;; {:table "x"} matches naked ref, preferred over {:schema "s" :table "x"}
+    (is (= "SELECT * FROM wildcard.result"
+           (m/replace-names "SELECT * FROM x"
+                            {:tables {{:table "x"}             {:schema "wildcard" :table "result"}
+                                      {:schema "s" :table "x"} {:schema "omitted" :table "result"}}}
+                            {:allow-unused? true}))))
+  (testing "Omitted match (qualified key matches naked ref) as fallback"
+    ;; {:schema "s" :table "x"} matches naked x when no better match exists
+    (is (= "SELECT * FROM omitted.result"
+           (m/replace-names "SELECT * FROM x"
+                            {:tables {{:schema "s" :table "x"} {:schema "omitted" :table "result"}}}))))
+  (testing "Qualified ref matches exact schema over wildcard"
+    ;; Qualified ref s.x should match {:schema "s" :table "x"} exactly, not {:table "x"}
+    (is (= "SELECT * FROM exact.result"
+           (m/replace-names "SELECT * FROM s.x"
+                            {:tables {{:schema "s" :table "x"} {:schema "exact" :table "result"}
+                                      {:table "x"}             {:schema "wildcard" :table "result"}}}
+                            {:allow-unused? true})))))
+
+(deftest nil-schema-matching-test
   (testing "Explicit nil schema only matches nil, not other schemas"
     ;; {:schema nil :table "x"} should NOT match y.x (which has schema y)
     (is (= "SELECT * FROM y.x"
            (m/replace-names "SELECT * FROM y.x"
-                            {:tables {{:schema nil :table "x"} {:schema "isolated" :table "y"}}}
+                            {:tables {{:schema nil :table "x"} {:schema "isolated" :table "result"}}}
                             {:allow-unused? true}))))
-  (testing "Renaming to {:schema nil} removes the schema qualifier"
-    (is (= "SELECT * FROM x"
-           (m/replace-names "SELECT * FROM public.x"
-                            {:schemas {"public" nil}})))
-    (is (= "SELECT * FROM y"
-           (m/replace-names "SELECT * FROM public.x"
-                            {:tables {{:schema "public" :table "x"} {:schema nil :table "y"}}})))
-    ;; Omitting :schema key keeps the original schema
-    (is (= "SELECT * FROM public.y"
-           (m/replace-names "SELECT * FROM public.x"
-                            {:tables {{:schema "public" :table "x"} {:table "y"}}})))))
+  (testing "Explicit nil schema matches naked table (nil schema)"
+    (is (= "SELECT * FROM isolated.result"
+           (m/replace-names "SELECT * FROM x"
+                            {:tables {{:schema nil :table "x"} {:schema "isolated" :table "result"}}})))))
 
 (deftest model-reference-test
   (is (= "SELECT subtotal FROM metabase_sentinel_table_154643 LIMIT 3"
