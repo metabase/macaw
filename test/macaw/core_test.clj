@@ -486,6 +486,9 @@ from foo")
              :columns {{:schema "public" :table "core_user" :column "boink"}  "sturmunddrang"
                        {:schema "public" :table "snore_user" :column "yoink"} "oink"}}))))
 
+(deftest replace-names-error-test
+  (is (thrown-with-msg? ExceptionInfo #"Unable to parse" (m/replace-names "select * from orders limit" {} {}))))
+
 (deftest replace-schema-test
   ;; Somehow we broke renaming the `x` in the WHERE clause.
   #_(is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
