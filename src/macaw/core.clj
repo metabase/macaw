@@ -161,8 +161,8 @@
         parsed   (parsed-query sql' opts)]
     (if-let [error (:error parsed)]
       (throw (ex-info (str/capitalize (str/replace (name error) #"-" " "))
-                      {:cause (:cause (:context parsed))
-                       :sql   sql}))
+                      {:sql sql}
+                      (:cause (:context parsed))))
       (-> (rewrite/replace-names sql' parsed renames' opts')
           (str/replace #"(?m)^ \n" "\n")
           (unescape-keywords (:non-reserved-words opts))))))
