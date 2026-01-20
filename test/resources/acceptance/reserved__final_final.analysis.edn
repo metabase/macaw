@@ -1,0 +1,2 @@
+{:columns [{:column "final", :alias "final"}]
+ :tables [{:table "final"}]}

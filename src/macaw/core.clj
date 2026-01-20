@@ -6,15 +6,18 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite]
    [macaw.types :as m.types]
+   [macaw.walk :as m.walk]
    [malli.core :as m])
   (:import
    (com.metabase.macaw AnalysisError AstWalker$Scope BasicTableExtractor CompoundTableExtractor)
    (java.util.function Consumer)
    (net.sf.jsqlparser JSQLParserException)
+   (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.parser CCJSqlParser CCJSqlParserUtil)
    (net.sf.jsqlparser.parser.feature Feature)
-   (net.sf.jsqlparser.schema Table)
-   (net.sf.jsqlparser.statement Statement)))
+   (net.sf.jsqlparser.schema Table Column)
+   (net.sf.jsqlparser.statement Statement)
+   (net.sf.jsqlparser.statement.select SelectItem)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,6 +30,41 @@
 
 (defn- unescape-keywords [sql _keywords]
   (str/replace sql "____escaped____" ""))
+
+(defprotocol Unescapable
+  (unescape [item ctx]
+    "Unescape an item."))
+
+(extend-protocol Unescapable
+
+  nil
+  (unescape [_item _ctx] nil)
+
+  Table
+  (unescape
+    [item ctx]
+    (unescape (.getAlias item) ctx)
+    (.setName item (unescape-keywords (.getName item) nil))
+    nil)
+
+  Column
+  (unescape
+    [item _ctx]
+    (.setColumnName item (unescape-keywords (.getColumnName item) nil))
+    nil)
+
+  SelectItem
+  (unescape
+    [item ctx]
+    (unescape (.getAlias item) ctx)
+    nil)
+
+  Alias
+  (unescape
+    [item _ctx]
+    (when-some [name* (some-> item .getName)]
+      (.setName item (unescape-keywords name* nil)))
+    nil))
 
 (def ^:private features
   {:backslash-escape-char  Feature/allowBackslashEscapeCharacter
@@ -48,8 +86,34 @@
       (doseq [[f ^boolean v] (:features opts)]
         (.withFeature ^CCJSqlParser parser (->Feature f) v)))))
 
+(defn- ->macaw-error [^AnalysisError analysis-error]
+  {:error (keyword "macaw.error" (-> (.-errorType analysis-error)
+                                     str/lower-case
+                                     (str/replace #"_" "-")))})
+
+(defn unescape-parsed
+  "_Unescape_ the ast (`parsed`) created by `CCJSqlParserUtil/parse`. In other words, rewind the preprocessing
+  performed by [[escape-keywords]]."
+  [parsed _opts]
+  (try
+    (m.walk/walk-query
+     parsed
+     (zipmap
+      [:alias
+       :column
+       :column-qualifier
+       :pseudo-table
+       :table]
+      (repeat unescape)))
+    (catch AnalysisError e
+      (->macaw-error e))))
+
 (defn parsed-query
-  "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
+  "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions.
+
+  BEWARE: Call to the `unescape-parse` reuslts in token positions (e.g. `.-endColumn` of
+          `net.sf.jsqlparser.parser.Token` class) stale. Shall you be needing to use actual values, (1) avoid
+          the unescaping or (2) we'd need more robust implementation that adjusts all tree tokens."
   [^String query & {:as opts}]
   (try
     (-> query
@@ -58,7 +122,9 @@
         ;; This utility pre-processed the query to remove any such blank lines.
         (CCJSqlParserUtil/sanitizeSingleSql)
         (escape-keywords (:non-reserved-words opts))
-        (CCJSqlParserUtil/parse (->parser-fn opts)))
+        (CCJSqlParserUtil/parse (->parser-fn opts))
+        (cond->
+         (not (false? (:unescape? opts))) (unescape-parsed (:non-reserved-words opts))))
     (catch JSQLParserException e
       {:error   :macaw.error/unable-to-parse
        :context {:cause e}})))
@@ -72,11 +138,6 @@
   "The type of scope we're talking about e.g., a top-level SELECT."
   [^AstWalker$Scope s]
   (.getLabel s))
-
-(defn- ->macaw-error [^AnalysisError analysis-error]
-  {:error (keyword "macaw.error" (-> (.-errorType analysis-error)
-                                     str/lower-case
-                                     (str/replace #"_" "-")))})
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
@@ -152,13 +213,14 @@
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
   (let [sql'     (-> (str/replace sql #"(?m)^\n" " \n")
                      (escape-keywords (:non-reserved-words opts)))
-        opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
+        opts'    (select-keys opts [:allow-unused? :case-insensitive :quotes-preserve-case?])
         renames' (walk/postwalk (fn [x]
                                   (if (string? x)
                                     (escape-keywords x (:non-reserved-words opts))
                                     x))
                                 renames)
-        parsed   (parsed-query sql' opts)]
+        parsed   (parsed-query sql' (merge {:unescape? false}
+                                           opts))]
     (if-let [error (:error parsed)]
       (throw (ex-info (str/capitalize (str/replace (name error) #"-" " "))
                       {:sql sql}

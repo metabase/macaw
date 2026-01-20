@@ -264,6 +264,9 @@ with final as (
 
  select * from final
 
+ -- FIXTURE: reserved/final-final
+select final final from final final
+
 -- FIXTURE: compound/shadow-subselect
 SELECT
     e.id,
