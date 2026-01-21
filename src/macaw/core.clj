@@ -32,38 +32,38 @@
   (str/replace sql "____escaped____" ""))
 
 (defprotocol Unescapable
-  (unescape [item ctx]
+  (unescape [item keywords ctx]
     "Rewrite identifiers back to their original names, where they were escaped to bypass reserved words."))
 
 (extend-protocol Unescapable
 
   nil
-  (unescape [_item _ctx] nil)
+  (unescape [_item _keywords _ctx] nil)
 
   Table
   (unescape
-    [item ctx]
-    (unescape (.getAlias item) ctx)
-    (.setName item (unescape-keywords (.getName item) nil))
+    [item keywords ctx]
+    (unescape (.getAlias item) keywords ctx)
+    (.setName item (unescape-keywords (.getName item) keywords))
     nil)
 
   Column
   (unescape
-    [item _ctx]
-    (.setColumnName item (unescape-keywords (.getColumnName item) nil))
+    [item keywords _ctx]
+    (.setColumnName item (unescape-keywords (.getColumnName item) keywords))
     nil)
 
   SelectItem
   (unescape
-    [item ctx]
-    (unescape (.getAlias item) ctx)
+    [item keywords ctx]
+    (unescape (.getAlias item) keywords ctx)
     nil)
 
   Alias
   (unescape
-    [item _ctx]
+    [item keywords _ctx]
     (when-some [name* (some-> item .getName)]
-      (.setName item (unescape-keywords name* nil)))
+      (.setName item (unescape-keywords name* keywords)))
     nil))
 
 (def ^:private features
@@ -94,17 +94,18 @@
 (defn unescape-parsed
   "_Unescape_ the AST (`parsed`) created by `CCJSqlParserUtil/parse`. 
     This compensates for the pre-processing done in [[escape-keywords]]."
-  [parsed _opts]
+  [parsed keywords]
   (try
-    (m.walk/walk-query
-     parsed
-     (zipmap
-      [:alias
-       :column
-       :column-qualifier
-       :pseudo-table
-       :table]
-      (repeat unescape)))
+    (cond-> parsed
+      (seq keywords)
+      (m.walk/walk-query
+       (zipmap
+        [:alias
+         :column
+         :column-qualifier
+         :pseudo-table
+         :table]
+        (repeat #(unescape %1 keywords %2)))))
     (catch AnalysisError e
       (->macaw-error e))))
 
@@ -115,8 +116,6 @@
          they continue to refer to the escaped string. C
          It would be complex and expensive to update every subsequent token, and unnecessary in most use cases.
          We account for this in [[replace-names]], and expect any future code to compensate for it too where needed."
-
-  "
   [^String query & {:as opts}]
   (try
     (-> query
@@ -126,8 +125,7 @@
         (CCJSqlParserUtil/sanitizeSingleSql)
         (escape-keywords (:non-reserved-words opts))
         (CCJSqlParserUtil/parse (->parser-fn opts))
-        (cond->
-         (not (false? (:unescape? opts))) (unescape-parsed (:non-reserved-words opts))))
+        (unescape-parsed (:non-reserved-words opts)))
     (catch JSQLParserException e
       {:error   :macaw.error/unable-to-parse
        :context {:cause e}})))
@@ -216,14 +214,13 @@
   ;; If we decide that it's OK to normalize whitespace etc. during replacement, then we can use the same helper.
   (let [sql'     (-> (str/replace sql #"(?m)^\n" " \n")
                      (escape-keywords (:non-reserved-words opts)))
-        opts'    (select-keys opts [:allow-unused? :case-insensitive :quotes-preserve-case?])
+        opts'    (select-keys opts [:case-insensitive :quotes-preserve-case? :allow-unused?])
         renames' (walk/postwalk (fn [x]
                                   (if (string? x)
                                     (escape-keywords x (:non-reserved-words opts))
                                     x))
                                 renames)
-        parsed   (parsed-query sql' (merge {:unescape? false}
-                                           opts))]
+        parsed   (parsed-query sql' (dissoc opts :non-reserved-keywords))]
     (if-let [error (:error parsed)]
       (throw (ex-info (str/capitalize (str/replace (name error) #"-" " "))
                       {:sql sql}
