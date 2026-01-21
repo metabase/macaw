@@ -111,9 +111,12 @@
 (defn parsed-query
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions.
 
-  BEWARE: Call to the `unescape-parse` reuslts in token positions (e.g. `.-endColumn` of
-          `net.sf.jsqlparser.parser.Token` class) stale. Shall you be needing to use actual values, (1) avoid
-          the unescaping or (2) we'd need more robust implementation that adjusts all tree tokens."
+   NOTE: `unescape-parse` does not un-shift token positions (e.g. `net.sf.jsqlparser.parser.Token#-endColumn`),
+         they continue to refer to the escaped string. C
+         It would be complex and expensive to update every subsequent token, and unnecessary in most use cases.
+         We account for this in [[replace-names]], and expect any future code to compensate for it too where needed."
+
+  "
   [^String query & {:as opts}]
   (try
     (-> query
