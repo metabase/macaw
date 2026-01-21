@@ -92,7 +92,7 @@
                                      (str/replace #"_" "-")))})
 
 (defn unescape-parsed
-  "_Unescape_ the AST (`parsed`) created by `CCJSqlParserUtil/parse`. 
+  "_Unescape_ the AST (`parsed`) created by `CCJSqlParserUtil/parse`.
     This compensates for the pre-processing done in [[escape-keywords]]."
   [parsed keywords]
   (try
