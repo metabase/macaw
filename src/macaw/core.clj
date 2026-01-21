@@ -33,7 +33,7 @@
 
 (defprotocol Unescapable
   (unescape [item ctx]
-    "Unescape an item."))
+    "Rewrite identifiers back to their original names, where they were escaped to bypass reserved words."))
 
 (extend-protocol Unescapable
 
@@ -92,8 +92,8 @@
                                      (str/replace #"_" "-")))})
 
 (defn unescape-parsed
-  "_Unescape_ the ast (`parsed`) created by `CCJSqlParserUtil/parse`. In other words, rewind the preprocessing
-  performed by [[escape-keywords]]."
+  "_Unescape_ the AST (`parsed`) created by `CCJSqlParserUtil/parse`. 
+    This compensates for the pre-processing done in [[escape-keywords]]."
   [parsed _opts]
   (try
     (m.walk/walk-query
