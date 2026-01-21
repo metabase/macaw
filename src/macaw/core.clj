@@ -220,7 +220,7 @@
                                     (escape-keywords x (:non-reserved-words opts))
                                     x))
                                 renames)
-        parsed   (parsed-query sql' (dissoc opts :non-reserved-keywords))]
+        parsed   (parsed-query sql' (dissoc opts :non-reserved-words))]
     (if-let [error (:error parsed)]
       (throw (ex-info (str/capitalize (str/replace (name error) #"-" " "))
                       {:sql sql}
