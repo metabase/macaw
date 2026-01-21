@@ -113,7 +113,7 @@
   "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions.
 
    NOTE: `unescape-parse` does not un-shift token positions (e.g. `net.sf.jsqlparser.parser.Token#-endColumn`),
-         they continue to refer to the escaped string. C
+         they continue to refer to the escaped string.
          It would be complex and expensive to update every subsequent token, and unnecessary in most use cases.
          We account for this in [[replace-names]], and expect any future code to compensate for it too where needed."
   [^String query & {:as opts}]
