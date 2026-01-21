@@ -6,15 +6,18 @@
    [macaw.collect :as collect]
    [macaw.rewrite :as rewrite]
    [macaw.types :as m.types]
+   [macaw.walk :as m.walk]
    [malli.core :as m])
   (:import
    (com.metabase.macaw AnalysisError AstWalker$Scope BasicTableExtractor CompoundTableExtractor)
    (java.util.function Consumer)
    (net.sf.jsqlparser JSQLParserException)
+   (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.parser CCJSqlParser CCJSqlParserUtil)
    (net.sf.jsqlparser.parser.feature Feature)
-   (net.sf.jsqlparser.schema Table)
-   (net.sf.jsqlparser.statement Statement)))
+   (net.sf.jsqlparser.schema Table Column)
+   (net.sf.jsqlparser.statement Statement)
+   (net.sf.jsqlparser.statement.select SelectItem)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,6 +30,41 @@
 
 (defn- unescape-keywords [sql _keywords]
   (str/replace sql "____escaped____" ""))
+
+(defprotocol Unescapable
+  (unescape [item keywords ctx]
+    "Rewrite identifiers back to their original names, where they were escaped to bypass reserved words."))
+
+(extend-protocol Unescapable
+
+  nil
+  (unescape [_item _keywords _ctx] nil)
+
+  Table
+  (unescape
+    [item keywords ctx]
+    (unescape (.getAlias item) keywords ctx)
+    (.setName item (unescape-keywords (.getName item) keywords))
+    nil)
+
+  Column
+  (unescape
+    [item keywords _ctx]
+    (.setColumnName item (unescape-keywords (.getColumnName item) keywords))
+    nil)
+
+  SelectItem
+  (unescape
+    [item keywords ctx]
+    (unescape (.getAlias item) keywords ctx)
+    nil)
+
+  Alias
+  (unescape
+    [item keywords _ctx]
+    (when-some [name* (some-> item .getName)]
+      (.setName item (unescape-keywords name* keywords)))
+    nil))
 
 (def ^:private features
   {:backslash-escape-char  Feature/allowBackslashEscapeCharacter
@@ -48,8 +86,36 @@
       (doseq [[f ^boolean v] (:features opts)]
         (.withFeature ^CCJSqlParser parser (->Feature f) v)))))
 
+(defn- ->macaw-error [^AnalysisError analysis-error]
+  {:error (keyword "macaw.error" (-> (.-errorType analysis-error)
+                                     str/lower-case
+                                     (str/replace #"_" "-")))})
+
+(defn unescape-parsed
+  "_Unescape_ the AST (`parsed`) created by `CCJSqlParserUtil/parse`.
+   This compensates for the pre-processing done in [[escape-keywords]]."
+  [parsed keywords]
+  (try
+    (cond-> parsed
+      (seq keywords)
+      (m.walk/walk-query
+       (zipmap
+        [:alias
+         :column
+         :column-qualifier
+         :pseudo-table
+         :table]
+        (repeat #(unescape %1 keywords %2)))))
+    (catch AnalysisError e
+      (->macaw-error e))))
+
 (defn parsed-query
-  "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions."
+  "Main entry point: takes a string query and returns a `Statement` object that can be handled by the other functions.
+
+   NOTE: `unescape-parse` does not un-shift token positions (e.g. `net.sf.jsqlparser.parser.Token#-endColumn`),
+         they continue to refer to the escaped string.
+         It would be complex and expensive to update every subsequent token, and unnecessary in most use cases.
+         We account for this in [[replace-names]], and expect any future code to compensate for it too where needed."
   [^String query & {:as opts}]
   (try
     (-> query
@@ -58,7 +124,8 @@
         ;; This utility pre-processed the query to remove any such blank lines.
         (CCJSqlParserUtil/sanitizeSingleSql)
         (escape-keywords (:non-reserved-words opts))
-        (CCJSqlParserUtil/parse (->parser-fn opts)))
+        (CCJSqlParserUtil/parse (->parser-fn opts))
+        (unescape-parsed (:non-reserved-words opts)))
     (catch JSQLParserException e
       {:error   :macaw.error/unable-to-parse
        :context {:cause e}})))
@@ -72,11 +139,6 @@
   "The type of scope we're talking about e.g., a top-level SELECT."
   [^AstWalker$Scope s]
   (.getLabel s))
-
-(defn- ->macaw-error [^AnalysisError analysis-error]
-  {:error (keyword "macaw.error" (-> (.-errorType analysis-error)
-                                     str/lower-case
-                                     (str/replace #"_" "-")))})
 
 (defn query->components
   "Given a parsed query (i.e., a [subclass of] `Statement`) return a map with the elements found within it.
@@ -158,7 +220,7 @@
                                     (escape-keywords x (:non-reserved-words opts))
                                     x))
                                 renames)
-        parsed   (parsed-query sql' opts)]
+        parsed   (parsed-query sql' (dissoc opts :non-reserved-words))]
     (if-let [error (:error parsed)]
       (throw (ex-info (str/capitalize (str/replace (name error) #"-" " "))
                       {:sql sql}

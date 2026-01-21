@@ -705,7 +705,13 @@ from foo")
            (m/replace-names "SELECT final FROM x"
                             {:tables  {{:table "x"} "final"}
                              :columns {{:table "x" :column "final"} "y"}}
-                            {:non-reserved-words [:final]})))))
+                            {:non-reserved-words [:final]}))))
+  (testing "We can replace non-reserved words with non-reserved words"
+    (is (= "SELECT terminal FROM terminal"
+           (m/replace-names "SELECT final FROM final"
+                            {:tables  {{:table "final"} "terminal"}
+                             :columns {{:table "final", :column "final"} "terminal"}}
+                            {:non-reserved-words [:final :terminal]})))))
 
 (deftest square-bracket-test
   (testing "We can opt into allowing square brackets to quote things"
