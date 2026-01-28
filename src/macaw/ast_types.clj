@@ -68,6 +68,8 @@
    base-node
    [:map
     [:type [:= ::ast/join]]
+    [:join-type {:optional true} [:enum :left :right :full :inner :cross :natural]]
+    [:outer? {:optional true} :boolean]
     [:source [:ref ::ast-node]]
     [:condition {:optional true} [:sequential [:ref ::ast-node]]]]])
 

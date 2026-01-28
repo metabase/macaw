@@ -121,6 +121,14 @@
   [^Join parsed opts]
   (node
    {:type ::join
+    :join-type (cond
+                 (.isLeft parsed)   :left
+                 (.isRight parsed)  :right
+                 (.isFull parsed)   :full
+                 (.isCross parsed)  :cross
+                 (.isNatural parsed) :natural
+                 :else              :inner)
+    :outer? (.isOuter parsed)
     :source (->ast (.getRightItem parsed) opts)
     :condition (mapv #(->ast % opts) (.getOnExpressions parsed))}
    parsed opts))

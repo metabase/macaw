@@ -54,6 +54,8 @@
           :from {:type :macaw.ast/table, :table "products"},
           :join
           [{:type :macaw.ast/join,
+            :join-type :inner,
+            :outer? false,
             :source {:type :macaw.ast/table, :table "orders"},
             :condition
             [{:type :macaw.ast/binary-expression,
@@ -67,6 +69,124 @@
                :table "orders",
                :column "product_id"}}]}]}
          (->ast "select products.*, orders.id from products inner join orders on products.id = orders.product_id"))))
+
+(deftest ^:parallel left-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :left,
+            :outer? false,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders left join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel left-outer-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :left,
+            :outer? true,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders left outer join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel right-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :right,
+            :outer? false,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders right join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel right-outer-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :right,
+            :outer? true,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders right outer join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel full-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :full,
+            :outer? false,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders full join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel full-outer-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :full,
+            :outer? true,
+            :source {:type :macaw.ast/table, :table "customers"},
+            :condition
+            [{:type :macaw.ast/binary-expression,
+              :operator "="
+              :left {:type :macaw.ast/column, :table "orders", :column "customer_id"},
+              :right {:type :macaw.ast/column, :table "customers", :column "id"}}]}]}
+         (->ast "select * from orders full outer join customers on orders.customer_id = customers.id"))))
+
+(deftest ^:parallel cross-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "colors"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :cross,
+            :outer? false,
+            :source {:type :macaw.ast/table, :table "sizes"}}]}
+         (->ast "select * from colors cross join sizes"))))
+
+(deftest ^:parallel natural-join-test
+  (is (= {:type :macaw.ast/select,
+          :select [{:type :macaw.ast/wildcard}],
+          :from {:type :macaw.ast/table, :table "orders"},
+          :join
+          [{:type :macaw.ast/join,
+            :join-type :natural,
+            :outer? false,
+            :source {:type :macaw.ast/table, :table "customers"}}]}
+         (->ast "select * from orders natural join customers"))))
 
 (deftest ^:parallel basic-alias-test
   (is (= {:type :macaw.ast/select,
@@ -275,6 +395,8 @@ SELECT * FROM active_users"))))
               :from {:type :macaw.ast/table, :table-alias "e", :table "employees"},
               :join
               [{:type :macaw.ast/join,
+                :join-type :inner,
+                :outer? false,
                 :source
                 {:type :macaw.ast/table, :table-alias "h", :table "emp_hierarchy"},
                 :condition
@@ -736,6 +858,8 @@ ORDER BY
             :right {:type :macaw.ast/literal, :value 0}},
            :join
            [{:type :macaw.ast/join,
+             :join-type :left,
+             :outer? false,
              :source
              {:type :macaw.ast/select,
               :table-alias "\"Products\"",
@@ -923,6 +1047,8 @@ ORDER BY
            :table "account"},
           :join
           [{:type :macaw.ast/join,
+            :join-type :left,
+            :outer? false,
             :source
             {:type :macaw.ast/table,
              :table-alias "mas",
@@ -1547,6 +1673,8 @@ ORDER BY
              :table "account"},
             :join
             [{:type :macaw.ast/join,
+              :join-type :left,
+              :outer? false,
               :source
               {:type :macaw.ast/table,
                :table-alias "ah",
@@ -1561,6 +1689,8 @@ ORDER BY
                  :table "ah",
                  :column "account_id"}}]}
              {:type :macaw.ast/join,
+              :join-type :left,
+              :outer? false,
               :source
               {:type :macaw.ast/table, :table-alias "m", :table "months"},
               :condition
