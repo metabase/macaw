@@ -54,6 +54,8 @@
           :from {:type :macaw.ast/table, :table "products"},
           :join
           [{:type :macaw.ast/join,
+            :join-type :inner,
+            :outer? false,
             :source {:type :macaw.ast/table, :table "orders"},
             :condition
             [{:type :macaw.ast/binary-expression,
@@ -275,6 +277,8 @@ SELECT * FROM active_users"))))
               :from {:type :macaw.ast/table, :table-alias "e", :table "employees"},
               :join
               [{:type :macaw.ast/join,
+                :join-type :inner,
+                :outer? false,
                 :source
                 {:type :macaw.ast/table, :table-alias "h", :table "emp_hierarchy"},
                 :condition
@@ -736,6 +740,8 @@ ORDER BY
             :right {:type :macaw.ast/literal, :value 0}},
            :join
            [{:type :macaw.ast/join,
+             :join-type :left,
+             :outer? false,
              :source
              {:type :macaw.ast/select,
               :table-alias "\"Products\"",
@@ -923,6 +929,8 @@ ORDER BY
            :table "account"},
           :join
           [{:type :macaw.ast/join,
+            :join-type :left,
+            :outer? false,
             :source
             {:type :macaw.ast/table,
              :table-alias "mas",
@@ -1547,6 +1555,8 @@ ORDER BY
              :table "account"},
             :join
             [{:type :macaw.ast/join,
+              :join-type :left,
+              :outer? false,
               :source
               {:type :macaw.ast/table,
                :table-alias "ah",
@@ -1561,6 +1571,8 @@ ORDER BY
                  :table "ah",
                  :column "account_id"}}]}
              {:type :macaw.ast/join,
+              :join-type :left,
+              :outer? false,
               :source
               {:type :macaw.ast/table, :table-alias "m", :table "months"},
               :condition
