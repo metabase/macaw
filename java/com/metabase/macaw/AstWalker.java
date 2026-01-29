@@ -221,22 +221,6 @@ public class AstWalker<Acc, T> implements SelectVisitor<T>, FromItemVisitor<T>, 
         return this.acc;
     }
 
-    /**
-     * Walk the given `expression`, invoking the callbacks for side effects as appropriate.
-     */
-    public Expression walk(Expression expression) {
-        expression.accept(this);
-        return expression;
-    }
-
-    /**
-     * Walk the given `statement`, invoking the callbacks for side effects as appropriate.
-     */
-    public Statement walk(Statement statement) {
-        statement.accept(this);
-        return statement;
-    }
-
     @Override
     public <S> T visit(Select select, S context) {
         // No pushContext(SELECT) since it's handled by the ParenthesedSelect and PlainSelect methods
