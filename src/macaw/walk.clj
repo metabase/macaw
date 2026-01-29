@@ -44,7 +44,8 @@
   "Walk over the query's AST, using the callbacks for their side effects, for example to mutate the AST itself."
   [parsed-query callbacks]
   (let [callbacks (update-keys-vals callbacks ->callback-key (comp deduplicate-visits preserve))]
-    (.walk (AstWalker. callbacks ::ignored) parsed-query)))
+    (.accept parsed-query (AstWalker. callbacks ::ignored))
+    parsed-query))
 
 (defn fold-query
   "Fold over the query's AST, using the callbacks to update the accumulator."
