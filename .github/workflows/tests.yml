@@ -106,8 +106,19 @@ jobs:
           v1-
     - run: clojure -T:build compile
       name: Compile Java files
-    - run: clojure -M:check
-      name: Check namespaces
+    - name: Check namespaces (and reflection warnings)
+      run: |
+        output=$(clojure -M:check 2>&1)
+        rc=$?
+        echo "$output"
+        if [ $rc -ne 0 ]; then
+          exit $rc
+        fi
+        if echo "$output" | grep -q "Reflection warning"; then
+          echo ""
+          echo "FAILURE: Reflection warnings found!"
+          exit 1
+        fi
 
 #  codespell:
 #    runs-on: ubuntu-22.04
