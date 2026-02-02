@@ -1,6 +1,7 @@
 (ns macaw.walk
   (:import
-   (com.metabase.macaw AstWalker AstWalker$CallbackKey)))
+   (com.metabase.macaw AstWalker AstWalker$CallbackKey)
+   (net.sf.jsqlparser.statement Statement)))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +43,7 @@
 
 (defn walk-query
   "Walk over the query's AST, using the callbacks for their side effects, for example to mutate the AST itself."
-  [parsed-query callbacks]
+  [^Statement parsed-query callbacks]
   (let [callbacks (update-keys-vals callbacks ->callback-key (comp deduplicate-visits preserve))]
     (.accept parsed-query (AstWalker. callbacks ::ignored))
     parsed-query))
