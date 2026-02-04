@@ -32,6 +32,11 @@
 
 **/.clj-kondo/.cache
 
+# Python
+python/**/__pycache__/
+python/.venv/
+*.pyc
+
 # clj-kondo: ignore all except our defined config
 .clj-kondo/*
 !.clj-kondo/config.edn
