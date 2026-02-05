@@ -11,6 +11,7 @@
   {:alias            AstWalker$CallbackKey/ALIAS
    :column           AstWalker$CallbackKey/COLUMN
    :column-qualifier AstWalker$CallbackKey/COLUMN_QUALIFIER
+   :every-node       AstWalker$CallbackKey/EVERY_NODE
    :mutation         AstWalker$CallbackKey/MUTATION_COMMAND
    :pseudo-table     AstWalker$CallbackKey/PSEUDO_TABLES
    :table            AstWalker$CallbackKey/TABLE
