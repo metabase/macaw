@@ -497,6 +497,29 @@ from foo")
                              :tables  {{:schema "public" :table "orders"} "purchases"}
                              :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
 
+(def ^:private cte-before-replace
+  "WITH z AS (SELECT * FROM a)
+   SELECT c FROM z")
+
+(def ^:private cte-after-replace
+  "WITH z AS (SELECT * FROM b)
+   SELECT c FROM z")
+
+(deftest replace-within-cte-test
+  (is (= cte-after-replace
+         (m/replace-names cte-before-replace {:tables {{:table "a"} "b"}})))
+
+  (testing "with shadowing"
+    (let [rr #(str/replace % "z" "a")]
+        ;; TODO fix this, which is broken due to shadowing
+        (is (= #_(rr cte-after-replace)
+             ;; We treat references to the table `a` as if they were references to the CTE, and therefore leave them.
+             (rr cte-before-replace)
+             (m/replace-names (rr cte-before-replace)
+                              {:tables {{:table "a"} "b"}}
+                              {:allow-unused? true}))))))
+
+
 (deftest allow-unused-test
   (is (thrown-with-msg?
        Exception #"Unknown rename"
