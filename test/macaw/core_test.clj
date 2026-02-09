@@ -473,11 +473,13 @@ from foo")
          (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
                           {:tables {{:schema "public" :table "orders"} "whatever"}})))
 
-  (is (= "SELECT p.id FROM public.q p"
+  ;; When table name and alias match, both get renamed along with column qualifiers
+  (is (= "SELECT q.id FROM public.q q"
          (m/replace-names "SELECT p.id FROM public.p p"
                           {:tables {{:schema "public" :table "p"} "q"}})))
 
-  (is (= "SELECT p.id FROM public.q P"
+  ;; With case-insensitive matching, alias P matches table name p and gets renamed
+  (is (= "SELECT p.id FROM public.q q"
          (m/replace-names "SELECT p.id FROM public.p P"
                           {:tables {{:schema "public" :table "p"} "q"}}
                           {:case-insensitive :agnostic})))
@@ -559,6 +561,7 @@ from foo")
     (is (= "SELECT * FROM isolated.y"
            (m/replace-names "SELECT * FROM x"
                             {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
+    ;; Column qualifier `a` doesn't textually match table name `x`, so it's not renamed
     (is (= "SELECT a.id FROM isolated.y a"
            (m/replace-names "SELECT a.id FROM x a"
                             {:tables {{:table "x"} {:schema "isolated" :table "y"}}})))
@@ -692,6 +695,7 @@ from foo")
              (m/replace-names alias-shadow-query
                               {:columns {{:table "people" :column "foo"} "bar"}}
                               {:allow-unused? true})))))
+
 
 (def ^:private cte-query
   "WITH engineering_employees AS (

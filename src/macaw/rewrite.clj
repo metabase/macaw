@@ -4,7 +4,6 @@
    [macaw.util :as u]
    [macaw.walk :as mw])
   (:import
-   (net.sf.jsqlparser.expression Alias)
    (net.sf.jsqlparser.parser ASTNodeAccess SimpleNode)
    (net.sf.jsqlparser.schema Column Table)))
 
@@ -97,37 +96,47 @@
       []))))
 
 (defn- rename-table
+  "Rename a table and/or its schema."
   [updated-nodes table-renames schema-renames known-tables opts ^Table t _ctx]
-  (let [kt      (get known-tables t)
-        aliases (into #{} (comp
-                           (keep #(.getAlias ^Table %))
-                           (map #(.getName ^Alias %)))
-                      (:instances kt))]
-    ;; Don't rename this node if it's pointing at an alias
-    ;; TODO (2025-11-26) this can have false negatives due to case or quoting
-    (when (or (.getAlias t) (not (aliases (.getName t))))
-      (let [raw-table  (.getName t)
-            raw-schema (.getSchemaName t)
-            table-rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
-        ;; Apply table rename if found
-        (when table-rename
+  (let [raw-table    (.getName t)
+        raw-schema   (.getSchemaName t)
+        table-rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
+    ;; Apply table rename only if the literal name matches the expected table name.
+    ;; This is purely textual matching - we don't try to distinguish aliases from table
+    ;; references because we might be wrong due to scoping (CTEs, subqueries, etc.).
+    (when table-rename
+      (let [expected-table (:table (key table-rename))
+            normalized-expected (collect/normalize-reference expected-table opts)
+            ;; When normalized-expected is a Pattern (agnostic mode), we need to match against
+            ;; the raw string, not another Pattern. Otherwise normalize both sides.
+            names-match? (fn [raw-name]
+                           (if (instance? java.util.regex.Pattern normalized-expected)
+                             (u/match-component normalized-expected raw-name)
+                             (u/match-component normalized-expected
+                                                (collect/normalize-reference raw-name opts))))]
+        (when (names-match? raw-table)
           (vswap! updated-nodes conj [t table-rename])
           (let [rename-val (val table-rename)
                 table-name (if (map? rename-val) (:table rename-val) rename-val)]
             (.setName t (preserve-quotes raw-table table-name))
+            ;; Also rename alias if it matches the original table name
+            (when-let [t-alias (.getAlias t)]
+              (let [alias-name (.getName t-alias)]
+                (when (names-match? alias-name)
+                  (.setName t-alias (preserve-quotes alias-name table-name)))))
             ;; If the table rename includes a :schema key, use it (nil removes the schema)
             (when (and (map? rename-val) (contains? rename-val :schema))
               (let [new-schema (:schema rename-val)]
-                (.setSchemaName t (when new-schema (preserve-quotes raw-schema new-schema)))))))
-        ;; Apply schema rename only if table rename didn't already set the schema
-        (when-not (and table-rename
-                       (map? (val table-rename))
-                       (contains? (val table-rename) :schema))
-          (let [schema-name (collect/normalize-reference raw-schema opts)]
-            (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
-              (vswap! updated-nodes conj [t schema-rename])
-              (let [identifier (as-> (val schema-rename) % (:table % %))]
-                (.setSchemaName t (preserve-quotes raw-schema identifier))))))))))
+                (.setSchemaName t (when new-schema (preserve-quotes raw-schema new-schema)))))))))
+    ;; Apply schema rename only if table rename didn't already set the schema
+    (when-not (and table-rename
+                   (map? (val table-rename))
+                   (contains? (val table-rename) :schema))
+      (let [schema-name (collect/normalize-reference raw-schema opts)]
+        (when-let [schema-rename (u/seek (comp (partial u/match-component schema-name) key) schema-renames)]
+          (vswap! updated-nodes conj [t schema-rename])
+          (let [identifier (as-> (val schema-rename) % (:table % %))]
+            (.setSchemaName t (preserve-quotes raw-schema identifier))))))))
 
 (defn- rename-column
   [updated-nodes column-renames known-columns ^Column c _ctx]
