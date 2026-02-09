@@ -224,9 +224,9 @@ from foo")
 
 ;; With quotes-preserve-case?, only the schema "ding" matches (same case as `ding`)
 ;; The table and columns have different case and won't match
-;; Note: backticks are preserved from the original `ding` schema
+;; Note: `dIng` (capital I) in FROM doesn't match `ding`, so only the column's schema gets renamed
 (def ^:private heavily-quoted-query-mixed-case-rewritten
-  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `king`.`doNg`")
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `dIng`.`doNg`")
 
 ;; When case-insensitive matching is used on the mixed-case query, quotes are still preserved
 (def ^:private heavily-quoted-query-mixed-case-full-rewritten
@@ -248,9 +248,7 @@ from foo")
                                              :case-insensitive :agnostic
                                              :quotes-preserve-case? true))))
     (testing "Only matching identifiers are renamed when allowed to run partially"
-      ;; Note: `dIng` (capital I) in FROM doesn't match `ding` with quotes-preserve-case
-      ;; so only the column's schema (lowercase `ding`) gets renamed
-      (is (= "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `dIng`.`doNg`"
+      (is (= heavily-quoted-query-mixed-case-rewritten
              (m/replace-names heavily-quoted-query-mixed-case
                               heavily-quoted-query-rewrites
                               {:case-insensitive      :agnostic
