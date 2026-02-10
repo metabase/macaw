@@ -546,17 +546,10 @@ from foo")
                            :tables  {{:schema "public" :table "orders"} "purchases"}
                            :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
 
-(def ^:private cte-before-replace
-  "WITH z AS (SELECT * FROM a)
-   SELECT c FROM z")
-
-(def ^:private cte-after-replace
-  "WITH z AS (SELECT * FROM b)
-   SELECT c FROM z")
-
 (deftest replace-within-cte-test
-  (is (= cte-after-replace
-         (m/replace-names cte-before-replace {:tables {{:table "a"} "b"}})))
+  (is (ws= "WITH z AS (SELECT * FROM b) SELECT c FROM z"
+           (m/replace-names "WITH z AS (SELECT * FROM a) SELECT c FROM z"
+                            {:tables {{:table "a"} "b"}})))
 
   (testing "with shadowing"
     ;; TODO fix this, which is broken due to shadowing
