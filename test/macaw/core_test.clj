@@ -559,14 +559,13 @@ from foo")
          (m/replace-names cte-before-replace {:tables {{:table "a"} "b"}})))
 
   (testing "with shadowing"
-    (let [rr #(str/replace % "z" "a")]
-        ;; TODO fix this, which is broken due to shadowing
-        (is (= #_(rr cte-after-replace)
+    ;; TODO fix this, which is broken due to shadowing
+    (is (ws= #_"WITH a AS (SELECT * FROM b) SELECT c FROM a"
              ;; We treat references to the table `a` as if they were references to the CTE, and therefore leave them.
-             (rr cte-before-replace)
-             (m/replace-names (rr cte-before-replace)
+             "WITH a AS (SELECT * FROM a) SELECT c FROM a"
+             (m/replace-names "WITH a AS (SELECT * FROM a) SELECT c FROM a"
                               {:tables {{:table "a"} "b"}}
-                              {:allow-unused? true}))))))
+                              {:allow-unused? true})))))
 
 
 (deftest allow-unused-test
