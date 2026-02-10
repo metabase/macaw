@@ -211,16 +211,22 @@ from foo")
                            :tables  {{:schema "public" :table "DOGS"} "cats"}
                            :columns {{:schema "PUBLIC" :table "dogs" :column "bark"} "meow"}}
                           {:case-insensitive :agnostic
-                           :allow-unused?    true}))))
+                           :allow-unused?    true})))
+
+  (testing "Updating the schema only"
+    (is (= "SELECT bark FROM private.dogs"
+           (m/replace-names "SELECT bark FROM PUBLIC.dogs"
+                            {:schemas {"public" "private"}}
+                            {:case-insensitive :lower})))))
 
 (def ^:private heavily-quoted-query-mixed-case
-  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `ding`.`doNg`")
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `ding`.`doNg`.`feE` FROM `dIng`.`doNg`")
 
 ;; With quotes-preserve-case?, only the schema "ding" matches (same case as `ding`)
 ;; The table and columns have different case and won't match
-;; Note: backticks are preserved from the original `ding` schema
+;; Note: `dIng` (capital I) in FROM doesn't match `ding`, so only the column's schema gets renamed
 (def ^:private heavily-quoted-query-mixed-case-rewritten
-  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `king`.`doNg`")
+  "SELECT RAW, \"Foo\", \"doNg\".\"bAr\", `king`.`doNg`.`feE` FROM `dIng`.`doNg`")
 
 ;; When case-insensitive matching is used on the mixed-case query, quotes are still preserved
 (def ^:private heavily-quoted-query-mixed-case-full-rewritten
@@ -247,7 +253,15 @@ from foo")
                               heavily-quoted-query-rewrites
                               {:case-insensitive      :agnostic
                                :quotes-preserve-case? true
-                               :allow-unused?         true}))))))
+                               :allow-unused?         true}))))
+    (testing "The query is unchanged when there are no exact matches"
+      (let [with-no-exact-matches (str/replace heavily-quoted-query-mixed-case "ding" "dIng")]
+        (is (= with-no-exact-matches
+               (m/replace-names with-no-exact-matches
+                                heavily-quoted-query-rewrites
+                                {:case-insensitive      :agnostic
+                                 :quotes-preserve-case? true
+                                 :allow-unused?         true})))))))
 
 (def ^:private ambiguous-case-replacements
   {:columns {{:schema "public" :table "DOGS" :column "BARK"}  "MEOW"
@@ -445,10 +459,11 @@ from foo")
   ;; To consider - we could avoid splitting up the renames into column and table portions in the client, as
   ;; qualified targets would allow us to infer such changes. Partial qualification could also work fine where there
   ;; is no ambiguity - even if this is just a nice convenience for testing.
-  #_(is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
-           (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
-                            {:columns {{:schema "public" :table "a" :column "x"}
-                                       {:table "aa" :column "xx"}}})))
+  (is (= "SELECT aa.xx, b.x, b.y FROM aa, b;"
+         (m/replace-names "SELECT a.x, b.x, b.y FROM a, b;"
+                          {:tables  {{:table "a"} "aa"}
+                           :columns {{:schema "public" :table "a" :column "x"}
+                                     {:table "aa" :column "xx"}}})))
 
   (is (= "SELECT qwe FROM orders"
          (m/replace-names "SELECT id FROM orders"
@@ -457,6 +472,15 @@ from foo")
   (is (= "SELECT p.id, q.id FROM public.whatever p join private.orders q"
          (m/replace-names "SELECT p.id, q.id FROM public.orders p join private.orders q"
                           {:tables {{:schema "public" :table "orders"} "whatever"}})))
+
+  (is (= "SELECT p.id FROM public.q p"
+         (m/replace-names "SELECT p.id FROM public.p p"
+                          {:tables {{:schema "public" :table "p"} "q"}})))
+
+  (is (= "SELECT p.id FROM public.q P"
+         (m/replace-names "SELECT p.id FROM public.p P"
+                          {:tables {{:schema "public" :table "p"} "q"}}
+                          {:case-insensitive :agnostic})))
 
   (is (ws= "SELECT SUM(public.orders.total) AS s,
             MAX(orders.total) AS max,
@@ -489,13 +513,53 @@ from foo")
 (deftest replace-names-error-test
   (is (thrown-with-msg? ExceptionInfo #"Unable to parse" (m/replace-names "select * from orders limit" {} {}))))
 
+(deftest replace-intended-test
+  (is (= "SELECT S1.T1.C1, T2.C2, C3 FROM S1.T1 JOIN S2.T2"
+         (m/replace-names "SELECT s1.t1.c1, t2.c2, c3 FROM s1.t1 JOIN s2.t2"
+                          {:schemas {"s1" "S1", "s2" "S2"}
+                           :tables  {{:schema "s1" :table "t1"} "T1"
+                                     {:schema "s2" :table "t2"} "T2"}
+                           :columns {{:schema "s1" :table "t1" :column "c1"} "C1"
+                                     {:schema "s2" :table "t2" :column "c2"} "C2"
+                                     {:schema "s2" :table "t2" :column "c3"} "C3"}}))))
+
+(deftest replace-precision-test
+  (is (= "SELECT p.a.x, q.b.y, c.z FROM p.a, q.b, q.c"
+         (m/replace-names "SELECT s1.t1.a, s2.t1.a, t2.a FROM s1.t1, s2.t1, s2.t2"
+                          {:schemas {"s1" "p", "s2" "q"}
+                           :tables  {{:schema "s1" :table "t1"} "a"
+                                     {:schema "s2" :table "t1"} "b"
+                                     {:schema "s2" :table "t2"} "c"}
+                           :columns {{:schema "s1" :table "t1" :column "a"} "x"
+                                     {:schema "s2" :table "t1" :column "a"} "y"
+                                     {:schema "s2" :table "t2" :column "a"} "z"}}))))
+
+(deftest replace-schema-only-test
+  (is (= "SELECT totally_private.orders.x FROM totally_private.orders, private.orders WHERE x = 1"
+         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                          {:schemas {"public" "totally_private"}}))))
+
 (deftest replace-schema-test
-  ;; Somehow we broke renaming the `x` in the WHERE clause.
-  #_(is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
-           (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
-                            {:schemas {"public" "totally_private"}
-                             :tables  {{:schema "public" :table "orders"} "purchases"}
-                             :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
+  (is (= "SELECT totally_private.purchases.xx FROM totally_private.purchases, private.orders WHERE xx = 1"
+         (m/replace-names "SELECT public.orders.x FROM public.orders, private.orders WHERE x = 1"
+                          {:schemas {"public" "totally_private"}
+                           :tables  {{:schema "public" :table "orders"} "purchases"}
+                           :columns {{:schema "public" :table "orders" :column "x"} "xx"}}))))
+
+(deftest replace-within-cte-test
+  (is (ws= "WITH z AS (SELECT * FROM b) SELECT c FROM z"
+           (m/replace-names "WITH z AS (SELECT * FROM a) SELECT c FROM z"
+                            {:tables {{:table "a"} "b"}})))
+
+  (testing "with shadowing"
+    ;; TODO fix this, which is broken due to shadowing
+    (is (ws= #_"WITH a AS (SELECT * FROM b) SELECT c FROM a"
+             ;; We treat references to the table `a` as if they were references to the CTE, and therefore leave them.
+             "WITH a AS (SELECT * FROM a) SELECT c FROM a"
+             (m/replace-names "WITH a AS (SELECT * FROM a) SELECT c FROM a"
+                              {:tables {{:table "a"} "b"}}
+                              {:allow-unused? true})))))
+
 
 (deftest allow-unused-test
   (is (thrown-with-msg?
@@ -643,6 +707,7 @@ from foo")
              (m/replace-names alias-shadow-query
                               {:columns {{:table "people" :column "foo"} "bar"}}
                               {:allow-unused? true})))))
+
 
 (def ^:private cte-query
   "WITH engineering_employees AS (
