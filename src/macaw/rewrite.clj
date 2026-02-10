@@ -106,8 +106,8 @@
     ;; Don't rename this node if it's pointing at an alias
     ;; TODO (2025-11-26) this can have false negatives due to case or quoting
     (when (or (.getAlias t) (not (aliases (.getName t))))
-      (let [raw-table  (.getName t)
-            raw-schema (.getSchemaName t)
+      (let [raw-schema   (.getSchemaName t)
+            raw-table    (.getName t)
             table-rename (u/find-relevant table-renames (get known-tables t) [:table :schema])]
         ;; Apply table rename if found
         (when table-rename
